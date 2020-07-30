@@ -1,3 +1,7 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rk_retry
 
 import (
@@ -54,7 +58,7 @@ func StreamClientInterceptor(opt ...RetryCallOption) grpc.StreamClientIntercepto
 				retryStream := &RetryStream{
 					event:        event,
 					ClientStream: newStreamer,
-					retryOpt :    retryOpt,
+					retryOpt:     retryOpt,
 					ctx:          ctx,
 					streamerCall: func(ctx context.Context) (grpc.ClientStream, error) {
 						return streamer(ctx, desc, cc, method, gRpcOpts...)

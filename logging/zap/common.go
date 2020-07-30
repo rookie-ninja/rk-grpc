@@ -1,3 +1,7 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rk_logging_zap
 
 import (
@@ -15,26 +19,21 @@ import (
 )
 
 var (
-	// Cluster location info
-	realmField      = zap.String("realm", getEnvValueOrDefault("REALM", "unknown"))
-	regionField     = zap.String("region", getEnvValueOrDefault("REGION", "unknown"))
-	azField         = zap.String("az", getEnvValueOrDefault("AZ", "unknown"))
-	domainField     = zap.String("domain", getEnvValueOrDefault("DOMAIN", "unknown"))
-	appNameField    = zap.String("application", getEnvValueOrDefault("APPLICATION", "unknown"))
-	appVersionField = zap.String("appVersion", getEnvValueOrDefault("APP_VERSION", "latest"))
-	// Local Address
+	realm         = zap.String("realm", getEnvValueOrDefault("REALM", "unknown"))
+	region        = zap.String("region", getEnvValueOrDefault("REGION", "unknown"))
+	az            = zap.String("az", getEnvValueOrDefault("AZ", "unknown"))
+	domain        = zap.String("domain", getEnvValueOrDefault("DOMAIN", "unknown"))
+	appVersion    = zap.String("app_version", getEnvValueOrDefault("APP_VERSION", "latest"))
 	localIP       = zap.String("local.IP", getLocalIp())
 	localHostname = zap.String("local.hostname", getLocalHostname())
-
-	eventFactory *rk_query.EventFactory
-	timeSource   rk_query.TimeSource
+	appName       = "Unknown"
+	eventFactory  *rk_query.EventFactory
 )
 
 const (
 	// We will add three dot after truncation
 	maxRequestStrLen  = 1021
 	maxResponseStrLen = 1021
-	gRPCRequest       = "gRPC_request"
 )
 
 func getEnvValueOrDefault(key, defaultValue string) string {
@@ -79,11 +78,15 @@ func getRemoteAddressSet(ctx context.Context) []zap.Field {
 			forwardedRemoteIP := forwardedRemoteIPList[0]
 
 			if forwardedRemoteIP == "::1" {
-				forwardedRemoteIP = "127.0.0.1"
+				forwardedRemoteIP = "localhost"
 			}
 
 			remoteIP = forwardedRemoteIP
 		}
+	}
+
+	if remoteIP == "::1" {
+		remoteIP = "localhost"
 	}
 
 	return []zap.Field{
@@ -151,11 +154,4 @@ func interfaceToString(input interface{}, max int) string {
 	}
 
 	return str
-}
-
-func createEventFactoryAsNeeded(logger *zap.Logger) {
-	if eventFactory == nil {
-		timeSource = &rk_query.RealTimeSource{}
-		eventFactory = rk_query.NewEventFactory(appNameField.String, timeSource, logger)
-	}
 }

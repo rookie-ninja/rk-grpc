@@ -1,14 +1,18 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rk_retry
 
 import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-query"
+	"go.uber.org/zap"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"strconv"
 	"time"
 )
 
@@ -29,7 +33,7 @@ func waitRetryBackoff(attempt uint, ctx context.Context, event rk_query.Event, r
 	if attempt > 0 {
 		waitTime = retryOpt.backoffFunc(attempt)
 	}
-	event.AppendKv("rk_retry_wait_ms", strconv.FormatInt(int64(waitTime), 10))
+	event.AddFields(zap.Duration("rk_retry_wait_ms", waitTime))
 
 	if waitTime > 0 {
 		logTrace(ctx, "rk_grpc_retry attempt: %d, backoff for %v", attempt, waitTime)

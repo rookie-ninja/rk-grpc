@@ -1,3 +1,7 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rk_logging_zap
 
 import (
@@ -6,29 +10,15 @@ import (
 )
 
 var (
-	ServerOpts = []Option{
-		WithLog(EnableLog),
-		WithPayload(EnablePayload),
-		WithProm(EnableProm),
-		WithCodes(Codes),
-	}
-
-	ClientOpts = []Option{
-		WithLog(EnableLog),
-		WithPayload(EnablePayload),
-		WithProm(EnableProm),
-		WithCodes(Codes),
-	}
-
 	DefaultOptions = &Options{
-		enableLog:     EnableLog,
-		enablePayload: EnablePayload,
-		enableProm:    EnableProm,
-		codeFunc:      Codes,
+		enableLogging:        EnableLoggingDefault,
+		enablePayloadLogging: EnablePayloadLoggingDefault,
+		enableMetrics:        EnableMetricsDefault,
+		errorToCode:          ErrorToCodesDefault,
 	}
 )
 
-func EvaluateServerOpt(opts []Option) *Options {
+func MergeOpt(opts []Option) *Options {
 	optCopy := &Options{}
 	*optCopy = *DefaultOptions
 	for _, o := range opts {
@@ -37,36 +27,28 @@ func EvaluateServerOpt(opts []Option) *Options {
 	return optCopy
 }
 
-func EvaluateClientOpt(opts []Option) *Options {
-	optCopy := &Options{}
-	*optCopy = *DefaultOptions
-	for _, o := range opts {
-		o(optCopy)
-	}
-	return optCopy
-}
-
-func Codes(err error) codes.Code {
-	return status.Code(err)
-}
-
-func EnableProm(name string, err error) bool {
+// Default options
+func EnableLoggingDefault(string, error) bool {
 	return true
 }
 
-func EnableLog(name string, err error) bool {
-	return true
-}
-
-func EnablePayload(name string, err error) bool {
+func EnablePayloadLoggingDefault(string, error) bool {
 	return false
 }
 
+func EnableMetricsDefault(string, error) bool {
+	return true
+}
+
+func ErrorToCodesDefault(err error) codes.Code {
+	return status.Code(err)
+}
+
 type Options struct {
-	enableProm    Enable
-	enableLog     Enable
-	enablePayload Enable
-	codeFunc      ErrorToCode
+	enableMetrics        Enable
+	enableLogging        Enable
+	enablePayloadLogging Enable
+	errorToCode          Codes
 }
 
 type Option func(*Options)
@@ -74,28 +56,28 @@ type Option func(*Options)
 // Implement this if want to enable any functionality among interceptor
 type Enable func(method string, err error) bool
 
-func WithLog(f Enable) Option {
+type Codes func(err error) codes.Code
+
+func EnableLogging(f Enable) Option {
 	return func(o *Options) {
-		o.enableLog = f
+		o.enableLogging = f
 	}
 }
 
-func WithProm(f Enable) Option {
+func EnableMetrics(f Enable) Option {
 	return func(o *Options) {
-		o.enableProm = f
+		o.enableMetrics = f
 	}
 }
 
-func WithPayload(f Enable) Option {
+func EnablePayloadLogging(f Enable) Option {
 	return func(o *Options) {
-		o.enableProm = f
+		o.enablePayloadLogging = f
 	}
 }
 
-type ErrorToCode func(err error) codes.Code
-
-func WithCodes(f ErrorToCode) Option {
+func ErrorToCode(f Codes) Option {
 	return func(o *Options) {
-		o.codeFunc = f
+		o.errorToCode = f
 	}
 }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package api;
+option go_package = "example/proto";
 
 service Greeter {
   rpc SayHello (HelloRequest) returns (HelloResponse) {}

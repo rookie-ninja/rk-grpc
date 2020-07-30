@@ -1,14 +1,16 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rk_context
 
 import (
 	"github.com/google/uuid"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 	"strings"
-	"time"
 )
 
 const (
@@ -18,25 +20,21 @@ const (
 	RequestIdKeyDefault   = RequestIdKeyDash
 )
 
-type ctxMarker struct{}
+type rkCtxKey struct{}
 
-type payload struct {
-	startTime   time.Time
-	queryLogger *zap.Logger
-	appLogger   *zap.Logger
-	event       rk_query.Event
-	incomingMD  *metadata.MD
-	outgoingMD  *metadata.MD
-	fields      []zapcore.Field
+type rkPayload struct {
+	event      rk_query.Event
+	fields     []zap.Field
+	incomingMD *metadata.MD
+	outgoingMD *metadata.MD
 }
 
 var (
-	ctxMarkerKey = &ctxMarker{}
-	loggerNoop   = zap.NewNop()
+	rkKey = &rkCtxKey{}
 )
 
 func IsRkContext(ctx context.Context) bool {
-	res := ctx.Value(ctxMarkerKey)
+	res := ctx.Value(rkKey)
 	if res != nil {
 		return true
 	}
@@ -44,21 +42,17 @@ func IsRkContext(ctx context.Context) bool {
 	return false
 }
 
-func ToContext(ctx context.Context, queryLogger, appLogger *zap.Logger, event rk_query.Event, incomingMD *metadata.MD, outgoingMD *metadata.MD) context.Context {
+func ToContext(ctx context.Context, event rk_query.Event, incomingMD *metadata.MD, outgoingMD *metadata.MD, fields []zap.Field) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if queryLogger == nil {
-		queryLogger = zap.NewNop()
-	}
-
-	if appLogger == nil {
-		appLogger = zap.NewNop()
-	}
-
 	if event == nil {
-		event = rk_query.NoopEvent{}
+		event = rk_query.NewEventFactory().CreateEventNoop()
+	}
+
+	if fields == nil {
+		fields = make([]zap.Field, 0)
 	}
 
 	if incomingMD == nil {
@@ -69,54 +63,35 @@ func ToContext(ctx context.Context, queryLogger, appLogger *zap.Logger, event rk
 		outgoingMD = GetOutgoingMD(ctx)
 	}
 
-	payload := &payload{
-		queryLogger: queryLogger,
-		appLogger:   appLogger,
-		event:       event,
-		incomingMD:  incomingMD,
-		outgoingMD:  outgoingMD,
-		fields:      extractFields(ctx),
+	payload := &rkPayload{
+		event:      event,
+		fields:     fields,
+		incomingMD: incomingMD,
+		outgoingMD: outgoingMD,
 	}
 
-	return context.WithValue(ctx, ctxMarkerKey, payload)
+	return context.WithValue(ctx, rkKey, payload)
 }
 
 // Initialize new context with bellow payloads
-//
-// 1: zap logger
-// 2: event
-// 3: incoming metadata
-// 4: outgoing metadata
-// 5: zap fields
-//
 // Please do not use it during RPC call or use it with multi thread since it is NOT thread safe
-func NewContext(queryLogger *zap.Logger, appLogger *zap.Logger) context.Context {
+func NewContext() context.Context {
 	base := context.Background()
 	incomingMD := GetIncomingMD(base)
 	outgoingMD := GetOutgoingMD(base)
 
-	if queryLogger == nil {
-		queryLogger = zap.NewNop()
-	}
-
-	if appLogger == nil {
-		appLogger = zap.NewNop()
-	}
-
-	payload := &payload{
-		queryLogger: queryLogger,
-		appLogger:   appLogger,
-		event:       rk_query.NoopEvent{},
-		incomingMD:  incomingMD,
-		outgoingMD:  outgoingMD,
-		fields:      []zap.Field{},
+	payload := &rkPayload{
+		event:      rk_query.NewEventFactory().CreateEventNoop(),
+		fields:     make([]zap.Field, 0),
+		incomingMD: incomingMD,
+		outgoingMD: outgoingMD,
 	}
 
 	// Attach incoming and outgoing metadata
 	ctx := metadata.NewOutgoingContext(context.Background(), *outgoingMD)
 	ctx = metadata.NewIncomingContext(ctx, *incomingMD)
 
-	return context.WithValue(ctx, ctxMarkerKey, payload)
+	return context.WithValue(ctx, rkKey, payload)
 }
 
 // Add Key values to outgoing metadata
@@ -146,48 +121,6 @@ func AddRequestIdToOutgoingMD(ctx context.Context) string {
 	return requestId
 }
 
-func GetQueryLogger(ctx context.Context) *zap.Logger {
-	payload := getPayload(ctx)
-
-	if payload == nil {
-		return loggerNoop
-	}
-
-	return payload.queryLogger
-}
-
-func GetAppLogger(ctx context.Context) *zap.Logger {
-	payload := getPayload(ctx)
-
-	if payload == nil {
-		return loggerNoop
-	}
-
-	// Add request ids from remote side
-	clientRequestIds := GetRequestIdsFromIncomingMD(ctx)
-	serverRequestIds := GetRequestIdsFromOutgoingMD(ctx)
-
-	fields := []zap.Field{
-		zap.Strings("incoming_request_id", clientRequestIds),
-		zap.Strings("outgoing_request_id", serverRequestIds),
-	}
-	return payload.appLogger.With(fields...)
-}
-
-// Extract takes the call-scoped Fields from grpc_zap middleware.
-//
-// It always returns a Fields that has all the grpc_ctxtags updated.
-func GetZapFields(ctx context.Context) []zap.Field {
-	payload := getPayload(ctx)
-
-	if payload == nil {
-		return []zap.Field{}
-	}
-
-	return payload.fields
-
-}
-
 // Extract takes the call-scoped EventData from grpc_zap middleware.
 //
 // It always returns a EventData that has all the grpc_ctxtags updated.
@@ -195,10 +128,20 @@ func GetEvent(ctx context.Context) rk_query.Event {
 	payload := getPayload(ctx)
 
 	if payload == nil {
-		return rk_query.NoopEvent{}
+		return rk_query.NewEventFactory().CreateEventNoop()
 	}
 
 	return payload.event
+}
+
+func GetFields(ctx context.Context) []zap.Field {
+	payload := getPayload(ctx)
+
+	if payload == nil {
+		return make([]zap.Field, 0)
+	}
+
+	return payload.fields
 }
 
 // Extract takes the call-scoped incoming Metadata from grpc_zap middleware.
@@ -221,7 +164,7 @@ func GetIncomingMD(ctx context.Context) *metadata.MD {
 		}
 	}
 
-	payload, ok := payloadRaw.(*payload)
+	payload, ok := payloadRaw.(*rkPayload)
 
 	if !ok || payload == nil {
 		md := metadata.Pairs()
@@ -251,7 +194,7 @@ func GetOutgoingMD(ctx context.Context) *metadata.MD {
 		}
 	}
 
-	payload, ok := payloadRaw.(*payload)
+	payload, ok := payloadRaw.(*rkPayload)
 
 	if !ok || payload == nil {
 		md := metadata.Pairs()
@@ -335,46 +278,42 @@ func GenerateRequestId() string {
 	return requestId.String()
 }
 
+// Generate request id based on google/uuid
+// UUIDs are based on RFC 4122 and DCE 1.1: Authentication and Security Services.
+//
+// A UUID is a 16 byte (128 bit) array. UUIDs may be used as keys to maps or compared directly.
+func GenerateRequestIdWithPrefix(prefix string) string {
+	// Do not use uuid.New() since it would panic if any error occurs
+	requestId, err := uuid.NewRandom()
+
+	// Currently, we will return empty string if error occurs
+	if err != nil {
+		return ""
+	}
+
+	return prefix + "-" + requestId.String()
+}
+
 // Retrieve context if possible
 func getPayloadRaw(ctx context.Context) interface{} {
 	if ctx == nil {
 		return nil
 	}
 
-	return ctx.Value(ctxMarkerKey)
+	return ctx.Value(rkKey)
 }
 
 // Retrieve pulse line context payload if possible
-func getPayload(ctx context.Context) *payload {
+func getPayload(ctx context.Context) *rkPayload {
 	if ctx == nil {
 		return nil
 	}
 
-	payload, ok := ctx.Value(ctxMarkerKey).(*payload)
+	payload, ok := ctx.Value(rkKey).(*rkPayload)
 
 	if !ok || payload == nil {
 		return nil
 	}
 
 	return payload
-}
-
-func extractFields(ctx context.Context) []zap.Field {
-	payloadRaw := getPayloadRaw(ctx)
-
-	// Payload is empty which means it is not pulse line style context
-	// We will try to extract from incoming context
-	//
-	// If none of them exists, then just return a new empty metadata
-	if payloadRaw == nil {
-		return []zap.Field{}
-	}
-
-	payload, ok := payloadRaw.(*payload)
-
-	if !ok || payload == nil {
-		return []zap.Field{}
-	}
-
-	return payload.fields
 }
