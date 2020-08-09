@@ -2,7 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_interceptor
+package rk_inter
 
 import (
 	"golang.org/x/net/context"

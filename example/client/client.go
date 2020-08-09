@@ -10,6 +10,7 @@ import (
 	rk_context "github.com/rookie-ninja/rk-interceptor/context"
 	"github.com/rookie-ninja/rk-interceptor/example/proto"
 	rk_logging_zap "github.com/rookie-ninja/rk-interceptor/logging/zap"
+	rk_retry "github.com/rookie-ninja/rk-interceptor/retry"
 	rk_logger "github.com/rookie-ninja/rk-logger"
 	rk_query "github.com/rookie-ninja/rk-query"
 	"google.golang.org/grpc"
@@ -60,7 +61,8 @@ func main() {
 	// create client interceptor
 	opt := []grpc.DialOption{
 		grpc.WithChainUnaryInterceptor(
-			rk_logging_zap.UnaryClientInterceptor(factory)),
+			rk_logging_zap.UnaryClientInterceptor(factory),
+			rk_retry.UnaryClientInterceptor()),
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	}

@@ -2,12 +2,12 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_logging_zap
+package rk_inter_logging
 
 import (
 	"github.com/rookie-ninja/rk-interceptor"
 	"github.com/rookie-ninja/rk-interceptor/context"
-	rk_query "github.com/rookie-ninja/rk-query"
+	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -51,21 +51,24 @@ func unaryServerBefore(ctx context.Context, event rk_query.Event, info *grpc.Una
 
 func unaryServerAfter(ctx context.Context, req, resp interface{}, opt *Options, err error, info *grpc.UnaryServerInfo) {
 	event := recordServerAfter(ctx, opt, err, info.FullMethod)
-	grpc.SetHeader(ctx, *rk_context.GetOutgoingMD(ctx))
+	grpc.SetHeader(ctx, *rk_inter_context.GetOutgoingMD(ctx))
 
-	if opt.enableLogging(info.FullMethod, err) && opt.enablePayloadLogging(info.FullMethod, err) {
+	if opt.enableLogging() && opt.enablePayloadLogging() {
 		event.AddFields(
 			zap.String("request_payload", interfaceToString(req, maxRequestStrLen)),
 			zap.String("response_payload", interfaceToString(resp, maxResponseStrLen)))
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics(info.FullMethod, err) {
+	if opt.enableMetrics() {
 		code := opt.errorToCode(err)
 		getServerBytesTransInMetrics(info.FullMethod, code.String()).Add(float64(unsafe.Sizeof(req)))
 		getServerBytesTransOutMetrics(info.FullMethod, code.String()).Add(float64(unsafe.Sizeof(resp)))
 	}
-	event.WriteLog()
+
+	if opt.enableLogging() {
+		event.WriteLog()
+	}
 }
 
 func StreamServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc.StreamServerInterceptor {
@@ -98,7 +101,7 @@ func StreamServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grp
 }
 
 func streamServerBefore(stream grpc.ServerStream, event rk_query.Event, info *grpc.StreamServerInfo) grpc.ServerStream {
-	wrappedStream := rk_interceptor.WrapServerStream(stream)
+	wrappedStream := rk_inter.WrapServerStream(stream)
 	wrappedStream.WrappedContext = recordServerBefore(stream.Context(), event, info.FullMethod, "stream_server")
 
 	return wrappedStream
@@ -106,12 +109,15 @@ func streamServerBefore(stream grpc.ServerStream, event rk_query.Event, info *gr
 
 func streamServerAfter(stream grpc.ServerStream, opt *Options, err error, info *grpc.StreamServerInfo) {
 	event := recordServerAfter(stream.Context(), opt, err, info.FullMethod)
-	event.WriteLog()
+
+	if opt.enableLogging() {
+		event.WriteLog()
+	}
 }
 
 func recordServerBefore(ctx context.Context, event rk_query.Event, method, role string) context.Context {
 	// Add request ids from remote side
-	incomingRequestIds := rk_context.GetRequestIdsFromIncomingMD(ctx)
+	incomingRequestIds := rk_inter_context.GetRequestIdsFromIncomingMD(ctx)
 
 	fields := []zap.Field{
 		realm, region, az, domain, appVersion, localIP,
@@ -132,22 +138,22 @@ func recordServerBefore(ctx context.Context, event rk_query.Event, method, role 
 		fields = append(fields, zap.String("deadline", d.Format(time.RFC3339)))
 	}
 
-	incomingMD := rk_context.GetIncomingMD(ctx)
-	outgoingMD := rk_context.GetOutgoingMD(ctx)
+	incomingMD := rk_inter_context.GetIncomingMD(ctx)
+	outgoingMD := rk_inter_context.GetOutgoingMD(ctx)
 
-	return rk_context.ToContext(ctx, event, incomingMD, outgoingMD, fields)
+	return rk_inter_context.ToContext(ctx, event, incomingMD, outgoingMD, fields)
 }
 
 func recordServerAfter(ctx context.Context, opt *Options, err error, method string) rk_query.Event {
 	code := opt.errorToCode(err)
-	event := rk_context.GetEvent(ctx)
+	event := rk_inter_context.GetEvent(ctx)
 	event.AddErr(err)
 	endTime := time.Now()
 	elapsed := endTime.Sub(event.GetStartTime())
 
 	// Log to query logger if enabled
-	if opt.enableLogging(method, err) {
-		fields := rk_context.GetFields(ctx)
+	if opt.enableLogging() {
+		fields := rk_inter_context.GetFields(ctx)
 
 		// Check whether context is cancelled from client
 		select {
@@ -159,7 +165,7 @@ func recordServerAfter(ctx context.Context, opt *Options, err error, method stri
 		}
 
 		// extract request id and log it
-		outgoingRequestIds := rk_context.GetRequestIdsFromOutgoingMD(ctx)
+		outgoingRequestIds := rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)
 		fields = append(fields,
 			zap.String("res_code", code.String()),
 			zap.Time("end_time", endTime),
@@ -169,7 +175,7 @@ func recordServerAfter(ctx context.Context, opt *Options, err error, method stri
 
 		event.AddFields(fields...)
 		if len(event.GetEventId()) < 1 {
-			ids := append(rk_context.GetRequestIdsFromIncomingMD(ctx), rk_context.GetRequestIdsFromOutgoingMD(ctx)...)
+			ids := append(rk_inter_context.GetRequestIdsFromIncomingMD(ctx), rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)...)
 			if len(ids) > 0 {
 				event.SetEventId(interfaceToString(ids, 1000000))
 			}
@@ -178,7 +184,7 @@ func recordServerAfter(ctx context.Context, opt *Options, err error, method stri
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics(method, err) {
+	if opt.enableMetrics() {
 		method := path.Base(method)
 		getServerDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds() / 1e6))
 		if err != nil {

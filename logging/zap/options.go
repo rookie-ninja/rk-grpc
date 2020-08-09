@@ -2,7 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_logging_zap
+package rk_inter_logging
 
 import (
 	"google.golang.org/grpc/codes"
@@ -11,10 +11,10 @@ import (
 
 var (
 	DefaultOptions = &Options{
-		enableLogging:        EnableLoggingDefault,
-		enablePayloadLogging: EnablePayloadLoggingDefault,
-		enableMetrics:        EnableMetricsDefault,
-		errorToCode:          ErrorToCodesDefault,
+		enableLogging:        EnableLogging,
+		enablePayloadLogging: EnablePayloadLogging,
+		enableMetrics:        EnableMetrics,
+		errorToCode:          ErrorToCodes,
 	}
 )
 
@@ -28,19 +28,31 @@ func MergeOpt(opts []Option) *Options {
 }
 
 // Default options
-func EnableLoggingDefault(string, error) bool {
-	return true
-}
-
-func EnablePayloadLoggingDefault(string, error) bool {
+func DisableLogging() bool {
 	return false
 }
 
-func EnableMetricsDefault(string, error) bool {
+func EnableLogging() bool {
 	return true
 }
 
-func ErrorToCodesDefault(err error) codes.Code {
+func EnablePayloadLogging() bool {
+	return true
+}
+
+func DisablePayloadLogging() bool {
+	return false
+}
+
+func EnableMetrics() bool {
+	return true
+}
+
+func DisableMetrics() bool {
+	return false
+}
+
+func ErrorToCodes(err error) codes.Code {
 	return status.Code(err)
 }
 
@@ -54,29 +66,29 @@ type Options struct {
 type Option func(*Options)
 
 // Implement this if want to enable any functionality among interceptor
-type Enable func(method string, err error) bool
+type Enable func() bool
 
 type Codes func(err error) codes.Code
 
-func EnableLogging(f Enable) Option {
+func EnableLoggingOption(f Enable) Option {
 	return func(o *Options) {
 		o.enableLogging = f
 	}
 }
 
-func EnableMetrics(f Enable) Option {
+func EnableMetricsOption(f Enable) Option {
 	return func(o *Options) {
 		o.enableMetrics = f
 	}
 }
 
-func EnablePayloadLogging(f Enable) Option {
+func EnablePayloadLoggingOption(f Enable) Option {
 	return func(o *Options) {
 		o.enablePayloadLogging = f
 	}
 }
 
-func ErrorToCode(f Codes) Option {
+func ErrorToCodeOption(f Codes) Option {
 	return func(o *Options) {
 		o.errorToCode = f
 	}

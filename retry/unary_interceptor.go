@@ -2,7 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_retry
+package rk_inter_retry
 
 import (
 	"context"
@@ -12,19 +12,19 @@ import (
 )
 
 func UnaryClientInterceptor(opt ...RetryCallOption) grpc.UnaryClientInterceptor {
-	initialRetryOpt := newOption(defaultOption, opt)
+	initialRetryOpt := mergeOption(defaultOption, opt)
 
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// validate context, if parent context is from logging, then
 		// Event in rk_query would exists
 		var event rk_query.Event
-		if rk_context.IsRkContext(ctx) {
-			event = rk_context.GetEvent(ctx)
+		if rk_inter_context.IsRkContext(ctx) {
+			event = rk_inter_context.GetEvent(ctx)
 		}
 
 		// we will check whether Call option contains extra RetryCallOption
 		gRpcOpts, newRetryOpts := splitCallOptions(opts)
-		retryOpt := newOption(initialRetryOpt, newRetryOpts)
+		retryOpt := mergeOption(initialRetryOpt, newRetryOpts)
 
 		event.SetCounter("rk_max_retries", int64(retryOpt.maxRetries))
 		if retryOpt.maxRetries == 0 {

@@ -2,7 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_retry
+package rk_inter_retry
 
 import (
 	"time"
@@ -71,7 +71,7 @@ type RetryCallOption struct {
 	applyFunc func(opt *retryOption)
 }
 
-func newOption(opt *retryOption, retryOptions []RetryCallOption) *retryOption {
+func mergeOption(opt *retryOption, retryOptions []RetryCallOption) *retryOption {
 	if len(retryOptions) == 0 {
 		return opt
 	}
