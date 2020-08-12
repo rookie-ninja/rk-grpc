@@ -8,11 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	rk_context "github.com/rookie-ninja/rk-interceptor/context"
+	"github.com/rookie-ninja/rk-interceptor/context"
 	"github.com/rookie-ninja/rk-interceptor/example/proto"
 	"github.com/rookie-ninja/rk-interceptor/logging/zap"
-	rk_logger "github.com/rookie-ninja/rk-logger"
-	rk_query "github.com/rookie-ninja/rk-query"
+	"github.com/rookie-ninja/rk-interceptor/panic"
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"log"
@@ -68,7 +69,9 @@ func main() {
 
 	// create server interceptor
 	opt := []grpc.ServerOption{
-		grpc.UnaryInterceptor(rk_logging_zap.UnaryServerInterceptor(factory)),
+		grpc.ChainUnaryInterceptor(
+			rk_inter_logging.UnaryServerInterceptor(factory),
+			rk_inter_panic.UnaryServerInterceptor(rk_inter_panic.PanicToStderr)),
 	}
 
 	// create server
@@ -84,7 +87,7 @@ func main() {
 type GreeterServer struct{}
 
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
-	event := rk_context.GetEvent(ctx)
+	event := rk_inter_context.GetEvent(ctx)
 	// add fields
 	event.AddFields(zap.String("key", "value"))
 	// add error
@@ -98,12 +101,12 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	time.Sleep(1 * time.Second)
 	event.EndTimer("sleep")
 	// add to metadata
-	rk_context.AddToOutgoingMD(ctx, "key", "1", "2")
+	rk_inter_context.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rk_context.AddRequestIdToOutgoingMD(ctx)
+	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
 
 	// print incoming metadata
-	bytes, _ := json.Marshal(rk_context.GetIncomingMD(ctx))
+	bytes, _ := json.Marshal(rk_inter_context.GetIncomingMD(ctx))
 	println(string(bytes))
 
 	return &proto.HelloResponse{
