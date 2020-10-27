@@ -152,7 +152,7 @@ func recordClientAfter(ctx context.Context, opt *Options, err error, method stri
 	elapsed := endTime.Sub(event.GetStartTime())
 
 	if opt.enableLogging() {
-		fields := rk_inter_context.GetFields(ctx)
+		fields := make([]zap.Field, 0)
 
 		// Check whether context is cancelled from server
 		select {

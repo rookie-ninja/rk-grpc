@@ -24,7 +24,6 @@ type rkCtxKey struct{}
 
 type rkPayload struct {
 	event      rk_query.Event
-	fields     []zap.Field
 	incomingMD *metadata.MD
 	outgoingMD *metadata.MD
 }
@@ -65,7 +64,6 @@ func ToContext(ctx context.Context, event rk_query.Event, incomingMD *metadata.M
 
 	payload := &rkPayload{
 		event:      event,
-		fields:     fields,
 		incomingMD: incomingMD,
 		outgoingMD: outgoingMD,
 	}
@@ -82,7 +80,6 @@ func NewContext() context.Context {
 
 	payload := &rkPayload{
 		event:      rk_query.NewEventFactory().CreateEventNoop(),
-		fields:     make([]zap.Field, 0),
 		incomingMD: incomingMD,
 		outgoingMD: outgoingMD,
 	}
@@ -110,7 +107,7 @@ func AddToOutgoingMD(ctx context.Context, key string, values ...string) {
 // Add request id to outgoing metadata
 //
 // The request id would be printed on server's query log and client's query log
-// if client is using pulse line gRPC interceptor
+// if client is using rk gRPC interceptor
 func AddRequestIdToOutgoingMD(ctx context.Context) string {
 	requestId := GenerateRequestId()
 
@@ -134,23 +131,13 @@ func GetEvent(ctx context.Context) rk_query.Event {
 	return payload.event
 }
 
-func GetFields(ctx context.Context) []zap.Field {
-	payload := getPayload(ctx)
-
-	if payload == nil {
-		return make([]zap.Field, 0)
-	}
-
-	return payload.fields
-}
-
 // Extract takes the call-scoped incoming Metadata from grpc_zap middleware.
 //
 // It always returns a Metadata that has all the grpc_ctxtags updated.
 func GetIncomingMD(ctx context.Context) *metadata.MD {
 	payloadRaw := getPayloadRaw(ctx)
 
-	// Payload is empty which means it is not pulse line style context
+	// Payload is empty which means it is not rk style context
 	// We will try to extract from incoming context
 	//
 	// If none of them exists, then just return a new empty metadata
@@ -180,7 +167,7 @@ func GetIncomingMD(ctx context.Context) *metadata.MD {
 func GetOutgoingMD(ctx context.Context) *metadata.MD {
 	payloadRaw := getPayloadRaw(ctx)
 
-	// Payload is empty which means it is not pulse line style context
+	// Payload is empty which means it is not rk style context
 	// We will try to extract from outging context
 	//
 	// If none of them exists, then just return a new empty metadata
@@ -303,7 +290,7 @@ func getPayloadRaw(ctx context.Context) interface{} {
 	return ctx.Value(rkKey)
 }
 
-// Retrieve pulse line context payload if possible
+// Retrieve rk context payload if possible
 func getPayload(ctx context.Context) *rkPayload {
 	if ctx == nil {
 		return nil

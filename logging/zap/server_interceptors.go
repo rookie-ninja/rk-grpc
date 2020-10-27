@@ -153,7 +153,7 @@ func recordServerAfter(ctx context.Context, opt *Options, err error, method stri
 
 	// Log to query logger if enabled
 	if opt.enableLogging() {
-		fields := rk_inter_context.GetFields(ctx)
+		fields := make([]zap.Field, 0)
 
 		// Check whether context is cancelled from client
 		select {

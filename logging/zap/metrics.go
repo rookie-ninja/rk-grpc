@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	serverMetrics    = initMetrics("server")
-	clientMetrics    = initMetrics("client")
+	serverMetrics    = initMetrics("grpc_server")
+	clientMetrics    = initMetrics("grpc_client")
 	defaultLabelKeys = []string{"realm", "region", "az", "domain", "app_version", "app_name", "method", "res_code"}
 )
 
@@ -46,7 +46,7 @@ func getServerErrorMetrics(method, resCode string) prometheus.Counter {
 }
 
 func getServerResCodeMetrics(method, inputResCode string) prometheus.Counter {
-	values := []string{realm.String, region.String, az.String, domain.String, appVersion.String, appName, method, resCode}
+	values := []string{realm.String, region.String, az.String, domain.String, appVersion.String, appName, method, inputResCode}
 	return serverMetrics.GetCounterWithValues(resCode, values...)
 }
 
@@ -72,7 +72,7 @@ func getClientErrorMetrics(method, resCode string) prometheus.Counter {
 }
 
 func getClientResCodeMetrics(method, inputResCode string) prometheus.Counter {
-	values := []string{realm.String, region.String, az.String, domain.String, appVersion.String, appName, method, resCode}
+	values := []string{realm.String, region.String, az.String, domain.String, appVersion.String, appName, method, inputResCode}
 	return clientMetrics.GetCounterWithValues(resCode, values...)
 }
 
