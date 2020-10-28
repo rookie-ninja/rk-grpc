@@ -11,7 +11,7 @@ require (
 	github.com/juju/testing v0.0.0-20200706033705-4c23f9c453cd // indirect
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/common v0.11.1 // indirect
-	github.com/rookie-ninja/rk-logger v1.0.3
+	github.com/rookie-ninja/rk-logger v1.0.4
 	github.com/rookie-ninja/rk-prom v1.0.1
 	github.com/rookie-ninja/rk-query v1.0.4
 	go.uber.org/zap v1.15.0

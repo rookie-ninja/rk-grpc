@@ -5,7 +5,6 @@
 package rk_inter_logging
 
 import (
-	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -27,7 +26,6 @@ var (
 	localIP       = zap.String("local.IP", getLocalIp())
 	localHostname = zap.String("local.hostname", getLocalHostname())
 	appName       = "Unknown"
-	eventFactory  *rk_query.EventFactory
 )
 
 const (

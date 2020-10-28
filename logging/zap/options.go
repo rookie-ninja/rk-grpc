@@ -5,91 +5,83 @@
 package rk_inter_logging
 
 import (
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	DefaultOptions = &Options{
-		enableLogging:        EnableLogging,
-		enablePayloadLogging: EnablePayloadLogging,
-		enableMetrics:        EnableMetrics,
-		errorToCode:          ErrorToCodes,
+	defaultOptions = &options{
+		enableLogging:        true,
+		enablePayloadLogging: true,
+		enableMetrics:        true,
+		errorToCode:          defaultErrorToCodes,
+		eventFactory:         rk_query.NewEventFactory(),
+		logger:               rk_logger.NoopLogger,
 	}
 )
 
-func MergeOpt(opts []Option) *Options {
-	optCopy := &Options{}
-	*optCopy = *DefaultOptions
-	for _, o := range opts {
-		o(optCopy)
+func mergeOpt(opts []Option) {
+	for i := range opts {
+		opts[i](defaultOptions)
 	}
-	return optCopy
 }
 
-// Default options
-func DisableLogging() bool {
-	return false
-}
-
-func EnableLogging() bool {
-	return true
-}
-
-func EnablePayloadLogging() bool {
-	return true
-}
-
-func DisablePayloadLogging() bool {
-	return false
-}
-
-func EnableMetrics() bool {
-	return true
-}
-
-func DisableMetrics() bool {
-	return false
-}
-
-func ErrorToCodes(err error) codes.Code {
+func defaultErrorToCodes(err error) codes.Code {
 	return status.Code(err)
 }
 
-type Options struct {
-	enableMetrics        Enable
-	enableLogging        Enable
-	enablePayloadLogging Enable
-	errorToCode          Codes
+type options struct {
+	enableMetrics        bool
+	enableLogging        bool
+	enablePayloadLogging bool
+	errorToCode          func(err error) codes.Code
+	eventFactory         *rk_query.EventFactory
+	logger               *zap.Logger
 }
 
-type Option func(*Options)
+type Option func(*options)
 
-// Implement this if want to enable any functionality among interceptor
-type Enable func() bool
-
-type Codes func(err error) codes.Code
-
-func EnableLoggingOption(f Enable) Option {
-	return func(o *Options) {
-		o.enableLogging = f
+func WithEventFactory(factory *rk_query.EventFactory) Option {
+	return func(opt *options) {
+		if factory == nil {
+			factory = rk_query.NewEventFactory()
+		}
+		opt.eventFactory = factory
 	}
 }
 
-func EnableMetricsOption(f Enable) Option {
-	return func(o *Options) {
-		o.enableMetrics = f
+func WithLogger(logger *zap.Logger) Option {
+	return func(opt *options) {
+		if logger == nil {
+			logger = rk_logger.NoopLogger
+		}
+		opt.logger = logger
 	}
 }
 
-func EnablePayloadLoggingOption(f Enable) Option {
-	return func(o *Options) {
-		o.enablePayloadLogging = f
+func WithEnableLogging(enable bool) Option {
+	return func(opt *options) {
+		opt.enableLogging = enable
 	}
 }
 
-func ErrorToCodeOption(f Codes) Option {
-	return func(o *Options) {
-		o.errorToCode = f
+func WithEnableMetrics(enable bool) Option {
+	return func(opt *options) {
+		opt.enableMetrics = enable
+	}
+}
+
+func WithEnablePayloadLogging(enable bool) Option {
+	return func(opt *options) {
+		opt.enablePayloadLogging = enable
+	}
+}
+
+func WithErrorToCode(funcs func(err error) codes.Code) Option {
+	return func(opt *options) {
+		opt.errorToCode = funcs
 	}
 }

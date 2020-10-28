@@ -70,7 +70,9 @@ func main() {
 	// create server interceptor
 	opt := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			rk_inter_logging.UnaryServerInterceptor(factory),
+			rk_inter_logging.UnaryServerInterceptor(
+				rk_inter_logging.WithEventFactory(factory),
+				rk_inter_logging.WithLogger(rk_logger.StdoutLogger)),
 			rk_inter_panic.UnaryServerInterceptor(rk_inter_panic.PanicToStderr)),
 	}
 
@@ -108,6 +110,8 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	// print incoming metadata
 	bytes, _ := json.Marshal(rk_inter_context.GetIncomingMD(ctx))
 	println(string(bytes))
+
+	rk_inter_context.GetLogger(ctx).Info("this is info message")
 
 	return &proto.HelloResponse{
 		Message: "hello",

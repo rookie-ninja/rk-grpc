@@ -6,6 +6,7 @@ package rk_inter_context
 
 import (
 	"github.com/google/uuid"
+	rk_logger "github.com/rookie-ninja/rk-logger"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -24,6 +25,7 @@ type rkCtxKey struct{}
 
 type rkPayload struct {
 	event      rk_query.Event
+	logger     *zap.Logger
 	incomingMD *metadata.MD
 	outgoingMD *metadata.MD
 }
@@ -41,17 +43,13 @@ func IsRkContext(ctx context.Context) bool {
 	return false
 }
 
-func ToContext(ctx context.Context, event rk_query.Event, incomingMD *metadata.MD, outgoingMD *metadata.MD, fields []zap.Field) context.Context {
+func ToContext(ctx context.Context, event rk_query.Event, logger *zap.Logger, incomingMD *metadata.MD, outgoingMD *metadata.MD) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	if event == nil {
 		event = rk_query.NewEventFactory().CreateEventNoop()
-	}
-
-	if fields == nil {
-		fields = make([]zap.Field, 0)
 	}
 
 	if incomingMD == nil {
@@ -62,8 +60,18 @@ func ToContext(ctx context.Context, event rk_query.Event, incomingMD *metadata.M
 		outgoingMD = GetOutgoingMD(ctx)
 	}
 
+	if IsRkContext(ctx) {
+		payload := getPayload(ctx)
+		payload.event = event
+		payload.logger = logger
+		payload.incomingMD = incomingMD
+		payload.outgoingMD = outgoingMD
+		return ctx
+	}
+
 	payload := &rkPayload{
 		event:      event,
+		logger:     logger,
 		incomingMD: incomingMD,
 		outgoingMD: outgoingMD,
 	}
@@ -80,6 +88,7 @@ func NewContext() context.Context {
 
 	payload := &rkPayload{
 		event:      rk_query.NewEventFactory().CreateEventNoop(),
+		logger:     rk_logger.NoopLogger,
 		incomingMD: incomingMD,
 		outgoingMD: outgoingMD,
 	}
@@ -113,6 +122,8 @@ func AddRequestIdToOutgoingMD(ctx context.Context) string {
 
 	if len(requestId) > 0 {
 		AddToOutgoingMD(ctx, RequestIdKeyDefault, requestId)
+		payload := getPayload(ctx)
+		payload.logger = payload.logger.With(zap.Strings("outgoing_request_id", GetValueFromOutgoingMD(ctx, RequestIdKeyDefault)))
 	}
 
 	return requestId
@@ -129,6 +140,30 @@ func GetEvent(ctx context.Context) rk_query.Event {
 	}
 
 	return payload.event
+}
+
+// Extract takes the call-scoped zap logger from grpc_zap middleware.
+//
+// It always returns a zap logger that has all the grpc_ctxtags updated.
+func GetLogger(ctx context.Context) *zap.Logger {
+	payload := getPayload(ctx)
+
+	if payload == nil {
+		return rk_logger.NoopLogger
+	}
+
+	return payload.logger
+}
+
+// Internal use only
+func SetLogger(ctx context.Context, logger *zap.Logger) {
+	payload := getPayload(ctx)
+
+	if payload == nil {
+		return
+	}
+
+	payload.logger = logger
 }
 
 // Extract takes the call-scoped incoming Metadata from grpc_zap middleware.

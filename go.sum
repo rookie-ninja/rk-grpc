@@ -264,6 +264,8 @@ github.com/rookie-ninja/rk-logger v1.0.2 h1:ZXFJShLIujLu/skRm2qh7xJucbaXS1O+aSdp
 github.com/rookie-ninja/rk-logger v1.0.2/go.mod h1:wYrr3clOuUCnxmjLsrZEhfABW8xOqGWTuj9EInapKQk=
 github.com/rookie-ninja/rk-logger v1.0.3 h1:sX/fWnKbX2STysWLahkaVIyoaRh5RFl3v/u/4reKUCM=
 github.com/rookie-ninja/rk-logger v1.0.3/go.mod h1:ep3zy5MvOcVg+ftUsVnUcfFA9cxvVb99IBJEsmWAnlM=
+github.com/rookie-ninja/rk-logger v1.0.4 h1:xgGYalINJOzolIylOY/c7iUBw/IwUCTb9vKoLe/t/ik=
+github.com/rookie-ninja/rk-logger v1.0.4/go.mod h1:ep3zy5MvOcVg+ftUsVnUcfFA9cxvVb99IBJEsmWAnlM=
 github.com/rookie-ninja/rk-prom v1.0.0 h1:BLLckc+WpVwh0pA5bdBMLKvWTw5snG1JkezvkF0ONM4=
 github.com/rookie-ninja/rk-prom v1.0.0/go.mod h1:V072bldHaq9RYGfq6JPCXt0fp6yvyTLM9SBeMuHUaEc=
 github.com/rookie-ninja/rk-prom v1.0.1 h1:otLbK1KrniSbGxOECstdtTW1NGornIwbv6iUvvjJPUk=

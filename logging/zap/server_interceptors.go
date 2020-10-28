@@ -16,20 +16,14 @@ import (
 	"unsafe"
 )
 
-func UnaryServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	// Merge option
-	opt := MergeOpt(opts)
+	mergeOpt(opts)
 
-	// We will populate Noop Zap logger if factory is nil
-	if factory == nil {
-		factory = rk_query.NewEventFactory()
-	}
-
-	eventFactory = factory
-	appName = factory.GetAppName()
+	appName = defaultOptions.eventFactory.GetAppName()
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		event := eventFactory.CreateEvent()
+		event := defaultOptions.eventFactory.CreateEvent()
 		event.SetStartTime(time.Now())
 
 		// 1: Before invoking
@@ -39,7 +33,7 @@ func UnaryServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc
 		resp, err := handler(newCtx, req)
 
 		// 3: After invoking
-		unaryServerAfter(newCtx, req, resp, opt, err, info)
+		unaryServerAfter(newCtx, req, resp, err, info)
 
 		return resp, err
 	}
@@ -49,42 +43,36 @@ func unaryServerBefore(ctx context.Context, event rk_query.Event, info *grpc.Una
 	return recordServerBefore(ctx, event, info.FullMethod, "unary_server")
 }
 
-func unaryServerAfter(ctx context.Context, req, resp interface{}, opt *Options, err error, info *grpc.UnaryServerInfo) {
-	event := recordServerAfter(ctx, opt, err, info.FullMethod)
+func unaryServerAfter(ctx context.Context, req, resp interface{}, err error, info *grpc.UnaryServerInfo) {
+	event := recordServerAfter(ctx, err, info.FullMethod)
 	grpc.SetHeader(ctx, *rk_inter_context.GetOutgoingMD(ctx))
 
-	if opt.enableLogging() && opt.enablePayloadLogging() {
+	if defaultOptions.enableLogging && defaultOptions.enablePayloadLogging {
 		event.AddFields(
 			zap.String("request_payload", interfaceToString(req, maxRequestStrLen)),
 			zap.String("response_payload", interfaceToString(resp, maxResponseStrLen)))
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics() {
-		code := opt.errorToCode(err)
+	if defaultOptions.enableMetrics {
+		code := defaultOptions.errorToCode(err)
 		getServerBytesTransInMetrics(info.FullMethod, code.String()).Add(float64(unsafe.Sizeof(req)))
 		getServerBytesTransOutMetrics(info.FullMethod, code.String()).Add(float64(unsafe.Sizeof(resp)))
 	}
 
-	if opt.enableLogging() {
+	if defaultOptions.enableLogging {
 		event.WriteLog()
 	}
 }
 
-func StreamServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc.StreamServerInterceptor {
+func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	// Merge option
-	opt := MergeOpt(opts)
+	mergeOpt(opts)
 
-	// We will populate Noop Zap logger if factory is nil
-	if factory == nil {
-		factory = rk_query.NewEventFactory()
-	}
-
-	eventFactory = factory
-	appName = factory.GetAppName()
+	appName = defaultOptions.eventFactory.GetAppName()
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		event := eventFactory.CreateEvent()
+		event := defaultOptions.eventFactory.CreateEvent()
 		event.SetStartTime(time.Now())
 
 		// 1: Before invoking
@@ -94,7 +82,7 @@ func StreamServerInterceptor(factory *rk_query.EventFactory, opts ...Option) grp
 		err := handler(srv, wrappedStream)
 
 		// 3: After invoking
-		streamServerAfter(wrappedStream, opt, err, info)
+		streamServerAfter(wrappedStream, err, info)
 
 		return err
 	}
@@ -107,10 +95,10 @@ func streamServerBefore(stream grpc.ServerStream, event rk_query.Event, info *gr
 	return wrappedStream
 }
 
-func streamServerAfter(stream grpc.ServerStream, opt *Options, err error, info *grpc.StreamServerInfo) {
-	event := recordServerAfter(stream.Context(), opt, err, info.FullMethod)
+func streamServerAfter(stream grpc.ServerStream, err error, info *grpc.StreamServerInfo) {
+	event := recordServerAfter(stream.Context(), err, info.FullMethod)
 
-	if opt.enableLogging() {
+	if defaultOptions.enableLogging {
 		event.WriteLog()
 	}
 }
@@ -128,6 +116,8 @@ func recordServerBefore(ctx context.Context, event rk_query.Event, method, role 
 		zap.Time("start_time", event.GetStartTime()),
 	}
 
+	defaultOptions.logger = defaultOptions.logger.With(zap.Strings("incoming_request_id", incomingRequestIds))
+
 	remoteAddressSet := getRemoteAddressSet(ctx)
 	fields = append(fields, remoteAddressSet...)
 	event.SetRemoteAddr(remoteAddressSet[0].String)
@@ -141,18 +131,20 @@ func recordServerBefore(ctx context.Context, event rk_query.Event, method, role 
 	incomingMD := rk_inter_context.GetIncomingMD(ctx)
 	outgoingMD := rk_inter_context.GetOutgoingMD(ctx)
 
-	return rk_inter_context.ToContext(ctx, event, incomingMD, outgoingMD, fields)
+	event.AddFields(fields...)
+
+	return rk_inter_context.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
 }
 
-func recordServerAfter(ctx context.Context, opt *Options, err error, method string) rk_query.Event {
-	code := opt.errorToCode(err)
+func recordServerAfter(ctx context.Context, err error, method string) rk_query.Event {
+	code := defaultOptions.errorToCode(err)
 	event := rk_inter_context.GetEvent(ctx)
 	event.AddErr(err)
 	endTime := time.Now()
 	elapsed := endTime.Sub(event.GetStartTime())
 
 	// Log to query logger if enabled
-	if opt.enableLogging() {
+	if defaultOptions.enableLogging {
 		fields := make([]zap.Field, 0)
 
 		// Check whether context is cancelled from client
@@ -184,7 +176,7 @@ func recordServerAfter(ctx context.Context, opt *Options, err error, method stri
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics() {
+	if defaultOptions.enableMetrics {
 		method := path.Base(method)
 		getServerDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds() / 1e6))
 		if err != nil {

@@ -17,20 +17,14 @@ import (
 	"unsafe"
 )
 
-func UnaryClientInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	// Merge option
-	opt := MergeOpt(opts)
+	mergeOpt(opts)
 
-	// We will populate Noop Zap logger if factory is nil
-	if factory == nil {
-		factory = rk_query.NewEventFactory()
-	}
-
-	eventFactory = factory
-	appName = factory.GetAppName()
+	appName = defaultOptions.eventFactory.GetAppName()
 
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		event := eventFactory.CreateEvent()
+		event := defaultOptions.eventFactory.CreateEvent()
 		event.SetStartTime(time.Now())
 
 		// 1: Before invoking
@@ -42,7 +36,7 @@ func UnaryClientInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc
 		err := invoker(newCtx, method, req, resp, cc, opts...)
 
 		// 3: After invoking
-		unaryClientAfter(newCtx, req, resp, opt, err, method)
+		unaryClientAfter(newCtx, req, resp, err, method)
 
 		return err
 	}
@@ -57,17 +51,17 @@ func unaryClientBefore(ctx context.Context, method string, cc *grpc.ClientConn, 
 	return metadata.NewOutgoingContext(newCtx, *rk_inter_context.GetOutgoingMD(newCtx)), opt
 }
 
-func unaryClientAfter(ctx context.Context, req, resp interface{}, opt *Options, err error, method string) {
-	event := recordClientAfter(ctx, opt, err, method)
+func unaryClientAfter(ctx context.Context, req, resp interface{}, err error, method string) {
+	event := recordClientAfter(ctx, err, method)
 
-	if opt.enableLogging() && opt.enablePayloadLogging() {
+	if defaultOptions.enableLogging && defaultOptions.enablePayloadLogging {
 		event.AddFields(zap.String("request_payload", interfaceToString(req, maxRequestStrLen)),
 			zap.String("response_payload", interfaceToString(resp, maxResponseStrLen)))
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics() {
-		code := opt.errorToCode(err)
+	if defaultOptions.enableMetrics {
+		code := defaultOptions.errorToCode(err)
 		method := path.Base(method)
 		getClientBytesTransInMetrics(method, code.String()).Add(float64(unsafe.Sizeof(req)))
 		getClientBytesTransOutMetrics(method, code.String()).Add(float64(unsafe.Sizeof(resp)))
@@ -76,20 +70,14 @@ func unaryClientAfter(ctx context.Context, req, resp interface{}, opt *Options, 
 	event.WriteLog()
 }
 
-func StreamClientInterceptor(factory *rk_query.EventFactory, opts ...Option) grpc.StreamClientInterceptor {
+func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	// Merge option
-	opt := MergeOpt(opts)
+	mergeOpt(opts)
 
-	// We will populate Noop Zap logger if factory is nil
-	if factory == nil {
-		factory = rk_query.NewEventFactory()
-	}
-
-	eventFactory = factory
-	appName = factory.GetAppName()
+	appName = defaultOptions.eventFactory.GetAppName()
 
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		event := eventFactory.CreateEvent()
+		event := defaultOptions.eventFactory.CreateEvent()
 		event.SetStartTime(time.Now())
 
 		// 1: Before invoking
@@ -99,7 +87,7 @@ func StreamClientInterceptor(factory *rk_query.EventFactory, opts ...Option) grp
 		clientStream, err := streamer(newCtx, desc, cc, method, opts...)
 
 		// 3: After invoking
-		streamClientAfter(newCtx, opt, err, method)
+		streamClientAfter(newCtx, err, method)
 		return clientStream, err
 	}
 }
@@ -110,8 +98,8 @@ func streamClientBefore(ctx context.Context, method string, cc *grpc.ClientConn,
 	return metadata.NewOutgoingContext(newCtx, *rk_inter_context.GetOutgoingMD(newCtx))
 }
 
-func streamClientAfter(ctx context.Context, opt *Options, err error, method string) {
-	event := recordClientAfter(ctx, opt, err, method)
+func streamClientAfter(ctx context.Context, err error, method string) {
+	event := recordClientAfter(ctx, err, method)
 	event.WriteLog()
 }
 
@@ -133,25 +121,29 @@ func recordClientBefore(ctx context.Context, event rk_query.Event, method, role 
 		zap.Time("start_time", event.GetStartTime()),
 	}
 
+	defaultOptions.logger = defaultOptions.logger.With(zap.Strings("outgoing_request_id", outgoingRequestIds))
+
 	if d, ok := ctx.Deadline(); ok {
 		fields = append(fields, zap.String("deadline", d.Format(time.RFC3339)))
 	}
+
+	event.AddFields(fields...)
 
 	// Extract outgoing metadata from context
 	outgoingMD := rk_inter_context.GetOutgoingMD(ctx)
 	incomingMD := rk_inter_context.GetIncomingMD(ctx)
 
-	return rk_inter_context.ToContext(ctx, event, incomingMD, outgoingMD, fields)
+	return rk_inter_context.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
 }
 
-func recordClientAfter(ctx context.Context, opt *Options, err error, method string) rk_query.Event {
-	code := opt.errorToCode(err)
+func recordClientAfter(ctx context.Context, err error, method string) rk_query.Event {
+	code := defaultOptions.errorToCode(err)
 	event := rk_inter_context.GetEvent(ctx)
 	event.AddErr(err)
 	endTime := time.Now()
 	elapsed := endTime.Sub(event.GetStartTime())
 
-	if opt.enableLogging() {
+	if defaultOptions.enableLogging {
 		fields := make([]zap.Field, 0)
 
 		// Check whether context is cancelled from server
@@ -171,6 +163,10 @@ func recordClientAfter(ctx context.Context, opt *Options, err error, method stri
 			zap.Int64("elapsed_ms", elapsed.Nanoseconds()/1e6),
 			zap.Strings("incoming_request_id", incomingRequestIds))
 
+		rk_inter_context.SetLogger(ctx,
+			rk_inter_context.GetLogger(ctx).With(
+				zap.Strings("incoming_request_id", incomingRequestIds)))
+
 		event.AddFields(fields...)
 		if len(event.GetEventId()) < 1 {
 			ids := append(rk_inter_context.GetRequestIdsFromIncomingMD(ctx), rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)...)
@@ -182,7 +178,7 @@ func recordClientAfter(ctx context.Context, opt *Options, err error, method stri
 	}
 
 	// Log to metrics if enabled
-	if opt.enableMetrics() {
+	if defaultOptions.enableMetrics {
 		method := path.Base(method)
 		getClientDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds() / 1e6))
 		if err != nil {
