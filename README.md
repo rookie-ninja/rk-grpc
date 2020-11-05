@@ -6,7 +6,7 @@ gRPC interceptor
 - [rk-query](https://github.com/rookie-ninja/rk-logger)
 
 ## Installation
-`go get -u rookie-ninja/rk-interceptor`
+`go get -u github.com/rookie-ninja/rk-grpc`
 
 ## Quick Start
 An event needs to be pass into intercetpr in order to write logs
