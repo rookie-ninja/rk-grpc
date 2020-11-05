@@ -2,11 +2,11 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_inter_context
+package rk_grpc_ctx
 
 import (
 	"github.com/google/uuid"
-	rk_logger "github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-logger"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"

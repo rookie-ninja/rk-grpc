@@ -2,10 +2,10 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_inter_logging
+package rk_grpc_log
 
 import (
-	"github.com/rookie-ninja/rk-interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -46,9 +46,9 @@ func unaryClientBefore(ctx context.Context, method string, cc *grpc.ClientConn, 
 	newCtx := recordClientBefore(ctx, event, method, "unary_client", cc)
 
 	// Set headers for internal usage
-	opt := grpc.Header(rk_inter_context.GetIncomingMD(newCtx))
+	opt := grpc.Header(rk_grpc_ctx.GetIncomingMD(newCtx))
 
-	return metadata.NewOutgoingContext(newCtx, *rk_inter_context.GetOutgoingMD(newCtx)), opt
+	return metadata.NewOutgoingContext(newCtx, *rk_grpc_ctx.GetOutgoingMD(newCtx)), opt
 }
 
 func unaryClientAfter(ctx context.Context, req, resp interface{}, err error, method string) {
@@ -95,7 +95,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 func streamClientBefore(ctx context.Context, method string, cc *grpc.ClientConn, event rk_query.Event) context.Context {
 	newCtx := recordClientBefore(ctx, event, method, "stream_client", cc)
 
-	return metadata.NewOutgoingContext(newCtx, *rk_inter_context.GetOutgoingMD(newCtx))
+	return metadata.NewOutgoingContext(newCtx, *rk_grpc_ctx.GetOutgoingMD(newCtx))
 }
 
 func streamClientAfter(ctx context.Context, err error, method string) {
@@ -104,7 +104,7 @@ func streamClientAfter(ctx context.Context, err error, method string) {
 }
 
 func recordClientBefore(ctx context.Context, event rk_query.Event, method, role string, cc *grpc.ClientConn) context.Context {
-	outgoingRequestIds := rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)
+	outgoingRequestIds := rk_grpc_ctx.GetRequestIdsFromOutgoingMD(ctx)
 
 	remoteIP, remotePort, _ := net.SplitHostPort(cc.Target())
 	event.SetRemoteAddr(remoteIP)
@@ -130,15 +130,15 @@ func recordClientBefore(ctx context.Context, event rk_query.Event, method, role 
 	event.AddFields(fields...)
 
 	// Extract outgoing metadata from context
-	outgoingMD := rk_inter_context.GetOutgoingMD(ctx)
-	incomingMD := rk_inter_context.GetIncomingMD(ctx)
+	outgoingMD := rk_grpc_ctx.GetOutgoingMD(ctx)
+	incomingMD := rk_grpc_ctx.GetIncomingMD(ctx)
 
-	return rk_inter_context.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
+	return rk_grpc_ctx.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
 }
 
 func recordClientAfter(ctx context.Context, err error, method string) rk_query.Event {
 	code := defaultOptions.errorToCode(err)
-	event := rk_inter_context.GetEvent(ctx)
+	event := rk_grpc_ctx.GetEvent(ctx)
 	event.AddErr(err)
 	endTime := time.Now()
 	elapsed := endTime.Sub(event.GetStartTime())
@@ -156,20 +156,20 @@ func recordClientAfter(ctx context.Context, err error, method string) rk_query.E
 		}
 
 		// extract request id and log it
-		incomingRequestIds := rk_inter_context.GetRequestIdsFromIncomingMD(ctx)
+		incomingRequestIds := rk_grpc_ctx.GetRequestIdsFromIncomingMD(ctx)
 		fields = append(fields,
 			zap.String("res_code", code.String()),
 			zap.Time("end_time", time.Now()),
 			zap.Int64("elapsed_ms", elapsed.Nanoseconds()/1e6),
 			zap.Strings("incoming_request_id", incomingRequestIds))
 
-		rk_inter_context.SetLogger(ctx,
-			rk_inter_context.GetLogger(ctx).With(
+		rk_grpc_ctx.SetLogger(ctx,
+			rk_grpc_ctx.GetLogger(ctx).With(
 				zap.Strings("incoming_request_id", incomingRequestIds)))
 
 		event.AddFields(fields...)
 		if len(event.GetEventId()) < 1 {
-			ids := append(rk_inter_context.GetRequestIdsFromIncomingMD(ctx), rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)...)
+			ids := append(rk_grpc_ctx.GetRequestIdsFromIncomingMD(ctx), rk_grpc_ctx.GetRequestIdsFromOutgoingMD(ctx)...)
 			if len(ids) > 0 {
 				event.SetEventId(interfaceToString(ids, 1000000))
 			}

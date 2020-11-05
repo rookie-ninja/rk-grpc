@@ -2,11 +2,10 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_inter_logging
+package rk_grpc_log
 
 import (
-	"github.com/rookie-ninja/rk-interceptor"
-	"github.com/rookie-ninja/rk-interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -45,7 +44,7 @@ func unaryServerBefore(ctx context.Context, event rk_query.Event, info *grpc.Una
 
 func unaryServerAfter(ctx context.Context, req, resp interface{}, err error, info *grpc.UnaryServerInfo) {
 	event := recordServerAfter(ctx, err, info.FullMethod)
-	grpc.SetHeader(ctx, *rk_inter_context.GetOutgoingMD(ctx))
+	grpc.SetHeader(ctx, *rk_grpc_ctx.GetOutgoingMD(ctx))
 
 	if defaultOptions.enableLogging && defaultOptions.enablePayloadLogging {
 		event.AddFields(
@@ -89,7 +88,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 }
 
 func streamServerBefore(stream grpc.ServerStream, event rk_query.Event, info *grpc.StreamServerInfo) grpc.ServerStream {
-	wrappedStream := rk_inter.WrapServerStream(stream)
+	wrappedStream := WrapServerStream(stream)
 	wrappedStream.WrappedContext = recordServerBefore(stream.Context(), event, info.FullMethod, "stream_server")
 
 	return wrappedStream
@@ -105,7 +104,7 @@ func streamServerAfter(stream grpc.ServerStream, err error, info *grpc.StreamSer
 
 func recordServerBefore(ctx context.Context, event rk_query.Event, method, role string) context.Context {
 	// Add request ids from remote side
-	incomingRequestIds := rk_inter_context.GetRequestIdsFromIncomingMD(ctx)
+	incomingRequestIds := rk_grpc_ctx.GetRequestIdsFromIncomingMD(ctx)
 
 	fields := []zap.Field{
 		realm, region, az, domain, appVersion, localIP,
@@ -128,17 +127,17 @@ func recordServerBefore(ctx context.Context, event rk_query.Event, method, role 
 		fields = append(fields, zap.String("deadline", d.Format(time.RFC3339)))
 	}
 
-	incomingMD := rk_inter_context.GetIncomingMD(ctx)
-	outgoingMD := rk_inter_context.GetOutgoingMD(ctx)
+	incomingMD := rk_grpc_ctx.GetIncomingMD(ctx)
+	outgoingMD := rk_grpc_ctx.GetOutgoingMD(ctx)
 
 	event.AddFields(fields...)
 
-	return rk_inter_context.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
+	return rk_grpc_ctx.ToContext(ctx, event, defaultOptions.logger, incomingMD, outgoingMD)
 }
 
 func recordServerAfter(ctx context.Context, err error, method string) rk_query.Event {
 	code := defaultOptions.errorToCode(err)
-	event := rk_inter_context.GetEvent(ctx)
+	event := rk_grpc_ctx.GetEvent(ctx)
 	event.AddErr(err)
 	endTime := time.Now()
 	elapsed := endTime.Sub(event.GetStartTime())
@@ -157,7 +156,7 @@ func recordServerAfter(ctx context.Context, err error, method string) rk_query.E
 		}
 
 		// extract request id and log it
-		outgoingRequestIds := rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)
+		outgoingRequestIds := rk_grpc_ctx.GetRequestIdsFromOutgoingMD(ctx)
 		fields = append(fields,
 			zap.String("res_code", code.String()),
 			zap.Time("end_time", endTime),
@@ -167,7 +166,7 @@ func recordServerAfter(ctx context.Context, err error, method string) rk_query.E
 
 		event.AddFields(fields...)
 		if len(event.GetEventId()) < 1 {
-			ids := append(rk_inter_context.GetRequestIdsFromIncomingMD(ctx), rk_inter_context.GetRequestIdsFromOutgoingMD(ctx)...)
+			ids := append(rk_grpc_ctx.GetRequestIdsFromIncomingMD(ctx), rk_grpc_ctx.GetRequestIdsFromOutgoingMD(ctx)...)
 			if len(ids) > 0 {
 				event.SetEventId(interfaceToString(ids, 1000000))
 			}

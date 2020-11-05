@@ -2,10 +2,10 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_inter_retry
+package rk_grpc_retry
 
 import (
-	"github.com/rookie-ninja/rk-interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-query"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -23,8 +23,8 @@ func StreamClientInterceptor(opt ...RetryCallOption) grpc.StreamClientIntercepto
 		// validate context, if parent context is from logging, then
 		// Event in rk_query would exists
 		var event rk_query.Event
-		if rk_inter_context.IsRkContext(ctx) {
-			event = rk_inter_context.GetEvent(ctx)
+		if rk_grpc_ctx.IsRkContext(ctx) {
+			event = rk_grpc_ctx.GetEvent(ctx)
 		}
 
 		// we will check whether Call option contains extra RetryCallOption

@@ -2,14 +2,14 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_inter_panic
+package rk_grpc_panic
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/rookie-ninja/rk-interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"go.uber.org/zap"
 	"os"
 	"runtime"
@@ -28,8 +28,8 @@ func PanicToGLog(ctx context.Context, r interface{}) {
 }
 
 func PanicToZap(ctx context.Context, r interface{}) {
-	rk_inter_context.GetEvent(ctx).AddErr(panic{})
-	rk_inter_context.GetEvent(ctx).AddFields(zap.String("stacktrace", panicString(ctx, r)))
+	rk_grpc_ctx.GetEvent(ctx).AddErr(panic{})
+	rk_grpc_ctx.GetEvent(ctx).AddFields(zap.String("stacktrace", panicString(ctx, r)))
 }
 
 func panicString(ctx context.Context, r interface{}) string {

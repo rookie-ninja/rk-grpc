@@ -17,37 +17,23 @@ Please refer https://github.com/rookie-ninja/rk-query for easy initialization of
 
 Example:
 ```go
-var (
-	bytes = []byte(`{
-     "level": "info",
-     "encoding": "console",
-     "outputPaths": ["stdout"],
-     "errorOutputPaths": ["stderr"],
-     "initialFields": {},
-     "encoderConfig": {
-       "messageKey": "msg",
-       "levelKey": "",
-       "nameKey": "",
-       "timeKey": "",
-       "callerKey": "",
-       "stacktraceKey": "",
-       "callstackKey": "",
-       "errorKey": "",
-       "timeEncoder": "iso8601",
-       "fileKey": "",
-       "levelEncoder": "capital",
-       "durationEncoder": "second",
-       "callerEncoder": "full",
-       "nameEncoder": "full"
-     },
-    "maxsize": 1,
-    "maxage": 7,
-    "maxbackups": 3,
-    "localtime": true,
-    "compress": true
-   }`)
+package main
 
-	logger, _, _ = rk_logger.NewZapLoggerWithBytes(bytes, rk_logger.JSON)
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"github.com/rookie-ninja/rk-grpc/example/proto"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"log"
+	"net"
+	"time"
 )
 
 func main() {
@@ -58,14 +44,15 @@ func main() {
 	}
 
 	// create event factory
-	factory := rk_query.NewEventFactory(
-		rk_query.WithAppName("my-app"),
-		rk_query.WithLogger(logger),
-		rk_query.WithFormat(rk_query.RK))
+	factory := rk_query.NewEventFactory()
 
 	// create server interceptor
 	opt := []grpc.ServerOption{
-		grpc.UnaryInterceptor(rk_logging_zap.UnaryServerInterceptor(factory)),
+		grpc.ChainUnaryInterceptor(
+			rk_grpc_log.UnaryServerInterceptor(
+				rk_grpc_log.WithEventFactory(factory),
+				rk_grpc_log.WithLogger(rk_logger.StdoutLogger)),
+			rk_grpc_panic.UnaryServerInterceptor(rk_grpc_panic.PanicToStderr)),
 	}
 
 	// create server
@@ -81,7 +68,7 @@ func main() {
 type GreeterServer struct{}
 
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
-	event := rk_context.GetEvent(ctx)
+	event := rk_grpc_ctx.GetEvent(ctx)
 	// add fields
 	event.AddFields(zap.String("key", "value"))
 	// add error
@@ -95,13 +82,11 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	time.Sleep(1 * time.Second)
 	event.EndTimer("sleep")
 	// add to metadata
-	rk_context.AddToOutgoingMD(ctx, "key", "1", "2")
+	rk_grpc_ctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rk_context.AddRequestIdToOutgoingMD(ctx)
+	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
 
-	// print incoming metadata
-	bytes, _ := json.Marshal(rk_context.GetIncomingMD(ctx))
-	println(string(bytes))
+	rk_grpc_ctx.GetLogger(ctx).Info("this is info message")
 
 	return &proto.HelloResponse{
 		Message: "hello",
@@ -111,73 +96,58 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 Output
 ```
 ------------------------------------------------------------------------
-end_time=2020-07-31T04:01:13.477136+08:00
-start_time=2020-07-31T04:01:12.475701+08:00
+end_time=2020-11-06T01:17:50.710002+08:00
+start_time=2020-11-06T01:17:49.708046+08:00
 time=1001
-hostname=MYLOCAL
-event_id=["afd6bb44-5296-42d8-8850-b526733d9f67","66d7801e-b06c-4cea-8397-391c8ffc586b"]
+hostname=JEREMYYIN-MB0
+event_id=["bb69e3d7-0a9f-4621-8987-7a468366be1c","37448bca-1b3f-4e51-8abb-1573dfcaaaa1"]
 timing={"sleep.count":1,"sleep.elapsed_ms":1001}
 counter={"ctr":1}
 pair={"key":"value"}
 error={"std-err":1}
-field={"api.role":"unary_server","api.service":"Greeter","api.verb":"SayHello","app_version":"latest","az":"unknown","deadline":"2020-07-31T04:01:17+08:00","domain":"unknown","elapsed_ms":1001,"end_time":"2020-07-31T04:01:13.477136+08:00","incoming_request_id":["afd6bb44-5296-42d8-8850-b526733d9f67"],"key":"value","local.IP":"10.8.0.6","outgoing_request_id":["66d7801e-b06c-4cea-8397-391c8ffc586b"],"realm":"unknown","region":"unknown","remote.IP":"localhost","remote.net_type":"tcp","remote.port":"62541","res_code":"OK","start_time":"2020-07-31T04:01:12.475701+08:00"}
+field={"api.role":"unary_server","api.service":"Greeter","api.verb":"SayHello","app_version":"latest","az":"unknown","deadline":"2020-11-06T01:17:54+08:00","domain":"unknown","elapsed_ms":1001,"end_time":"2020-11-06T01:17:50.710002+08:00","incoming_request_id":["bb69e3d7-0a9f-4621-8987-7a468366be1c"],"key":"value","local.IP":"10.8.0.2","outgoing_request_id":["37448bca-1b3f-4e51-8abb-1573dfcaaaa1"],"realm":"unknown","region":"unknown","remote.IP":"localhost","remote.net_type":"tcp","remote.port":"61086","request_payload":"{\"name\":\"name\"}","res_code":"OK","response_payload":"{\"message\":\"hello\"}","start_time":"2020-11-06T01:17:49.708046+08:00"}
 remote_addr=localhost
-app_name=my-app
+app_name=Unknown
 operation=SayHello
 event_status=Ended
-history=s-sleep:1596139272475,e-sleep:1001,end:1
+history=s-sleep:1604596669708,e-sleep:1001,end:1
+timezone=CST
+os=darwin
+arch=amd64
 EOE
-
 ```
 
 ### Client side interceptor
 
 Example:
 ```go
-var (
-	bytes = []byte(`{
-     "level": "info",
-     "encoding": "console",
-     "outputPaths": ["stdout"],
-     "errorOutputPaths": ["stderr"],
-     "initialFields": {},
-     "encoderConfig": {
-       "messageKey": "msg",
-       "levelKey": "",
-       "nameKey": "",
-       "timeKey": "",
-       "callerKey": "",
-       "stacktraceKey": "",
-       "callstackKey": "",
-       "errorKey": "",
-       "timeEncoder": "iso8601",
-       "fileKey": "",
-       "levelEncoder": "capital",
-       "durationEncoder": "second",
-       "callerEncoder": "full",
-       "nameEncoder": "full"
-     },
-    "maxsize": 1,
-    "maxage": 7,
-    "maxbackups": 3,
-    "localtime": true,
-    "compress": true
-   }`)
+package main
 
-	logger, _, _ = rk_logger.NewZapLoggerWithBytes(bytes, rk_logger.JSON)
+import (
+	"context"
+	"encoding/json"
+	"github.com/rookie-ninja/rk-grpc/example/proto"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"github.com/rookie-ninja/rk-grpc/interceptor/retry"
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
+	"google.golang.org/grpc"
+	"log"
+	"time"
 )
 
 func main() {
 	// create event factory
-	factory := rk_query.NewEventFactory(
-		rk_query.WithAppName("app"),
-		rk_query.WithLogger(logger),
-		rk_query.WithFormat(rk_query.RK))
+	factory := rk_query.NewEventFactory()
 
 	// create client interceptor
 	opt := []grpc.DialOption{
 		grpc.WithChainUnaryInterceptor(
-			rk_logging_zap.UnaryClientInterceptor(factory)),
+			rk_grpc_log.UnaryClientInterceptor(
+				rk_grpc_log.WithEventFactory(factory),
+				rk_grpc_log.WithLogger(rk_logger.StdoutLogger)),
+			rk_grpc_retry.UnaryClientInterceptor()),
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	}
@@ -192,19 +162,21 @@ func main() {
 	// create grpc client
 	c := proto.NewGreeterClient(conn)
 	// create with rk context
-	ctx, cancel := context.WithTimeout(rk_context.NewContext(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(rk_grpc_ctx.NewContext(), 5*time.Second)
 	defer cancel()
 
 	// add metadata
-	rk_context.AddToOutgoingMD(ctx, "key", "1", "2")
+	rk_grpc_ctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rk_context.AddRequestIdToOutgoingMD(ctx)
+	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
 
 	// call server
 	r, err := c.SayHello(ctx, &proto.HelloRequest{Name: "name"})
 
+	rk_grpc_ctx.GetLogger(ctx).Info("This is info message")
+
 	// print incoming metadata
-	bytes, _ := json.Marshal(rk_context.GetIncomingMD(ctx))
+	bytes, _ := json.Marshal(rk_grpc_ctx.GetIncomingMD(ctx))
 	println(string(bytes))
 
 	if err != nil {
@@ -216,24 +188,25 @@ func main() {
 Output 
 ```
 ------------------------------------------------------------------------
-end_time=2020-07-31T04:01:13.478851+08:00
-start_time=2020-07-31T04:01:12.474995+08:00
-time=1003
-hostname=MYLOCAL
-event_id=["66d7801e-b06c-4cea-8397-391c8ffc586b","afd6bb44-5296-42d8-8850-b526733d9f67"]
+end_time=2020-11-06T01:17:50.710937+08:00
+start_time=2020-11-06T01:17:49.706934+08:00
+time=1004
+hostname=JEREMYYIN-MB0
+event_id=["37448bca-1b3f-4e51-8abb-1573dfcaaaa1","bb69e3d7-0a9f-4621-8987-7a468366be1c"]
 timing={}
-counter={}
+counter={"rk_max_retries":0}
 pair={}
 error={}
-field={"api.role":"unary_client","api.service":"Greeter","api.verb":"SayHello","app_version":"latest","az":"unknown","deadline":"2020-07-31T04:01:17+08:00","domain":"unknown","elapsed_ms":1003,"end_time":"2020-07-31T04:01:13.47886+08:00","incoming_request_id":["66d7801e-b06c-4cea-8397-391c8ffc586b"],"local.IP":"10.8.0.6","outgoing_request_id":["afd6bb44-5296-42d8-8850-b526733d9f67"],"realm":"unknown","region":"unknown","remote.IP":"localhost","remote.port":"8080","res_code":"OK","start_time":"2020-07-31T04:01:12.474995+08:00"}
+field={"api.role":"unary_client","api.service":"Greeter","api.verb":"SayHello","app_version":"latest","az":"unknown","deadline":"2020-11-06T01:17:54+08:00","domain":"unknown","elapsed_ms":1004,"end_time":"2020-11-06T01:17:50.710942+08:00","incoming_request_id":["37448bca-1b3f-4e51-8abb-1573dfcaaaa1"],"local.IP":"10.8.0.2","outgoing_request_id":["bb69e3d7-0a9f-4621-8987-7a468366be1c"],"realm":"unknown","region":"unknown","remote.IP":"localhost","remote.port":"8080","request_payload":"{\"name\":\"name\"}","res_code":"OK","response_payload":"{\"message\":\"hello\"}","start_time":"2020-11-06T01:17:49.706934+08:00"}
 remote_addr=localhost
-app_name=app
+app_name=Unknown
 operation=SayHello
 event_status=Ended
+timezone=CST
+os=darwin
+arch=amd64
 EOE
-
 ```
-
 
 ### Development Status: Stable
 

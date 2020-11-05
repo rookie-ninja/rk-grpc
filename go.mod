@@ -1,4 +1,4 @@
-module github.com/rookie-ninja/rk-interceptor
+module github.com/rookie-ninja/rk-grpc
 
 go 1.14
 
@@ -13,7 +13,7 @@ require (
 	github.com/prometheus/common v0.11.1 // indirect
 	github.com/rookie-ninja/rk-logger v1.0.4
 	github.com/rookie-ninja/rk-prom v1.0.1
-	github.com/rookie-ninja/rk-query v1.0.4
+	github.com/rookie-ninja/rk-query v1.0.6
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sys v0.0.0-20200808120158-1030fc2bf1d9 // indirect
