@@ -1,0 +1,16 @@
+---
+grpc:
+  - name: greeter
+    port: 1949
+    enableCommonService: true
+    gw:
+      enabled: true
+      port: 8080
+      sw:
+        enabled: true
+        path: sw
+    loggingInterceptor:
+      enabled: true
+      enableLogging: true
+      enableMetrics: true
+      enablePayloadLogging: true

@@ -6,13 +6,11 @@ package rk_grpc
 
 import (
 	"context"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/rookie-ninja/rk-common/info"
 	"github.com/rookie-ninja/rk-grpc/boot/api/v1"
-	rk_grpc_ctx "github.com/rookie-ninja/rk-grpc/interceptor/context"
-	"github.com/spf13/cast"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"runtime"
-	"syscall"
 )
 
 type CommonServiceGRpc struct{}
@@ -23,211 +21,83 @@ func NewCommonServiceGRpc() *CommonServiceGRpc {
 }
 
 // GC Stub
-func (service *CommonServiceGRpc) GC(ctx context.Context, request *rk_boot_common_v1.GCRequest) (*rk_boot_common_v1.GCResponse, error) {
+func (service *CommonServiceGRpc) GC(ctx context.Context, request *rk_grpc_common_v1.GCRequest) (*rk_grpc_common_v1.GCResponse, error) {
 	// Add auto generated request ID
 	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
-	event := rk_grpc_ctx.GetEvent(ctx)
 
-	var before, after runtime.MemStats
-	runtime.ReadMemStats(&before)
-
+	before := rk_info.MemStatsToJSON()
 	runtime.GC()
-	runtime.ReadMemStats(&after)
+	after := rk_info.MemStatsToJSON()
 
-	event.AddFields(memStatsToZapFields("before_", &before)...)
-	event.AddFields(memStatsToZapFields("after_", &before)...)
-
-	res := &rk_boot_common_v1.GCResponse{
-		MemStatsBefore: memStatsToPB(&before),
-		MemStatsAfter:  memStatsToPB(&after),
+	res := &rk_grpc_common_v1.GCResponse{
+		MemStatsBeforeGc: &rk_grpc_common_v1.MemStats{},
+		MemStatsAfterGc: &rk_grpc_common_v1.MemStats{},
 	}
+
+	jsonpb.UnmarshalString(before, res.MemStatsBeforeGc)
+	jsonpb.UnmarshalString(after, res.MemStatsAfterGc)
 
 	return res, nil
 }
 
 // DumpConfig Stub
-func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_boot_common_v1.DumpConfigRequest) (*rk_boot_common_v1.DumpConfigResponse, error) {
+func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_grpc_common_v1.DumpConfigRequest) (*rk_grpc_common_v1.DumpConfigResponse, error) {
 	// Add auto generated request ID
 	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
 
-	configList := make([]*rk_boot_common_v1.Config, 0)
-	res := &rk_boot_common_v1.DumpConfigResponse{ConfigList: configList}
-
-	// rk-configs
-	for k, v := range AppCtx.ListRkConfigs() {
-		configPairs := make([]*rk_boot_common_v1.ConfigPair, 0)
-		for i := range v.GetViper().AllKeys() {
-			viperKey := v.GetViper().AllKeys()[i]
-			viperValue := cast.ToString(v.GetViper().Get(viperKey))
-
-			pair := &rk_boot_common_v1.ConfigPair{
-				Key:   viperKey,
-				Value: viperValue,
-			}
-
-			configPairs = append(configPairs, pair)
-		}
-
-		conf := &rk_boot_common_v1.Config{
-			ConfigName: k,
-			ConfigPair: configPairs,
-		}
-
-		res.ConfigList = append(res.ConfigList, conf)
+	res := &rk_grpc_common_v1.DumpConfigResponse{
+		Viper: make([]*rk_grpc_common_v1.Viper, 0),
+		Rk: make([]*rk_grpc_common_v1.RK, 0),
 	}
 
-	// viper-configs
-	for k, v := range AppCtx.ListViperConfigs() {
-		configPairs := make([]*rk_boot_common_v1.ConfigPair, 0)
-		for i := range v.AllKeys() {
-			viperKey := v.AllKeys()[i]
-			viperValue := cast.ToString(v.Get(viperKey))
-
-			pair := &rk_boot_common_v1.ConfigPair{
-				Key:   viperKey,
-				Value: viperValue,
-			}
-
-			configPairs = append(configPairs, pair)
-		}
-
-		conf := &rk_boot_common_v1.Config{
-			ConfigName: k,
-			ConfigPair: configPairs,
-		}
-
-		res.ConfigList = append(res.ConfigList, conf)
+	// viper
+	vp := rk_info.ViperConfigToStruct()
+	for i := range vp {
+		e := vp[i]
+		res.Viper = append(res.Viper, &rk_grpc_common_v1.Viper{
+			Name: e.Name,
+			Raw: e.Raw,
+		})
 	}
 
-	return res, nil
-}
-
-// GetConfig Stub
-func (service *CommonServiceGRpc) GetConfig(ctx context.Context, request *rk_boot_common_v1.GetConfigRequest) (*rk_boot_common_v1.GetConfigResponse, error) {
-	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-
-	configList := make([]*rk_boot_common_v1.Config, 0)
-	res := &rk_boot_common_v1.GetConfigResponse{ConfigList: configList}
-
-	for k, v := range AppCtx.ListRkConfigs() {
-		pair := &rk_boot_common_v1.ConfigPair{
-			Key:   request.Key,
-			Value: cast.ToString(v.Get(request.GetKey())),
-		}
-
-		conf := &rk_boot_common_v1.Config{
-			ConfigName: k,
-			ConfigPair: []*rk_boot_common_v1.ConfigPair{pair},
-		}
-
-		res.ConfigList = append(res.ConfigList, conf)
+	// rk
+	rk := rk_info.RkConfigToStruct()
+	for i := range rk {
+		e := vp[i]
+		res.Rk = append(res.Rk, &rk_grpc_common_v1.RK{
+			Name: e.Name,
+			Raw: e.Raw,
+		})
 	}
 
-	for k, v := range AppCtx.ListViperConfigs() {
-		pair := &rk_boot_common_v1.ConfigPair{
-			Key:   request.Key,
-			Value: cast.ToString(v.Get(request.GetKey())),
-		}
-
-		conf := &rk_boot_common_v1.Config{
-			ConfigName: k,
-			ConfigPair: []*rk_boot_common_v1.ConfigPair{pair},
-		}
-
-		res.ConfigList = append(res.ConfigList, conf)
-	}
-
-	return res, nil
-}
-
-// Ping Stub
-func (service *CommonServiceGRpc) Ping(ctx context.Context, request *rk_boot_common_v1.PingRequest) (*rk_boot_common_v1.PongResponse, error) {
-	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-
-	res := &rk_boot_common_v1.PongResponse{
-		Message: "pong",
-	}
-
-	return res, nil
-}
-
-// Log Stub
-func (service *CommonServiceGRpc) Log(ctx context.Context, request *rk_boot_common_v1.LogRequest) (*rk_boot_common_v1.LogResponse, error) {
-	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-	event := rk_inter_context.GetEvent(ctx)
-
-	for i := range request.Entries {
-		entry := request.Entries[i]
-		loggerConfig := AppCtx.GetLoggerConfig(entry.LogName)
-		if loggerConfig != nil {
-			setLogLevel(loggerConfig, entry.LogLevel)
-		}
-
-		event.AddPair(entry.LogName, entry.LogLevel)
-	}
-
-	res := &rk_boot_common_v1.LogResponse{}
-
-	return res, nil
-}
-
-// Shutdown Stub
-func (service *CommonServiceGRpc) Shutdown(ctx context.Context, request *rk_boot_common_v1.ShutdownRequest) (*rk_boot_common_v1.ShutdownResponse, error) {
-	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-	event := rk_inter_context.GetEvent(ctx)
-	event.AddPair("signal", "interrupt")
-
-	res := &rk_boot_common_v1.ShutdownResponse{
-		Message: "interrupt",
-	}
-
-	defer func() {
-		AppCtx.GetShutdownSig() <- syscall.SIGINT
-	}()
 	return res, nil
 }
 
 // Info Stub
-func (service *CommonServiceGRpc) Info(ctx context.Context, request *rk_boot_common_v1.InfoRequest) (*rk_boot_common_v1.InfoResponse, error) {
+func (service *CommonServiceGRpc) Info(ctx context.Context, request *rk_grpc_common_v1.InfoRequest) (*rk_grpc_common_v1.InfoResponse, error) {
 	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-	event := rk_inter_context.GetEvent(ctx)
+	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
 
-	res := &rk_boot_common_v1.InfoResponse{}
-
-	boot := AppCtx.ListGRpcEntries()
-
-	if boot == nil {
-		event.InCCounter("rk_common_service_boot_nil", 1)
-		return nil, status.Error(codes.Unimplemented,
-			"failed to find pl bootstrapper, system may not started with pl_boot.")
+	res := &rk_grpc_common_v1.InfoResponse{
+		Info: &rk_grpc_common_v1.Info{},
 	}
 
-	// Basic info
-	fillBasicInfo(res)
+	println(rk_info.BasicInfoToJSONPretty())
 
-	// gRPC info
-	fillGRPCInfo(res)
-
-	// Prom info
-	fillPromInfo(res)
+	jsonpb.UnmarshalString(rk_info.BasicInfoToJSON(), res.Info)
 
 	return res, nil
 }
 
 // Healthy Stub
-func (service *CommonServiceGRpc) Healthy(ctx context.Context, request *rk_boot_common_v1.HealthyRequest) (*rk_boot_common_v1.HealthyResponse, error) {
+func (service *CommonServiceGRpc) Healthy(ctx context.Context, request *rk_grpc_common_v1.HealthyRequest) (*rk_grpc_common_v1.HealthyResponse, error) {
 	// Add auto generated request ID
-	rk_inter_context.AddRequestIdToOutgoingMD(ctx)
-	event := rk_inter_context.GetEvent(ctx)
+	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
+	event := rk_grpc_ctx.GetEvent(ctx)
 
 	event.AddPair("healthy", "true")
 
-	res := &rk_boot_common_v1.HealthyResponse{
+	res := &rk_grpc_common_v1.HealthyResponse{
 		Healthy: true,
 	}
 

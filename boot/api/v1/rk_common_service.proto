@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "google/api/annotations.proto";
 
-option go_package = "api/v1/rk_boot_common_v1";
+option go_package = "api/v1/rk_grpc_common_v1";
 
 service RkCommonService {
     // GC Stub
@@ -16,35 +16,6 @@ service RkCommonService {
     rpc DumpConfig(DumpConfigRequest) returns (DumpConfigResponse) {
         option (google.api.http) = {
             get: "/v1/rk/config"
-        };
-    };
-
-    // GetConfig Stub
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/config/{key}"
-        };
-    };
-
-    // Ping Stub
-    rpc Ping(PingRequest) returns (PongResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/ping"
-        };
-    };
-
-    // Log Stub
-    rpc Log(LogRequest) returns (LogResponse) {
-        option (google.api.http) = {
-            post: "/v1/rk/log"
-            body: "*"
-        };
-    };
-
-    // Shutdown Stub
-    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/shutdown"
         };
     };
 
@@ -68,52 +39,48 @@ message GCRequest {}
 
 // GC response, memory stats would be returned
 message GCResponse {
-    MemStats mem_stats_before = 1;
-    MemStats mem_stats_after = 2;
+    MemStats mem_stats_before_gc = 1;
+    MemStats mem_stats_after_gc = 2;
 }
 
 // Memory stats
 message MemStats {
     // Alloc is bytes of allocated heap objects.
-    uint64 mem_alloc_mb = 1;
+    uint32 mem_alloc_byte = 1;
 
     // Sys is the total bytes of memory obtained from the OS.
-    uint64 sys_mem_mb = 2;
+    uint32 sys_alloc_byte = 2;
+
+    // memory usage
+    float  mem_usage_percentage = 3;
 
     // LastGC is the time the last garbage collection finished.
     // Represent as RFC3339 time format
-    string last_gc_timestamp = 3;
+    string last_gc_timestamp = 4;
 
-    // NumGC is the number of completed GC cycles.
-    uint32 num_gc = 4;
+    // The number of completed GC cycles.
+    uint32 gc_count_total = 5;
 
-    /// NumForcedGC is the number of GC cycles that were forced by
+    /// The number of GC cycles that were forced by
     // the application calling the GC function.
-    uint32 num_force_gc = 5;
+    uint32 force_gc_count = 6;
 }
 
 message DumpConfigRequest {}
 
 message DumpConfigResponse {
-    repeated Config config_list = 1;
+    repeated Viper viper = 1;
+    repeated RK rk = 2;
 }
 
-message GetConfigRequest {
-    string key = 1;
+message Viper {
+    string name = 1;
+    string raw = 2;
 }
 
-message GetConfigResponse {
-    repeated Config config_list = 1;
-}
-
-message Config {
-    string config_name = 1;
-    repeated ConfigPair config_pair = 2;
-}
-
-message ConfigPair {
-    string key = 1;
-    string value = 2;
+message RK {
+    string name = 1;
+    string raw = 2;
 }
 
 message HealthyRequest {}
@@ -122,77 +89,22 @@ message HealthyResponse {
     bool healthy = 1;
 }
 
-message Stub {
-    string name = 1;
-    string description = 2;
-    string usage = 3;
-}
-
 message InfoRequest {}
 
-message BasicInfo {
-    string start_time = 1;
-    string up_time = 2;
-    string realm = 3;
-    string region = 4;
-    string az = 5;
-    string domain = 6;
-    string app_name = 7;
-}
-
-message PromInfo {
-    string port = 1;
-    string path = 2;
-}
-
-message SWInfo {
-    string sw_port = 1;
-    string sw_path = 2;
-}
-
-message GWInfo {
-    string gw_port = 1;
-}
-
-message GinInfo {
-    string name = 1;
-    string port = 2;
-    SWInfo sw_info = 3;
-}
-
-message GRpcInfo {
-    string name = 1;
-    string port = 2;
-    GWInfo gw_info = 3;
-    SWInfo sw_info = 4;
+message Info {
+    string uid = 1;
+    string gid = 2;
+    string username = 3;
+    string start_time = 4;
+    uint32 up_time_sec = 5;
+    string up_time_str = 6;
+    string application = 7;
+    string realm = 8;
+    string region = 9;
+    string az = 10;
+    string domain = 11;
 }
 
 message InfoResponse {
-    BasicInfo basic_info = 1;
-    repeated GRpcInfo grpc_info_list = 2;
-    repeated GinInfo gin_info_list = 3;
-    PromInfo prom_info = 4;
-}
-
-message LogRequest {
-    repeated LogEntry entries = 1;
-}
-
-message LogEntry {
-    string log_name = 1;
-    string log_level = 2;
-}
-
-message LogResponse {}
-
-message PingRequest {}
-
-message PongResponse {
-    string message = 1;
-}
-
-message ShutdownRequest {}
-
-message ShutdownResponse {
-    string message = 1;
+    Info info = 1;
 }

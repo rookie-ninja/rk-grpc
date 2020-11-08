@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [rk-interceptor](#rk-interceptor)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [Start gRpc server from YAML config](#start-grpc-server-from-yaml-config)
+    - [Server side interceptor](#server-side-interceptor)
+    - [Client side interceptor](#client-side-interceptor)
+    - [Development Status: Stable](#development-status-stable)
+    - [Contributing](#contributing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # rk-interceptor
 gRPC interceptor
 
@@ -12,6 +27,43 @@ gRPC interceptor
 An event needs to be pass into intercetpr in order to write logs
 
 Please refer https://github.com/rookie-ninja/rk-query for easy initialization of Event
+
+### Start gRpc server from YAML config
+User can access common service with localhost:8080/sw
+```yaml
+---
+grpc:
+  - name: greeter
+    port: 1949
+    enableCommonService: true
+    gw:
+      enabled: true
+      port: 8080
+      sw:
+        enabled: true
+        path: sw
+    loggingInterceptor:
+      enabled: true
+      enableLogging: true
+      enableMetrics: true
+      enablePayloadLogging: true
+```
+
+```go
+package main
+
+import (
+	"github.com/rookie-ninja/rk-grpc/boot"
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
+)
+
+func main() {
+	fac := rk_query.NewEventFactory()
+	boot := rk_grpc.NewGRpcEntries("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
+	boot["greeter"].Bootstrap(fac.CreateEvent())
+}
+```
 
 ### Server side interceptor
 
@@ -209,6 +261,13 @@ EOE
 ```
 
 ### Development Status: Stable
+
+### Appendix
+Use bellow command to rebuild proto files
+cd to ./boot folder
+- protoc -I. -I third-party/googleapis --grpc-gateway_out=logtostderr=true,paths=source_relative:. --openapiv2_out=logtostderr=true,json_names_for_fields=false:. api/v1/*.proto
+- protoc -I. -I third-party/googleapis --go_out=plugins=grpc:. --go_opt=paths=source_relative api/v1/*.proto
+- protoc -I. -I third-party/googleapis --grpc-gateway_out=logtostderr=true,paths=source_relative,json_names_for_fields=false:. api/v1/*.proto
 
 ### Contributing
 We encourage and support an active, healthy community of contributors &mdash;

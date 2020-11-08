@@ -6,11 +6,13 @@ package rk_grpc
 
 import (
 	"context"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-grpc/boot/api/v1"
+	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/encoding/protojson"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -41,9 +43,21 @@ func withHttpPortGW(port uint64) gRpcGWOption {
 	}
 }
 
+func withLoggerGW(log *zap.Logger) gRpcGWOption {
+	return func(entry *gwEntry) {
+		entry.logger = log
+	}
+}
+
 func withTlsEntryGW(tls *tlsEntry) gRpcGWOption {
 	return func(entry *gwEntry) {
 		entry.tls = tls
+	}
+}
+
+func withEnableCommonServiceGW(enable bool) gRpcGWOption {
+	return func(entry *gwEntry) {
+		entry.enableCommonService = enable
 	}
 }
 
@@ -89,7 +103,7 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 	}
 
 	if entry.enableCommonService {
-		entry.regFuncs = append(entry.regFuncs, rk_boot_common_v1.RegisterRkCommonServiceHandlerFromEndpoint)
+		entry.regFuncs = append(entry.regFuncs, rk_grpc_common_v1.RegisterRkCommonServiceHandlerFromEndpoint)
 	}
 
 	// init tls server only if port is not zero
@@ -105,6 +119,15 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 	}
 
 	gRPCEndpoint := "0.0.0.0:" + strconv.FormatUint(entry.gRpcPort, 10)
+	// use proto names for return value instead of camel case
+	entry.muxOpts = append(entry.muxOpts, runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+		protojson.MarshalOptions{
+			UseProtoNames: true,
+			EmitUnpopulated: true,
+		},
+		protojson.UnmarshalOptions{},
+	}))
+
 	gwMux := runtime.NewServeMux(entry.muxOpts...)
 
 	for i := range entry.regFuncs {
@@ -132,12 +155,13 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 		httpMux.HandleFunc(entry.sw.path, entry.sw.swIndexHandler)
 	}
 
-	// Support head method
-	entry.server.Handler = headMethodHandler(httpMux)
-
 	entry.server = &http.Server{
 		Addr: "0.0.0.0:" + strconv.FormatUint(entry.httpPort, 10),
+		Handler: headMethodHandler(httpMux),
 	}
+
+	// Support head method
+	//entry.server.Handler = headMethodHandler(httpMux)
 
 	return entry
 }
@@ -162,53 +186,49 @@ func (entry *gwEntry) GetServer() *http.Server {
 	return entry.server
 }
 
-func (entry *gwEntry) Stop(logger *zap.Logger) {
-	if entry.server != nil {
-		if logger == nil {
-			logger = zap.NewNop()
-		}
+func (entry *gwEntry) Shutdown(event rk_query.Event) {
+	fields := []zap.Field{
+		zap.Uint64("gw_port", entry.httpPort),
+	}
 
-		logger.Info("stopping gRpc-gateway",
-			zap.Uint64("http_port", entry.httpPort),
-			zap.Uint64("gRpc_port", entry.gRpcPort))
+	if entry.sw != nil {
+		fields = append(fields, zap.String("sw_path", entry.sw.GetPath()))
+	}
+
+	if entry.server != nil {
+		entry.logger.Info("stopping grpc-gateway",
+			zap.Uint64("gw_port", entry.httpPort),
+			zap.Uint64("grpc_port", entry.gRpcPort))
 		if err := entry.server.Shutdown(context.Background()); err != nil {
-			logger.Warn("error occurs while stopping gRpc-gateway",
-				zap.Uint64("http_port", entry.httpPort),
-				zap.Uint64("gRpc_port", entry.gRpcPort),
+			entry.logger.Warn("error occurs while stopping gRpc-gateway",
+				zap.Uint64("gw_port", entry.httpPort),
+				zap.Uint64("grpc_port", entry.gRpcPort),
 				zap.Error(err))
 		}
 	}
 }
 
-func (entry *gwEntry) Start(logger *zap.Logger) {
-	if logger == nil {
-		logger = zap.NewNop()
+func (entry *gwEntry) Bootstrap(event rk_query.Event) {
+	fields := []zap.Field{
+		zap.Uint64("gw_port", entry.httpPort),
 	}
 
-	go func(entry *gwEntry) {
-		fields := []zap.Field{
-			zap.Uint64("http_port", entry.httpPort),
-			zap.Uint64("gRpc_port", entry.gRpcPort),
-		}
-		if entry.tls != nil {
-			fields = append(fields, zap.Bool("tls", true))
-		}
+	event.AddFields(fields...)
 
-		logger.Info("starting gRpc-gateway", fields...)
-		if entry.tls != nil {
-			if err := entry.server.ListenAndServeTLS(entry.tls.getCertFilePath(), entry.tls.getKeyFilePath()); err != nil && err != http.ErrServerClosed {
-				fields = append(fields, zap.Error(err))
-				entry.logger.Error("failed to start gRpc-gateway", fields...)
-				shutdownWithError(err)
-			}
-		} else {
-			if err := entry.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				fields = append(fields, zap.Error(err))
-				entry.logger.Error("failed to start gRpc-gateway", fields...)
-				shutdownWithError(err)
-			}
+	entry.logger.Info("starting grpc-gateway", fields...)
+	if entry.tls != nil {
+		if err := entry.server.ListenAndServeTLS(entry.tls.getCertFilePath(), entry.tls.getKeyFilePath()); err != nil && err != http.ErrServerClosed {
+			fields = append(fields, zap.Error(err))
+			entry.logger.Error("failed to start grpc-gateway", fields...)
+			shutdownWithError(err)
 		}
-	}(entry)
+	} else {
+		if err := entry.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fields = append(fields, zap.Error(err))
+			entry.logger.Error("failed to start grpc-gateway", fields...)
+			shutdownWithError(err)
+		}
+	}
 }
 
 // Support HEAD request

@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/rookie-ninja/rk-grpc/example/proto"
+	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/retry"

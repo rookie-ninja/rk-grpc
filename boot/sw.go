@@ -6,7 +6,7 @@ package rk_grpc
 
 import (
 	"encoding/json"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
@@ -121,43 +121,12 @@ var (
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/runtimeError"
+              "$ref": "#/definitions/rpcStatus"
             }
           }
         },
-        "tags": [
-          "RkCommonService"
-        ]
-      }
-    },
-    "/v1/rk/config/{key}": {
-      "get": {
-        "summary": "GetConfig Stub",
-        "operationId": "RkCommonService_GetConfig",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/GetConfigResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
         "tags": [
           "RkCommonService"
         ]
@@ -175,9 +144,9 @@ var (
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/runtimeError"
+              "$ref": "#/definitions/rpcStatus"
             }
           }
         },
@@ -198,9 +167,9 @@ var (
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/runtimeError"
+              "$ref": "#/definitions/rpcStatus"
             }
           }
         },
@@ -221,88 +190,9 @@ var (
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "tags": [
-          "RkCommonService"
-        ]
-      }
-    },
-    "/v1/rk/log": {
-      "post": {
-        "summary": "Log Stub",
-        "operationId": "RkCommonService_Log",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/LogResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/LogRequest"
-            }
-          }
-        ],
-        "tags": [
-          "RkCommonService"
-        ]
-      }
-    },
-    "/v1/rk/ping": {
-      "get": {
-        "summary": "Ping Stub",
-        "operationId": "RkCommonService_Ping",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/PongResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "tags": [
-          "RkCommonService"
-        ]
-      }
-    },
-    "/v1/rk/shutdown": {
-      "get": {
-        "summary": "Shutdown Stub",
-        "operationId": "RkCommonService_Shutdown",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ShutdownResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
+              "$ref": "#/definitions/rpcStatus"
             }
           }
         },
@@ -313,13 +203,66 @@ var (
     }
   },
   "definitions": {
-    "BasicInfo": {
+    "DumpConfigResponse": {
       "type": "object",
       "properties": {
+        "viper": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Viper"
+          }
+        },
+        "rk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RK"
+          }
+        }
+      }
+    },
+    "GCResponse": {
+      "type": "object",
+      "properties": {
+        "mem_stats_before_gc": {
+          "$ref": "#/definitions/MemStats"
+        },
+        "mem_stats_after_gc": {
+          "$ref": "#/definitions/MemStats"
+        }
+      },
+      "title": "GC response, memory stats would be returned"
+    },
+    "HealthyResponse": {
+      "type": "object",
+      "properties": {
+        "healthy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Info": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "gid": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
         "start_time": {
           "type": "string"
         },
-        "up_time": {
+        "up_time_sec": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "up_time_str": {
+          "type": "string"
+        },
+        "application": {
           "type": "string"
         },
         "realm": {
@@ -333,231 +276,70 @@ var (
         },
         "domain": {
           "type": "string"
-        },
-        "app_name": {
-          "type": "string"
-        }
-      }
-    },
-    "Config": {
-      "type": "object",
-      "properties": {
-        "config_name": {
-          "type": "string"
-        },
-        "config_pair": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ConfigPair"
-          }
-        }
-      }
-    },
-    "ConfigPair": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "DumpConfigResponse": {
-      "type": "object",
-      "properties": {
-        "config_list": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Config"
-          }
-        }
-      }
-    },
-    "GCResponse": {
-      "type": "object",
-      "properties": {
-        "mem_stats_before": {
-          "$ref": "#/definitions/MemStats"
-        },
-        "mem_stats_after": {
-          "$ref": "#/definitions/MemStats"
-        }
-      },
-      "title": "GC response, memory stats would be returned"
-    },
-    "GRpcInfo": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "port": {
-          "type": "string"
-        },
-        "gw_info": {
-          "$ref": "#/definitions/GWInfo"
-        },
-        "sw_info": {
-          "$ref": "#/definitions/SWInfo"
-        }
-      }
-    },
-    "GWInfo": {
-      "type": "object",
-      "properties": {
-        "gw_port": {
-          "type": "string"
-        }
-      }
-    },
-    "GetConfigResponse": {
-      "type": "object",
-      "properties": {
-        "config_list": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Config"
-          }
-        }
-      }
-    },
-    "GinInfo": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "port": {
-          "type": "string"
-        },
-        "sw_info": {
-          "$ref": "#/definitions/SWInfo"
-        }
-      }
-    },
-    "HealthyResponse": {
-      "type": "object",
-      "properties": {
-        "healthy": {
-          "type": "boolean",
-          "format": "boolean"
         }
       }
     },
     "InfoResponse": {
       "type": "object",
       "properties": {
-        "basic_info": {
-          "$ref": "#/definitions/BasicInfo"
-        },
-        "grpc_info_list": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/GRpcInfo"
-          }
-        },
-        "gin_info_list": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/GinInfo"
-          }
-        },
-        "prom_info": {
-          "$ref": "#/definitions/PromInfo"
+        "info": {
+          "$ref": "#/definitions/Info"
         }
       }
-    },
-    "LogEntry": {
-      "type": "object",
-      "properties": {
-        "log_name": {
-          "type": "string"
-        },
-        "log_level": {
-          "type": "string"
-        }
-      }
-    },
-    "LogRequest": {
-      "type": "object",
-      "properties": {
-        "entries": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/LogEntry"
-          }
-        }
-      }
-    },
-    "LogResponse": {
-      "type": "object"
     },
     "MemStats": {
       "type": "object",
       "properties": {
-        "mem_alloc_mb": {
-          "type": "string",
-          "format": "uint64",
+        "mem_alloc_byte": {
+          "type": "integer",
+          "format": "int64",
           "description": "Alloc is bytes of allocated heap objects."
         },
-        "sys_mem_mb": {
-          "type": "string",
-          "format": "uint64",
+        "sys_alloc_byte": {
+          "type": "integer",
+          "format": "int64",
           "description": "Sys is the total bytes of memory obtained from the OS."
+        },
+        "mem_usage_percentage": {
+          "type": "number",
+          "format": "float",
+          "title": "memory usage"
         },
         "last_gc_timestamp": {
           "type": "string",
           "title": "LastGC is the time the last garbage collection finished.\nRepresent as RFC3339 time format"
         },
-        "num_gc": {
+        "gc_count_total": {
           "type": "integer",
           "format": "int64",
-          "description": "NumGC is the number of completed GC cycles."
+          "description": "The number of completed GC cycles."
         },
-        "num_force_gc": {
+        "force_gc_count": {
           "type": "integer",
           "format": "int64",
-          "description": "/ NumForcedGC is the number of GC cycles that were forced by\nthe application calling the GC function."
+          "description": "/ The number of GC cycles that were forced by\nthe application calling the GC function."
         }
       },
       "title": "Memory stats"
     },
-    "PongResponse": {
+    "RK": {
       "type": "object",
       "properties": {
-        "message": {
-          "type": "string"
-        }
-      }
-    },
-    "PromInfo": {
-      "type": "object",
-      "properties": {
-        "port": {
+        "name": {
           "type": "string"
         },
-        "path": {
+        "raw": {
           "type": "string"
         }
       }
     },
-    "SWInfo": {
+    "Viper": {
       "type": "object",
       "properties": {
-        "sw_port": {
+        "name": {
           "type": "string"
         },
-        "sw_path": {
-          "type": "string"
-        }
-      }
-    },
-    "ShutdownResponse": {
-      "type": "object",
-      "properties": {
-        "message": {
+        "raw": {
           "type": "string"
         }
       }
@@ -574,12 +356,9 @@ var (
         }
       }
     },
-    "runtimeError": {
+    "rpcStatus": {
       "type": "object",
       "properties": {
-        "error": {
-          "type": "string"
-        },
         "code": {
           "type": "integer",
           "format": "int32"

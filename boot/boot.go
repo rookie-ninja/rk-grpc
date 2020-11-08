@@ -7,9 +7,10 @@ package rk_grpc
 import (
 	"crypto/tls"
 	"github.com/ghodss/yaml"
-	rk_boot_common_v1 "github.com/rookie-ninja/rk-grpc/boot/api/v1"
-	rk_grpc_log "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
-	rk_query "github.com/rookie-ninja/rk-query"
+	"github.com/rookie-ninja/rk-grpc/boot/api/v1"
+	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
+	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -133,7 +134,9 @@ func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, lo
 				withGRpcPortGW(element.Port),
 				withDialOptionsGW(opts...),
 				withSWEntryGW(sw),
-				withTlsEntryGW(tls))
+				withTlsEntryGW(tls),
+				withLoggerGW(logger),
+				withEnableCommonServiceGW(element.EnableCommonService))
 		}
 
 		entry := NewGRpcEntry(
@@ -142,7 +145,8 @@ func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, lo
 			WithGWEntry(gw),
 			WithRegFuncs(registerRkCommonService),
 			WithCommonService(element.EnableCommonService),
-			WithTlsEntry(tls))
+			WithTlsEntry(tls),
+			WithLogger(logger))
 
 		// did we enabled logging interceptor?
 		if element.LoggingInterceptor.Enabled {
@@ -151,7 +155,8 @@ func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, lo
 				rk_grpc_log.WithEnableLogging(element.LoggingInterceptor.EnableLogging),
 				rk_grpc_log.WithEnableMetrics(element.LoggingInterceptor.EnableMetrics),
 				rk_grpc_log.WithEnablePayloadLogging(element.LoggingInterceptor.EnablePayloadLogging),
-				rk_grpc_log.WithEventFactory(factory))
+				rk_grpc_log.WithEventFactory(factory),
+				rk_grpc_log.WithLogger(logger))
 
 			entry.AddUnaryInterceptors(rk_grpc_log.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rk_grpc_log.StreamServerInterceptor(opts...))
@@ -183,6 +188,12 @@ func WithGWEntry(gw *gwEntry) GRpcEntryOption {
 func WithTlsEntry(tls *tlsEntry) GRpcEntryOption {
 	return func(entry *GRpcEntry) {
 		entry.tls = tls
+	}
+}
+
+func WithLogger(log *zap.Logger) GRpcEntryOption {
+	return func(entry *GRpcEntry) {
+		entry.logger = log
 	}
 }
 
@@ -219,6 +230,8 @@ func WithStreamInterceptors(opts ...grpc.StreamServerInterceptor) GRpcEntryOptio
 func NewGRpcEntry(opts ...GRpcEntryOption) *GRpcEntry {
 	entry := &GRpcEntry{
 		logger: zap.NewNop(),
+		unaryInterceptors: make([]grpc.UnaryServerInterceptor, 0),
+		streamInterceptors: make([]grpc.StreamServerInterceptor, 0),
 	}
 
 	for i := range opts {
@@ -231,14 +244,6 @@ func NewGRpcEntry(opts ...GRpcEntryOption) *GRpcEntry {
 
 	if entry.serverOpts == nil {
 		entry.serverOpts = make([]grpc.ServerOption, 0)
-	}
-
-	if entry.unaryInterceptors == nil {
-		entry.unaryInterceptors = make([]grpc.UnaryServerInterceptor, 0)
-	}
-
-	if entry.streamInterceptors == nil {
-		entry.streamInterceptors = make([]grpc.StreamServerInterceptor, 0)
 	}
 
 	if entry.regFuncs == nil {
@@ -290,14 +295,10 @@ func (entry *GRpcEntry) GetGWEntry() *gwEntry {
 	return entry.gw
 }
 
-func (entry *GRpcEntry) Stop(logger *zap.Logger) {
+func (entry *GRpcEntry) Shutdown(event rk_query.Event) {
 	if entry.server != nil {
-		if logger == nil {
-			logger = zap.NewNop()
-		}
-
 		fields := []zap.Field{
-			zap.Uint64("gRpc_port", entry.GetPort()),
+			zap.Uint64("grpc_port", entry.GetPort()),
 			zap.String("name", entry.name),
 		}
 
@@ -305,18 +306,25 @@ func (entry *GRpcEntry) Stop(logger *zap.Logger) {
 			fields = append(fields, zap.Bool("tls", true))
 		}
 
-		logger.Info("stopping gRpc-server", fields...)
+		if entry.gw != nil {
+			entry.gw.Shutdown(event)
+		}
+
+		entry.logger.Info("stopping grpc-server", fields...)
 		entry.server.GracefulStop()
 	}
 }
 
-func (entry *GRpcEntry) StopGW(logger *zap.Logger) {
-	entry.gw.Stop(logger)
-}
+func (entry *GRpcEntry) Bootstrap(event rk_query.Event) {
+	fields := []zap.Field{
+		zap.Uint64("grpc_port", entry.port),
+		zap.String("name", entry.name),
+	}
 
-func (entry *GRpcEntry) Start(logger *zap.Logger) {
-	if logger == nil {
-		logger = zap.NewNop()
+	// gateway enabled?
+	// start gateway first since we do not want to block goroutine here
+	if entry.gw != nil {
+		go entry.gw.Bootstrap(event)
 	}
 
 	listener, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.port, 10))
@@ -325,48 +333,46 @@ func (entry *GRpcEntry) Start(logger *zap.Logger) {
 	}
 
 	entry.listener = listener
-	// make unary server opts
-	entry.serverOpts = append(entry.serverOpts, grpc.ChainUnaryInterceptor(entry.unaryInterceptors...))
-	// make stream server opts
-	entry.serverOpts = append(entry.serverOpts, grpc.ChainStreamInterceptor(entry.streamInterceptors...))
 
+	// make unary server opts
+	entry.unaryInterceptors = append(entry.unaryInterceptors,
+		rk_grpc_panic.UnaryServerInterceptor(rk_grpc_panic.PanicToZap))
+	entry.serverOpts = append(entry.serverOpts,
+		grpc.ChainUnaryInterceptor(entry.unaryInterceptors...))
+
+	// make stream server opts
+	// we only need to add panic handler once
+	// since we use a global variable storing handlers which is accessable by
+	// unary and stream interceptor
+	entry.serverOpts = append(entry.serverOpts,
+		grpc.ChainStreamInterceptor(entry.streamInterceptors...))
+
+	// tls enabled?
 	if entry.tls != nil {
 		cert, err := tls.LoadX509KeyPair(entry.tls.getCertFilePath(), entry.tls.getKeyFilePath())
 		if err != nil {
 			shutdownWithError(err)
 		}
 		entry.serverOpts = append(entry.serverOpts, grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
+		fields = append(fields, zap.Bool("tls", true))
 	}
 
+	// creat grpc server
 	entry.server = grpc.NewServer(entry.serverOpts...)
 	for _, regFunc := range entry.regFuncs {
 		regFunc(entry.server)
 	}
 
-	go func(entry *GRpcEntry) {
-		fields := []zap.Field{
-			zap.Uint64("gRpc_port", entry.GetPort()),
-			zap.String("name", entry.name),
-		}
-
-		if entry.tls != nil {
-			fields = append(fields, zap.Bool("tls", true))
-		}
-
-		logger.Info("starting gRpc-server", fields...)
-		if err := entry.server.Serve(listener); err != nil {
-			fields = append(fields, zap.Error(err))
-			logger.Error("err while serving gRpc-listener", fields...)
-			shutdownWithError(err)
-		}
-	}(entry)
-}
-
-func (entry *GRpcEntry) StartGW(logger *zap.Logger) {
-	entry.gw.Start(logger)
+	// start grpc server
+	entry.logger.Info("starting grpc-server", fields...)
+	if err := entry.server.Serve(listener); err != nil {
+		fields = append(fields, zap.Error(err))
+		entry.logger.Error("err while serving grpc-listener", fields...)
+		shutdownWithError(err)
+	}
 }
 
 // Register common service
 func registerRkCommonService(server *grpc.Server) {
-	rk_boot_common_v1.RegisterRkCommonServiceServer(server, NewCommonServiceGRpc())
+	rk_grpc_common_v1.RegisterRkCommonServiceServer(server, NewCommonServiceGRpc())
 }
