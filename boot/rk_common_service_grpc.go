@@ -63,7 +63,7 @@ func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_gr
 	// rk
 	rk := rk_info.RkConfigToStruct()
 	for i := range rk {
-		e := vp[i]
+		e := rk[i]
 		res.Rk = append(res.Rk, &rk_grpc_common_v1.RK{
 			Name: e.Name,
 			Raw: e.Raw,
