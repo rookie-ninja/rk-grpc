@@ -122,7 +122,7 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 	// use proto names for return value instead of camel case
 	entry.muxOpts = append(entry.muxOpts, runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 		protojson.MarshalOptions{
-			UseProtoNames: true,
+			UseProtoNames:   true,
 			EmitUnpopulated: true,
 		},
 		protojson.UnmarshalOptions{},
@@ -156,12 +156,9 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 	}
 
 	entry.server = &http.Server{
-		Addr: "0.0.0.0:" + strconv.FormatUint(entry.httpPort, 10),
+		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.httpPort, 10),
 		Handler: headMethodHandler(httpMux),
 	}
-
-	// Support head method
-	//entry.server.Handler = headMethodHandler(httpMux)
 
 	return entry
 }
@@ -172,6 +169,14 @@ func (entry *gwEntry) addDialOptions(opts ...grpc.DialOption) {
 
 func (entry *gwEntry) addRegFuncsGW(funcs ...regFuncGW) {
 	entry.regFuncs = append(entry.regFuncs, funcs...)
+}
+
+func (entry *gwEntry) isSWEnabled() bool {
+	return entry.sw != nil
+}
+
+func (entry *gwEntry) getSWEntry() *swEntry {
+	return entry.sw
 }
 
 func (entry *gwEntry) GetHttpPort() uint64 {
@@ -188,46 +193,56 @@ func (entry *gwEntry) GetServer() *http.Server {
 
 func (entry *gwEntry) Shutdown(event rk_query.Event) {
 	fields := []zap.Field{
-		zap.Uint64("gw_port", entry.httpPort),
+		zap.Uint64("grpc_gw_port", entry.httpPort),
 	}
 
 	if entry.sw != nil {
-		fields = append(fields, zap.String("sw_path", entry.sw.GetPath()))
+		fields = append(fields, zap.String("grpc_sw_path", entry.sw.GetPath()))
 	}
 
+	event.AddFields(fields...)
+
 	if entry.server != nil {
-		entry.logger.Info("stopping grpc-gateway",
-			zap.Uint64("gw_port", entry.httpPort),
-			zap.Uint64("grpc_port", entry.gRpcPort))
+		entry.logger.Info("stopping grpc-gateway", fields...)
 		if err := entry.server.Shutdown(context.Background()); err != nil {
-			entry.logger.Warn("error occurs while stopping gRpc-gateway",
-				zap.Uint64("gw_port", entry.httpPort),
-				zap.Uint64("grpc_port", entry.gRpcPort),
-				zap.Error(err))
+			fields = append(fields, zap.Error(err))
+			entry.logger.Warn("error occurs while stopping gRpc-gateway", fields...)
 		}
 	}
 }
 
 func (entry *gwEntry) Bootstrap(event rk_query.Event) {
 	fields := []zap.Field{
-		zap.Uint64("gw_port", entry.httpPort),
+		zap.Uint64("grpc_gw_port", entry.httpPort),
+	}
+
+	if entry.sw != nil {
+		fields = append(fields, zap.String("grpc_sw_path", entry.sw.GetPath()))
+	}
+
+	if entry.tls != nil {
+		fields = append(fields, zap.Bool("grpc_tls", true))
 	}
 
 	event.AddFields(fields...)
 
 	entry.logger.Info("starting grpc-gateway", fields...)
 	if entry.tls != nil {
-		if err := entry.server.ListenAndServeTLS(entry.tls.getCertFilePath(), entry.tls.getKeyFilePath()); err != nil && err != http.ErrServerClosed {
-			fields = append(fields, zap.Error(err))
-			entry.logger.Error("failed to start grpc-gateway", fields...)
-			shutdownWithError(err)
-		}
+		go func(*gwEntry) {
+			if err := entry.server.ListenAndServeTLS(entry.tls.getCertFilePath(), entry.tls.getKeyFilePath()); err != nil && err != http.ErrServerClosed {
+				fields = append(fields, zap.Error(err))
+				entry.logger.Error("failed to start grpc-gateway", fields...)
+				shutdownWithError(err)
+			}
+		}(entry)
 	} else {
-		if err := entry.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fields = append(fields, zap.Error(err))
-			entry.logger.Error("failed to start grpc-gateway", fields...)
-			shutdownWithError(err)
-		}
+		go func(*gwEntry) {
+			if err := entry.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				fields = append(fields, zap.Error(err))
+				entry.logger.Error("failed to start grpc-gateway", fields...)
+				shutdownWithError(err)
+			}
+		}(entry)
 	}
 }
 

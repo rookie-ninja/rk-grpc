@@ -31,7 +31,7 @@ func (service *CommonServiceGRpc) GC(ctx context.Context, request *rk_grpc_commo
 
 	res := &rk_grpc_common_v1.GCResponse{
 		MemStatsBeforeGc: &rk_grpc_common_v1.MemStats{},
-		MemStatsAfterGc: &rk_grpc_common_v1.MemStats{},
+		MemStatsAfterGc:  &rk_grpc_common_v1.MemStats{},
 	}
 
 	jsonpb.UnmarshalString(before, res.MemStatsBeforeGc)
@@ -47,7 +47,7 @@ func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_gr
 
 	res := &rk_grpc_common_v1.DumpConfigResponse{
 		Viper: make([]*rk_grpc_common_v1.Viper, 0),
-		Rk: make([]*rk_grpc_common_v1.RK, 0),
+		Rk:    make([]*rk_grpc_common_v1.RK, 0),
 	}
 
 	// viper
@@ -56,7 +56,7 @@ func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_gr
 		e := vp[i]
 		res.Viper = append(res.Viper, &rk_grpc_common_v1.Viper{
 			Name: e.Name,
-			Raw: e.Raw,
+			Raw:  e.Raw,
 		})
 	}
 
@@ -66,7 +66,7 @@ func (service *CommonServiceGRpc) DumpConfig(ctx context.Context, request *rk_gr
 		e := rk[i]
 		res.Rk = append(res.Rk, &rk_grpc_common_v1.RK{
 			Name: e.Name,
-			Raw: e.Raw,
+			Raw:  e.Raw,
 		})
 	}
 
@@ -81,8 +81,6 @@ func (service *CommonServiceGRpc) Info(ctx context.Context, request *rk_grpc_com
 	res := &rk_grpc_common_v1.InfoResponse{
 		Info: &rk_grpc_common_v1.Info{},
 	}
-
-	println(rk_info.BasicInfoToJSONPretty())
 
 	jsonpb.UnmarshalString(rk_info.BasicInfoToJSON(), res.Info)
 

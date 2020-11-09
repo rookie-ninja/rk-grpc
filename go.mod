@@ -11,7 +11,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/common v0.11.1 // indirect
-	github.com/rookie-ninja/rk-common v1.0.1
+	github.com/rookie-ninja/rk-common v1.0.2
 	github.com/rookie-ninja/rk-logger v1.0.5
 	github.com/rookie-ninja/rk-prom v1.0.1
 	github.com/rookie-ninja/rk-query v1.0.7

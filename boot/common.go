@@ -15,4 +15,3 @@ func shutdownWithError(err error) {
 	glog.Error(err)
 	os.Exit(1)
 }
-

@@ -362,6 +362,8 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rookie-ninja/rk-common v1.0.1 h1:g6lUvF1avjxjpN+bNApyIkOJ/dxhHvKVFQGB0YMpi48=
 github.com/rookie-ninja/rk-common v1.0.1/go.mod h1:xWqWs3Msva5bhJHEUm+SdUYQIHMORYMZwh8K3qODue4=
+github.com/rookie-ninja/rk-common v1.0.2 h1:ETAzGj9APZswr0lcvQAnIUjxiJqL7bi2rsqq0x4aDqg=
+github.com/rookie-ninja/rk-common v1.0.2/go.mod h1:xWqWs3Msva5bhJHEUm+SdUYQIHMORYMZwh8K3qODue4=
 github.com/rookie-ninja/rk-config v1.0.0 h1:zUhSOH4MCjSXoQ1mFpNBpDeY4Skovlkx5V+fonOLleQ=
 github.com/rookie-ninja/rk-config v1.0.0/go.mod h1:ybQeDwhbyRwmtin6dIADiSTMnimVUuktKfQWzwYhrsY=
 github.com/rookie-ninja/rk-logger v1.0.3 h1:sX/fWnKbX2STysWLahkaVIyoaRh5RFl3v/u/4reKUCM=

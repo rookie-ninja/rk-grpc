@@ -396,11 +396,11 @@ type swURL struct {
 }
 
 type swEntry struct {
-	sourceType          string
-	logger              *zap.Logger
-	jsonPath            string
-	path                string
-	headers             map[string]string
+	sourceType string
+	logger     *zap.Logger
+	jsonPath   string
+	path       string
+	headers    map[string]string
 }
 
 type swOption func(*swEntry)

@@ -6,7 +6,9 @@ package rk_grpc
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"github.com/ghodss/yaml"
+	"github.com/rookie-ninja/rk-common/context"
 	"github.com/rookie-ninja/rk-grpc/boot/api/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
@@ -17,6 +19,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type bootConfig struct {
@@ -56,6 +59,7 @@ type bootConfig struct {
 }
 
 type GRpcEntry struct {
+	entryType           string
 	logger              *zap.Logger
 	name                string
 	port                uint64
@@ -229,8 +233,9 @@ func WithStreamInterceptors(opts ...grpc.StreamServerInterceptor) GRpcEntryOptio
 
 func NewGRpcEntry(opts ...GRpcEntryOption) *GRpcEntry {
 	entry := &GRpcEntry{
-		logger: zap.NewNop(),
-		unaryInterceptors: make([]grpc.UnaryServerInterceptor, 0),
+		entryType:          "grpc",
+		logger:             zap.NewNop(),
+		unaryInterceptors:  make([]grpc.UnaryServerInterceptor, 0),
 		streamInterceptors: make([]grpc.StreamServerInterceptor, 0),
 	}
 
@@ -249,6 +254,8 @@ func NewGRpcEntry(opts ...GRpcEntryOption) *GRpcEntry {
 	if entry.regFuncs == nil {
 		entry.regFuncs = make([]RegFuncGRpc, 0)
 	}
+
+	rk_ctx.GlobalAppCtx.AddEntry(entry.GetName(), entry)
 
 	return entry
 }
@@ -283,6 +290,43 @@ func (entry *GRpcEntry) GetName() string {
 	return entry.name
 }
 
+func (entry *GRpcEntry) GetType() string {
+	return entry.entryType
+}
+
+func (entry *GRpcEntry) IsTlsEnabled() bool {
+	return entry.tls != nil
+}
+
+func (entry *GRpcEntry) IsGWEnabled() bool {
+	return entry.gw != nil
+}
+
+func (entry *GRpcEntry) String() string {
+	m := map[string]string{
+		"name":                entry.GetName(),
+		"type":                entry.GetType(),
+		"grpc_port":           strconv.FormatUint(entry.GetPort(), 10),
+		"unary_interceptors":  strconv.Itoa(len(entry.unaryInterceptors)),
+		"stream_interceptors": strconv.Itoa(len(entry.streamInterceptors)),
+		"tls":                 strconv.FormatBool(entry.IsTlsEnabled()),
+		"gw":                  strconv.FormatBool(entry.IsGWEnabled()),
+	}
+
+	if entry.IsGWEnabled() {
+		m["gw_port"] = strconv.FormatUint(entry.gw.GetHttpPort(), 10)
+		m["sw"] = strconv.FormatBool(entry.GetGWEntry().isSWEnabled())
+
+		if entry.GetGWEntry().isSWEnabled() {
+			m["sw_path"] = entry.GetGWEntry().getSWEntry().GetPath()
+		}
+	}
+
+	bytes, _ := json.Marshal(m)
+
+	return string(bytes)
+}
+
 func (entry *GRpcEntry) GetServer() *grpc.Server {
 	return entry.server
 }
@@ -310,6 +354,8 @@ func (entry *GRpcEntry) Shutdown(event rk_query.Event) {
 			entry.gw.Shutdown(event)
 		}
 
+		event.AddFields(fields...)
+
 		entry.logger.Info("stopping grpc-server", fields...)
 		entry.server.GracefulStop()
 	}
@@ -318,13 +364,13 @@ func (entry *GRpcEntry) Shutdown(event rk_query.Event) {
 func (entry *GRpcEntry) Bootstrap(event rk_query.Event) {
 	fields := []zap.Field{
 		zap.Uint64("grpc_port", entry.port),
-		zap.String("name", entry.name),
+		zap.String("grpc_name", entry.name),
 	}
 
 	// gateway enabled?
 	// start gateway first since we do not want to block goroutine here
 	if entry.gw != nil {
-		go entry.gw.Bootstrap(event)
+		entry.gw.Bootstrap(event)
 	}
 
 	listener, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.port, 10))
@@ -342,7 +388,7 @@ func (entry *GRpcEntry) Bootstrap(event rk_query.Event) {
 
 	// make stream server opts
 	// we only need to add panic handler once
-	// since we use a global variable storing handlers which is accessable by
+	// since we use a global variable storing handlers which is accessible by
 	// unary and stream interceptor
 	entry.serverOpts = append(entry.serverOpts,
 		grpc.ChainStreamInterceptor(entry.streamInterceptors...))
@@ -354,7 +400,7 @@ func (entry *GRpcEntry) Bootstrap(event rk_query.Event) {
 			shutdownWithError(err)
 		}
 		entry.serverOpts = append(entry.serverOpts, grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
-		fields = append(fields, zap.Bool("tls", true))
+		fields = append(fields, zap.Bool("grpc_tls", true))
 	}
 
 	// creat grpc server
@@ -363,13 +409,36 @@ func (entry *GRpcEntry) Bootstrap(event rk_query.Event) {
 		regFunc(entry.server)
 	}
 
+	event.AddFields(fields...)
 	// start grpc server
 	entry.logger.Info("starting grpc-server", fields...)
-	if err := entry.server.Serve(listener); err != nil {
-		fields = append(fields, zap.Error(err))
-		entry.logger.Error("err while serving grpc-listener", fields...)
-		shutdownWithError(err)
-	}
+	go func(*GRpcEntry) {
+		if err := entry.server.Serve(listener); err != nil {
+			fields = append(fields, zap.Error(err))
+			entry.logger.Error("err while serving grpc-listener", fields...)
+			shutdownWithError(err)
+		}
+	}(entry)
+}
+
+func (entry *GRpcEntry) Wait(draining time.Duration) {
+	sig := <-rk_ctx.GlobalAppCtx.GetShutdownSig()
+
+	helper := rk_query.NewEventHelper(rk_ctx.GlobalAppCtx.GetEventFactory())
+	event := helper.Start("rk_app_stop")
+
+	rk_ctx.GlobalAppCtx.GetDefaultLogger().Info("draining", zap.Duration("draining_duration", draining))
+	time.Sleep(draining)
+
+	event.AddFields(
+		zap.Duration("app_lifetime_nano", time.Since(rk_ctx.GlobalAppCtx.GetStartTime())),
+		zap.Time("app_start_time", rk_ctx.GlobalAppCtx.GetStartTime()))
+
+	event.AddPair("signal", sig.String())
+
+	entry.Shutdown(event)
+
+	helper.Finish(event)
 }
 
 // Register common service
