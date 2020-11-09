@@ -44,7 +44,6 @@ func handleCrash(ctx context.Context, handler PanicHandler) {
 		handler(ctx, r)
 
 		for _, fn := range handlers {
-			println(len(handlers))
 			fn(ctx, r)
 		}
 	}

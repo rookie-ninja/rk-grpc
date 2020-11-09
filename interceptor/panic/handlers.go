@@ -28,7 +28,7 @@ func PanicToGLog(ctx context.Context, r interface{}) {
 
 func PanicToZap(ctx context.Context, r interface{}) {
 	rk_grpc_ctx.GetEvent(ctx).AddErr(panic{})
-	rk_grpc_ctx.GetLogger(ctx).Warn(panicString(ctx, r))
+	rk_grpc_ctx.GetLogger(ctx).Error("panic occurred")
 }
 
 func panicString(ctx context.Context, r interface{}) string {
