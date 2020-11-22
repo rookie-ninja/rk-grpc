@@ -87,8 +87,19 @@ var (
 	commonServiceJson = `{
   "swagger": "2.0",
   "info": {
-    "title": "api/v1/rk_common_service.proto",
-    "version": "version not set"
+    "description": "This is a common service with rk-grpc.",
+    "title": "RK Swagger Example",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "API Support",
+      "url": "http://www.swagger.io/support",
+      "email": "support@swagger.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0"
   },
   "consumes": [
     "application/json"
@@ -198,6 +209,29 @@ var (
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v1InfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/v1/rk/req": {
+      "get": {
+        "summary": "Req Stub",
+        "operationId": "RkCommonService_Req",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ReqResponse"
             }
           },
           "default": {
