@@ -203,7 +203,7 @@ func GetOutgoingMD(ctx context.Context) *metadata.MD {
 	payloadRaw := getPayloadRaw(ctx)
 
 	// Payload is empty which means it is not rk style context
-	// We will try to extract from outging context
+	// We will try to extract from out going context
 	//
 	// If none of them exists, then just return a new empty metadata
 	if payloadRaw == nil {

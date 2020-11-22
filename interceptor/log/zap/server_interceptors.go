@@ -177,7 +177,7 @@ func recordServerAfter(ctx context.Context, err error, method string) rk_query.E
 	// Log to metrics if enabled
 	if defaultOptions.enableMetrics {
 		method := path.Base(method)
-		getServerDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds() / 1e6))
+		getServerDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds()))
 		if err != nil {
 			getServerErrorMetrics(method, code.String()).Inc()
 		}

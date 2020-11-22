@@ -180,7 +180,7 @@ func recordClientAfter(ctx context.Context, err error, method string) rk_query.E
 	// Log to metrics if enabled
 	if defaultOptions.enableMetrics {
 		method := path.Base(method)
-		getClientDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds() / 1e6))
+		getClientDurationMetrics(method, code.String()).Observe(float64(elapsed.Nanoseconds()))
 		if err != nil {
 			getClientErrorMetrics(method, code.String()).Inc()
 		}

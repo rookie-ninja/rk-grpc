@@ -25,12 +25,15 @@ type gwEntry struct {
 	httpPort            uint64
 	gRpcPort            uint64
 	enableCommonService bool
+	enableTV			bool
 	tls                 *tlsEntry
 	sw                  *swEntry
 	regFuncs            []regFuncGW
 	dialOpts            []grpc.DialOption
 	muxOpts             []runtime.ServeMuxOption
 	server              *http.Server
+	gwMux               *runtime.ServeMux
+	mux                 *http.ServeMux
 }
 
 type regFuncGW func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
@@ -58,6 +61,12 @@ func withTlsEntryGW(tls *tlsEntry) gRpcGWOption {
 func withEnableCommonServiceGW(enable bool) gRpcGWOption {
 	return func(entry *gwEntry) {
 		entry.enableCommonService = enable
+	}
+}
+
+func withEnableTV(enable bool) gRpcGWOption {
+	return func(entry *gwEntry) {
+		entry.enableTV = enable
 	}
 }
 
@@ -120,18 +129,20 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 
 	gRPCEndpoint := "0.0.0.0:" + strconv.FormatUint(entry.gRpcPort, 10)
 	// use proto names for return value instead of camel case
-	entry.muxOpts = append(entry.muxOpts, runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-		protojson.MarshalOptions{
-			UseProtoNames:   true,
-			EmitUnpopulated: true,
-		},
-		protojson.UnmarshalOptions{},
-	}))
+	entry.muxOpts = append(entry.muxOpts,
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb {
+			MarshalOptions: protojson.MarshalOptions {
+				UseProtoNames:   true,
+				EmitUnpopulated: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{},
+		}),
+		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher))
 
-	gwMux := runtime.NewServeMux(entry.muxOpts...)
+	entry.gwMux = runtime.NewServeMux(entry.muxOpts...)
 
 	for i := range entry.regFuncs {
-		err := entry.regFuncs[i](context.Background(), gwMux, gRPCEndpoint, entry.dialOpts)
+		err := entry.regFuncs[i](context.Background(), entry.gwMux, gRPCEndpoint, entry.dialOpts)
 		if err != nil {
 			fields := []zap.Field{
 				zap.Uint64("http_port", entry.httpPort),
@@ -148,8 +159,15 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 	}
 
 	httpMux := http.NewServeMux()
-	httpMux.Handle("/", gwMux)
-	// Support swagger
+	httpMux.Handle("/", entry.gwMux)
+
+	// register tv handler
+	if entry.enableTV {
+		println("I ma here")
+		httpMux.HandleFunc("/v1/rk/tv/", tv)
+	}
+
+	// support swagger
 	if entry.sw != nil {
 		httpMux.HandleFunc(swHandlerPrefix, entry.sw.swJsonFileHandler)
 		httpMux.HandleFunc(entry.sw.path, entry.sw.swIndexHandler)
@@ -159,6 +177,8 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.httpPort, 10),
 		Handler: headMethodHandler(httpMux),
 	}
+
+	entry.mux = httpMux
 
 	return entry
 }
@@ -272,4 +292,9 @@ func readFile(filePath string) []byte {
 	}
 
 	return bytes
+}
+
+// without prefix
+func OutgoingHeaderMatcher(key string) (string, bool) {
+	return key, true
 }

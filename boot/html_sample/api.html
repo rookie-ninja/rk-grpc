@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>RK TV</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="https://www.flaticon.com/svg/static/icons/svg/2944/2944070.svg"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.5.3/cerulean/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/js/bootstrap.min.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    <a class="navbar-brand" href=".">RK TV</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/v1/rk/tv/dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/v1/rk/tv/api">API</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/v1/rk/tv/info">Info</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<!-- GRPC -->
+<div class="container" style="margin-top:30px">
+    <div class="card bg-primary text-white">
+        <div class="card-body">GRPC</div>
+    </div>
+</div>
+<div class="container" style="margin-top:30px">
+    <table class="table">
+        <thead class="thead-light">
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Service</th>
+            <th scope="col">Method</th>
+            <th scope="col">Type</th>
+            <th scope="col">Port</th>
+        </tr>
+        </thead>
+        <tbody id="grpc">
+        </tbody>
+    </table>
+</div>
+
+<!-- Gateway -->
+<div class="container" style="margin-top:30px">
+    <div class="card bg-success text-white">
+        <div class="card-body">Gateway</div>
+    </div>
+</div>
+<div class="container" style="margin-top:30px">
+    <table class="table">
+        <thead class="thead-light">
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Method</th>
+            <th scope="col">Path</th>
+            <th scope="col">Port</th>
+            <th scope="col">SW</th>
+        </tr>
+        </thead>
+        <tbody id="gw">
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    $(document).ready( function () {
+        $.ajax({
+            url : 'http://localhost:8080/v1/rk/apis',
+            type : 'GET',
+            dataType : 'json',
+            success : function(obj) {
+                let api = obj.api
+                for (let i = 0; i < api.length; i++) {
+                    let grpc = api[i].grpc
+                    let grpcTable = document.getElementById("grpc")
+                    for (let j = 0; j < grpc.length; j++) {
+                        let row = `<tr>
+                                        <td>${api[i].name}</td>
+                                        <td>${grpc[j].service}</td>
+                                        <td>${grpc[j].method}</td>
+                                        <td>${grpc[j].type}</td>
+                                        <td>${grpc[j].port}</td>
+                                   </tr>`
+                        grpcTable.innerHTML += row
+                    }
+
+                    let gw = api[i].gw
+                    let gwTable = document.getElementById("gw")
+                    for (let j = 0; j < gw.length; j++) {
+                        let row = `<tr>
+                                        <td>${api[i].name}</td>
+                                        <td>${gw[j].method}</td>
+                                        <td>${gw[j].path}</td>
+                                        <td>${gw[j].port}</td>
+                                        <td>${gw[j].sw}</td>
+                                   </tr>`
+                        gwTable.innerHTML += row
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

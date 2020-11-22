@@ -1,0 +1,19 @@
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: rk.grpc.common.v1.RkCommonService.GC
+      get: /v1/rk/gc
+    - selector: rk.grpc.common.v1.RkCommonService.Config
+      get: /v1/rk/config
+    - selector: rk.grpc.common.v1.RkCommonService.Info
+      get: /v1/rk/info
+    - selector: rk.grpc.common.v1.RkCommonService.Healthy
+      get: /v1/rk/healthy
+    - selector: rk.grpc.common.v1.RkCommonService.APIS
+      get: /v1/rk/apis
+    - selector: rk.grpc.common.v1.RkCommonService.Sys
+      get: /v1/rk/sys
+    - selector: rk.grpc.common.v1.RkCommonService.Req
+      get: /v1/rk/req

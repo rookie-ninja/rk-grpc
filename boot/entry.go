@@ -40,9 +40,10 @@ type bootConfig struct {
 			} `yaml:"auto"`
 		} `yaml:"tls"`
 		GW struct {
-			Enabled bool   `yaml:"enabled"`
-			Port    uint64 `yaml:"port"`
-			SW      struct {
+			Enabled  bool   `yaml:"enabled"`
+			Port     uint64 `yaml:"port"`
+			EnableTV bool   `yaml:"enableTV"`
+			SW       struct {
 				Enabled  bool     `yaml:"enabled"`
 				Path     string   `yaml:"path"`
 				JSONPath string   `yaml:"jsonPath"`
@@ -140,7 +141,8 @@ func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, lo
 				withSWEntryGW(sw),
 				withTlsEntryGW(tls),
 				withLoggerGW(logger),
-				withEnableCommonServiceGW(element.EnableCommonService))
+				withEnableCommonServiceGW(element.EnableCommonService),
+				withEnableTV(element.GW.EnableTV))
 		}
 
 		entry := NewGRpcEntry(

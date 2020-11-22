@@ -6,6 +6,7 @@ grpc:
     gw:
       enabled: true
       port: 8080
+      enableTV: true
       sw:
         enabled: true
         path: sw
@@ -13,4 +14,4 @@ grpc:
       enabled: true
       enableLogging: true
       enableMetrics: true
-      enablePayloadLogging: true
+      enablePayloadLogging: false

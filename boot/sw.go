@@ -84,23 +84,11 @@ var (
   </body>
 </html>
 `
-	commonServiceJson = `
-{
+	commonServiceJson = `{
   "swagger": "2.0",
   "info": {
-    "description": "This is rk common services",
-    "title": "RK Common",
-    "termsOfService": "http://swagger.io/terms/",
-    "contact": {
-      "name": "API Support",
-      "url": "http://www.swagger.io/support",
-      "email": "support@swagger.io"
-    },
-    "license": {
-      "name": "Apache 2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-    },
-    "version": "1.0"
+    "title": "api/v1/rk_common_service.proto",
+    "version": "version not set"
   },
   "consumes": [
     "application/json"
@@ -109,15 +97,38 @@ var (
     "application/json"
   ],
   "paths": {
-    "/v1/rk/config": {
+    "/v1/rk/apis": {
       "get": {
-        "summary": "DumpConfig Stub",
-        "operationId": "RkCommonService_DumpConfig",
+        "summary": "List API Stub",
+        "operationId": "RkCommonService_APIS",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/DumpConfigResponse"
+              "$ref": "#/definitions/v1ListAPIResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/v1/rk/config": {
+      "get": {
+        "summary": "Config Stub",
+        "operationId": "RkCommonService_Config",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DumpConfigResponse"
             }
           },
           "default": {
@@ -140,7 +151,7 @@ var (
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/GCResponse"
+              "$ref": "#/definitions/v1GCResponse"
             }
           },
           "default": {
@@ -163,7 +174,7 @@ var (
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/HealthyResponse"
+              "$ref": "#/definitions/v1HealthyResponse"
             }
           },
           "default": {
@@ -186,7 +197,30 @@ var (
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/InfoResponse"
+              "$ref": "#/definitions/v1InfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/v1/rk/sys": {
+      "get": {
+        "summary": "Sys Stub",
+        "operationId": "RkCommonService_Sys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SysResponse"
             }
           },
           "default": {
@@ -203,36 +237,122 @@ var (
     }
   },
   "definitions": {
-    "DumpConfigResponse": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1API": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "grpc": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1GRPC"
+          }
+        },
+        "gw": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1GW"
+          }
+        }
+      }
+    },
+    "v1DumpConfigResponse": {
       "type": "object",
       "properties": {
         "viper": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Viper"
+            "$ref": "#/definitions/v1Viper"
           }
         },
         "rk": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RK"
+            "$ref": "#/definitions/v1RK"
           }
         }
       }
     },
-    "GCResponse": {
+    "v1GCResponse": {
       "type": "object",
       "properties": {
         "mem_stats_before_gc": {
-          "$ref": "#/definitions/MemStats"
+          "$ref": "#/definitions/v1MemStats"
         },
         "mem_stats_after_gc": {
-          "$ref": "#/definitions/MemStats"
+          "$ref": "#/definitions/v1MemStats"
         }
       },
       "title": "GC response, memory stats would be returned"
     },
-    "HealthyResponse": {
+    "v1GRPC": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "v1GW": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "path": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "sw": {
+          "type": "string"
+        }
+      }
+    },
+    "v1HealthyResponse": {
       "type": "object",
       "properties": {
         "healthy": {
@@ -240,7 +360,7 @@ var (
         }
       }
     },
-    "Info": {
+    "v1Info": {
       "type": "object",
       "properties": {
         "uid": {
@@ -279,15 +399,26 @@ var (
         }
       }
     },
-    "InfoResponse": {
+    "v1InfoResponse": {
       "type": "object",
       "properties": {
         "info": {
-          "$ref": "#/definitions/Info"
+          "$ref": "#/definitions/v1Info"
         }
       }
     },
-    "MemStats": {
+    "v1ListAPIResponse": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1API"
+          }
+        }
+      }
+    },
+    "v1MemStats": {
       "type": "object",
       "properties": {
         "mem_alloc_byte": {
@@ -322,7 +453,7 @@ var (
       },
       "title": "Memory stats"
     },
-    "RK": {
+    "v1RK": {
       "type": "object",
       "properties": {
         "name": {
@@ -333,51 +464,93 @@ var (
         }
       }
     },
-    "Viper": {
+    "v1ReqMetricsRK": {
       "type": "object",
       "properties": {
-        "name": {
+        "path": {
           "type": "string"
         },
-        "raw": {
-          "type": "string"
-        }
-      }
-    },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "type_url": {
-          "type": "string"
+        "elapsed_nano_p50": {
+          "type": "number",
+          "format": "float"
         },
-        "value": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
-    "rpcStatus": {
-      "type": "object",
-      "properties": {
-        "code": {
+        "elapsed_nano_p90": {
+          "type": "number",
+          "format": "float"
+        },
+        "elapsed_nano_p99": {
+          "type": "number",
+          "format": "float"
+        },
+        "elapsed_nano_p999": {
+          "type": "number",
+          "format": "float"
+        },
+        "count": {
           "type": "integer",
-          "format": "int32"
+          "format": "int64"
         },
-        "message": {
-          "type": "string"
-        },
-        "details": {
+        "res_code": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/protobufAny"
+            "$ref": "#/definitions/v1ResCodeRK"
           }
         }
       }
-    }
-  },
-  "securityDefinitions": {
-    "BasicAuth": {
-      "type": "basic"
+    },
+    "v1ReqResponse": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ReqMetricsRK"
+          }
+        }
+      }
+    },
+    "v1ResCodeRK": {
+      "type": "object",
+      "properties": {
+        "res_code": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "v1SysResponse": {
+      "type": "object",
+      "properties": {
+        "cpu_percentage": {
+          "type": "number",
+          "format": "float"
+        },
+        "mem_percentage": {
+          "type": "number",
+          "format": "float"
+        },
+        "mem_usage_mb": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "up_time": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Viper": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        }
+      }
     }
   }
 }

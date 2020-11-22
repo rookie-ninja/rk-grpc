@@ -1,37 +1,30 @@
 syntax = "proto3";
 
-import "google/api/annotations.proto";
+package rk.grpc.common.v1;
 
 option go_package = "api/v1/rk_grpc_common_v1";
 
 service RkCommonService {
     // GC Stub
-    rpc GC(GCRequest) returns (GCResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/gc"
-        };
-    };
+    rpc GC(GCRequest) returns (GCResponse) {};
 
-    // DumpConfig Stub
-    rpc DumpConfig(DumpConfigRequest) returns (DumpConfigResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/config"
-        };
-    };
+    // Config Stub
+    rpc Config(DumpConfigRequest) returns (DumpConfigResponse) {};
 
     // Info Stub
-    rpc Info(InfoRequest) returns (InfoResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/info"
-        };
-    };
+    rpc Info(InfoRequest) returns (InfoResponse) {};
 
     // Healthy Stub
-    rpc Healthy(HealthyRequest) returns (HealthyResponse) {
-        option (google.api.http) = {
-            get: "/v1/rk/healthy"
-        };
-    };
+    rpc Healthy(HealthyRequest) returns (HealthyResponse) {};
+
+    // List API Stub
+    rpc APIS(ListAPIRequest) returns (ListAPIResponse) {};
+
+    // Sys Stub
+    rpc Sys(SysRequest) returns (SysResponse) {};
+
+    // Req Stub
+    rpc Req(ReqRequest) returns (ReqResponse) {};
 }
 
 // GC request, operator must be set
@@ -107,4 +100,60 @@ message Info {
 
 message InfoResponse {
     Info info = 1;
+}
+
+message ListAPIRequest {}
+
+message API {
+    string name = 1;
+    repeated GRPC grpc = 2;
+    repeated GW gw = 3;
+}
+
+message GRPC {
+    string service = 2;
+    string method = 3;
+    string type = 4;
+    uint32 port = 5;
+}
+
+message GW {
+    uint32 port = 1;
+    string path = 2;
+    string method = 3;
+    string sw = 4;
+}
+
+message ListAPIResponse {
+    repeated API api = 1;
+}
+
+message SysRequest {}
+
+message SysResponse {
+    float  cpu_percentage = 1;
+    float  mem_percentage = 2;
+    uint32 mem_usage_mb = 3;
+    string up_time = 4;
+}
+
+message ReqRequest {}
+
+message ReqMetricsRK {
+    string   path = 1;
+    float    elapsed_nano_p50 = 2;
+    float    elapsed_nano_p90 = 3;
+    float    elapsed_nano_p99 = 4;
+    float    elapsed_nano_p999 = 5;
+    uint32   count = 6;
+    repeated ResCodeRK res_code = 7;
+}
+
+message ResCodeRK {
+    string res_code = 1;
+    uint32 count = 2;
+}
+
+message ReqResponse {
+    repeated ReqMetricsRK metrics = 1;
 }

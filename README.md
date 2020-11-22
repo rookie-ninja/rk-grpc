@@ -265,9 +265,9 @@ EOE
 ### Appendix
 Use bellow command to rebuild proto files
 cd to ./boot folder
-- protoc -I. -I third-party/googleapis --grpc-gateway_out=logtostderr=true,paths=source_relative:. --openapiv2_out=logtostderr=true,json_names_for_fields=false:. api/v1/*.proto
-- protoc -I. -I third-party/googleapis --go_out=plugins=grpc:. --go_opt=paths=source_relative api/v1/*.proto
-- protoc -I. -I third-party/googleapis --grpc-gateway_out=logtostderr=true,paths=source_relative,json_names_for_fields=false:. api/v1/*.proto
+protoc -I. --go_out=plugins=grpc:. --go_opt=paths=source_relative api/v1/*.proto
+protoc -I. --openapiv2_out=logtostderr=true,json_names_for_fields=false,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
+protoc -I. --grpc-gateway_out=logtostderr=true,paths=source_relative,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
 
 ### Contributing
 We encourage and support an active, healthy community of contributors &mdash;
