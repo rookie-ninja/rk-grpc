@@ -2,32 +2,32 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [rk-interceptor](#rk-interceptor)
+- [rk-grpc](#rk-grpc)
   - [Installation](#installation)
   - [Quick Start](#quick-start)
     - [Start gRpc server from YAML config](#start-grpc-server-from-yaml-config)
     - [Server side interceptor](#server-side-interceptor)
     - [Client side interceptor](#client-side-interceptor)
+    - [Common Services](#common-services)
     - [Development Status: Stable](#development-status-stable)
     - [Appendix](#appendix)
     - [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# rk-interceptor
-gRPC interceptor
+# rk-grpc
+Interceptor & bootstrapper designed for grpc. Currently, supports bellow interceptors
 
-- [zap](https://github.com/uber-go/zap)
-- [lumberjack](https://github.com/natefinch/lumberjack)
-- [rk-query](https://github.com/rookie-ninja/rk-logger)
+- logging & metrics
+- auth
+- panic
+- bootstrapper
 
 ## Installation
 `go get -u github.com/rookie-ninja/rk-grpc`
 
 ## Quick Start
-An event needs to be pass into intercetpr in order to write logs
-
-Please refer https://github.com/rookie-ninja/rk-query for easy initialization of Event
+Bootstrapper can be used with YAML config
 
 ### Start gRpc server from YAML config
 User can access common service with localhost:8080/sw
@@ -291,6 +291,20 @@ os=darwin
 arch=amd64
 EOE
 ```
+
+### Common Services
+User can start multiple servers at the same time
+
+| path | description |
+| ------ | ------ |
+| /v1/rk/healthy | always return true if service is available |
+| /v1/rk/gc | trigger gc and return memory stats |
+| /v1/rk/info | return basic info |
+| /v1/rk/config | return configs in memory |
+| /v1/rk/apis | list all apis |
+| /v1/rk/sys | return system information including cpu and memory usage |
+| /v1/rk/req | return requests stats recorded by prometheus client |
+| /v1/rk/tv | web ui for metrics |
 
 ### Development Status: Stable
 
