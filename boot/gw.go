@@ -163,7 +163,6 @@ func newGRpcGWEntry(opts ...gRpcGWOption) *gwEntry {
 
 	// register tv handler
 	if entry.enableTV {
-		println("I ma here")
 		httpMux.HandleFunc("/v1/rk/tv/", tv)
 	}
 

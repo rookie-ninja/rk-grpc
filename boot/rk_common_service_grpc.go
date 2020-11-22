@@ -6,7 +6,6 @@ package rk_grpc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/jsonpb"
 	rk_ctx "github.com/rookie-ninja/rk-common/context"
@@ -115,7 +114,7 @@ func (service *CommonServiceGRpc) Healthy(ctx context.Context, request *rk_grpc_
 func (service *CommonServiceGRpc) APIS(ctx context.Context, request *rk_grpc_common_v1.ListAPIRequest) (*rk_grpc_common_v1.ListAPIResponse, error) {
 	// Add auto generated request ID
 	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
-	rk_grpc_ctx.AddToOutgoingMD(ctx, "Access-Control-Allow-Origin", "*")
+
 	event := rk_grpc_ctx.GetEvent(ctx)
 
 	event.AddPair("apis", "true")
@@ -147,7 +146,6 @@ func (service *CommonServiceGRpc) APIS(ctx context.Context, request *rk_grpc_com
 func (service *CommonServiceGRpc) Sys(ctx context.Context, request *rk_grpc_common_v1.SysRequest) (*rk_grpc_common_v1.SysResponse, error) {
 	// Add auto generated request ID
 	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
-	rk_grpc_ctx.AddToOutgoingMD(ctx, "Access-Control-Allow-Origin", "*")
 
 	event := rk_grpc_ctx.GetEvent(ctx)
 
@@ -177,7 +175,6 @@ func (service *CommonServiceGRpc) Sys(ctx context.Context, request *rk_grpc_comm
 func (service *CommonServiceGRpc) Req(ctx context.Context, request *rk_grpc_common_v1.ReqRequest) (*rk_grpc_common_v1.ReqResponse, error) {
 	// Add auto generated request ID
 	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
-	rk_grpc_ctx.AddToOutgoingMD(ctx, "Access-Control-Allow-Origin", "*")
 
 	event := rk_grpc_ctx.GetEvent(ctx)
 
@@ -209,9 +206,6 @@ func (service *CommonServiceGRpc) Req(ctx context.Context, request *rk_grpc_comm
 			})
 		}
 	}
-
-	bytes, _ := json.Marshal(metrics)
-	println(string(bytes))
 
 	// convert to pb
 	var metricsRK = make([]*rk_grpc_common_v1.ReqMetricsRK, 0)
