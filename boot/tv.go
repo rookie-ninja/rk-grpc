@@ -971,8 +971,6 @@ var notFoundHTML = `<!DOCTYPE html>
 func tv(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 
-	println(path)
-
 	switch path {
 	case "v1/rk/tv":
 		w.Write([]byte(dashboardHTML))
