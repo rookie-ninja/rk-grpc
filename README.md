@@ -9,6 +9,7 @@
     - [Server side interceptor](#server-side-interceptor)
     - [Client side interceptor](#client-side-interceptor)
     - [Development Status: Stable](#development-status-stable)
+    - [Appendix](#appendix)
     - [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -39,6 +40,7 @@ grpc:
     gw:
       enabled: true
       port: 8080
+      enableTV: true
       sw:
         enabled: true
         path: sw
@@ -64,6 +66,36 @@ func main() {
 	boot["greeter"].Bootstrap(fac.CreateEvent())
 }
 ```
+
+Available configuration
+User can start multiple servers at the same time
+
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.name | The name of gRpc server | string |
+| grpc.port | The port of gRpc server | integer |
+| grpc.enableCommonService | Enable embedded common service | true, false |
+| grpc.tls.enabled | enable tls or not | boolean | false | 
+| grpc.tls.user.enabled | enable user provided CA file? | boolean | false |
+| grpc.tls.user.certFile | cert file path | string | empty string |
+| grpc.tls.user.keyFile | key file path | string | empty string | 
+| grpc.tls.auth.enabled | server will generate CA files | string | false |
+| grpc.tls.auth.certOutput | cert file output path | string | current working directory | 
+| grpc.gw.enabled | Enable gateway service over gRpc server | true, false |
+| grpc.gw.port | The port of gRpc gateway | true, false |
+| grpc.gw.insecure | Run gateway with insecure mode | true, false |
+| grpc.gw.enableCommonService | Enable embedded common service | true, false |
+| grpc.gw.enableTV | Enable RK TV | true, false |
+| grpc.sw.enabled | Enable swagger service over gRpc server | true, false |
+| grpc.sw.port | The port of swagger | true, false |
+| grpc.sw.insecure | Run swagger with insecure mode | true, false |
+| grpc.sw.enableCommonService | Enable embedded common service | true, false |
+| grpc.sw.path | The path access swagger service from web | string |
+| grpc.sw.jsonPath | Where the swagger.json files are stored locally | string |
+| grpc.loggingInterceptor.enabled | Enable rk-interceptor logging interceptor | true, false |
+| grpc.loggingInterceptor.enableLogging | Enable rk-interceptor logging interceptor specifically for each Rpc with rk-query | true, false |
+| grpc.loggingInterceptor.enableMetrics | Enable rk-interceptor logging interceptor specifically for each Rpc with prometheus | true, false |
+| grpc.loggingInterceptor.enablePayloadLogging | Enable rk-interceptor logging interceptor specifically for each Rpc's payload | true, false |
 
 ### Server side interceptor
 
@@ -265,9 +297,9 @@ EOE
 ### Appendix
 Use bellow command to rebuild proto files
 cd to ./boot folder
-protoc -I. --go_out=plugins=grpc:. --go_opt=paths=source_relative api/v1/*.proto
-protoc -I. --openapiv2_out=logtostderr=true,json_names_for_fields=false,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
-protoc -I. --grpc-gateway_out=logtostderr=true,paths=source_relative,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
+- protoc -I. --go_out=plugins=grpc:. --go_opt=paths=source_relative api/v1/*.proto
+- protoc -I. --openapiv2_out=logtostderr=true,json_names_for_fields=false,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
+- protoc -I. --grpc-gateway_out=logtostderr=true,paths=source_relative,grpc_api_configuration=api/v1/gw_mapping.yaml:. api/v1/*.proto
 
 ### Contributing
 We encourage and support an active, healthy community of contributors &mdash;
