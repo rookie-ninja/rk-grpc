@@ -10,9 +10,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/prometheus/client_golang v1.8.0
-	github.com/rookie-ninja/rk-common v1.0.4
+	github.com/rookie-ninja/rk-common v1.0.5
 	github.com/rookie-ninja/rk-logger v1.0.5
-	github.com/rookie-ninja/rk-prom v1.0.4
+	github.com/rookie-ninja/rk-prom v1.0.5
 	github.com/rookie-ninja/rk-query v1.0.7
 	github.com/shirou/gopsutil/v3 v3.20.10
 	go.uber.org/zap v1.16.0

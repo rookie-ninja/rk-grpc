@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"github.com/ghodss/yaml"
 	"github.com/rookie-ninja/rk-common/context"
+	rk_entry "github.com/rookie-ninja/rk-common/entry"
 	"github.com/rookie-ninja/rk-grpc/boot/api/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
@@ -21,6 +22,10 @@ import (
 	"strings"
 	"time"
 )
+
+func init() {
+	rk_ctx.RegisterEntryInitializer(NewGRpcEntries)
+}
 
 type bootConfig struct {
 	GRpc []struct {
@@ -79,7 +84,7 @@ type RegFuncGRpc func(server *grpc.Server)
 
 type GRpcEntryOption func(*GRpcEntry)
 
-func NewGRpcEntries(path string, factory *rk_query.EventFactory, logger *zap.Logger) map[string]*GRpcEntry {
+func NewGRpcEntries(path string, factory *rk_query.EventFactory, logger *zap.Logger) map[string]rk_entry.Entry {
 	bytes := readFile(path)
 	config := &bootConfig{}
 	if err := yaml.Unmarshal(bytes, config); err != nil {
@@ -89,8 +94,8 @@ func NewGRpcEntries(path string, factory *rk_query.EventFactory, logger *zap.Log
 	return getGRpcServerEntries(config, factory, logger)
 }
 
-func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, logger *zap.Logger) map[string]*GRpcEntry {
-	res := make(map[string]*GRpcEntry)
+func getGRpcServerEntries(config *bootConfig, factory *rk_query.EventFactory, logger *zap.Logger) map[string]rk_entry.Entry {
+	res := make(map[string]rk_entry.Entry)
 
 	for i := range config.GRpc {
 		element := config.GRpc[i]
