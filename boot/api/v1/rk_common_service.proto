@@ -1,159 +1,59 @@
 syntax = "proto3";
 
-package rk.grpc.common.v1;
+package rk.api.v1;
 
-option go_package = "api/v1/rk_grpc_common_v1";
+import "google/protobuf/struct.proto";
+
+option go_package = "rk/api/v1/rk_grpc_common_v1";
 
 service RkCommonService {
-    // GC Stub
-    rpc GC(GCRequest) returns (GCResponse) {};
+    // Healthy stub
+    rpc Healthy(HealthyRequest) returns (google.protobuf.Struct) {};
+
+    // GC stub
+    rpc Gc(GcRequest) returns (google.protobuf.Struct) {};
+
+    // Info stub
+    rpc Info(InfoRequest) returns (google.protobuf.Struct) {};
 
     // Config Stub
-    rpc Config(DumpConfigRequest) returns (DumpConfigResponse) {};
-
-    // Info Stub
-    rpc Info(InfoRequest) returns (InfoResponse) {};
-
-    // Healthy Stub
-    rpc Healthy(HealthyRequest) returns (HealthyResponse) {};
+    rpc Configs(ConfigsRequest) returns (google.protobuf.Struct) {};
 
     // List API Stub
-    rpc APIS(ListAPIRequest) returns (ListAPIResponse) {};
+    rpc Apis(ApisRequest) returns (google.protobuf.Struct) {};
 
     // Sys Stub
-    rpc Sys(SysRequest) returns (SysResponse) {};
+    rpc Sys(SysRequest) returns (google.protobuf.Struct) {};
 
     // Req Stub
-    rpc Req(ReqRequest) returns (ReqResponse) {};
-}
+    rpc Req(ReqRequest) returns (google.protobuf.Struct) {};
 
-// GC request, operator must be set
-message GCRequest {}
+    // Entries Stub
+    rpc Entries(EntriesRequest) returns (google.protobuf.Struct) {};
 
-// GC response, memory stats would be returned
-message GCResponse {
-    MemStats mem_stats_before_gc = 1;
-    MemStats mem_stats_after_gc = 2;
-}
+    // Certs Stub
+    rpc Certs(CertsRequest) returns (google.protobuf.Struct) {};
 
-// Memory stats
-message MemStats {
-    // Alloc is bytes of allocated heap objects.
-    uint32 mem_alloc_byte = 1;
-
-    // Sys is the total bytes of memory obtained from the OS.
-    uint32 sys_alloc_byte = 2;
-
-    // memory usage
-    float  mem_usage_percentage = 3;
-
-    // LastGC is the time the last garbage collection finished.
-    // Represent as RFC3339 time format
-    string last_gc_timestamp = 4;
-
-    // The number of completed GC cycles.
-    uint32 gc_count_total = 5;
-
-    /// The number of GC cycles that were forced by
-    // the application calling the GC function.
-    uint32 force_gc_count = 6;
-}
-
-message DumpConfigRequest {}
-
-message DumpConfigResponse {
-    repeated Viper viper = 1;
-    repeated RK rk = 2;
-}
-
-message Viper {
-    string name = 1;
-    string raw = 2;
-}
-
-message RK {
-    string name = 1;
-    string raw = 2;
+    // Logs Stub
+    rpc Logs(LogsRequest) returns (google.protobuf.Struct) {};
 }
 
 message HealthyRequest {}
 
-message HealthyResponse {
-    bool healthy = 1;
-}
+message GcRequest {}
 
 message InfoRequest {}
 
-message Info {
-    string uid = 1;
-    string gid = 2;
-    string username = 3;
-    string start_time = 4;
-    uint32 up_time_sec = 5;
-    string up_time_str = 6;
-    string application = 7;
-    string realm = 8;
-    string region = 9;
-    string az = 10;
-    string domain = 11;
-}
+message ConfigsRequest {}
 
-message InfoResponse {
-    Info info = 1;
-}
-
-message ListAPIRequest {}
-
-message API {
-    string name = 1;
-    repeated GRPC grpc = 2;
-    repeated GW gw = 3;
-}
-
-message GRPC {
-    string service = 2;
-    string method = 3;
-    string type = 4;
-    uint32 port = 5;
-}
-
-message GW {
-    uint32 port = 1;
-    string path = 2;
-    string method = 3;
-    string sw = 4;
-}
-
-message ListAPIResponse {
-    repeated API api = 1;
-}
+message ApisRequest {}
 
 message SysRequest {}
 
-message SysResponse {
-    float  cpu_percentage = 1;
-    float  mem_percentage = 2;
-    uint32 mem_usage_mb = 3;
-    string up_time = 4;
-}
-
 message ReqRequest {}
 
-message ReqMetricsRK {
-    string   path = 1;
-    float    elapsed_nano_p50 = 2;
-    float    elapsed_nano_p90 = 3;
-    float    elapsed_nano_p99 = 4;
-    float    elapsed_nano_p999 = 5;
-    uint32   count = 6;
-    repeated ResCodeRK res_code = 7;
-}
+message EntriesRequest {}
 
-message ResCodeRK {
-    string res_code = 1;
-    uint32 count = 2;
-}
+message CertsRequest {}
 
-message ReqResponse {
-    repeated ReqMetricsRK metrics = 1;
-}
+message LogsRequest {}

@@ -1,0 +1,6 @@
+version: v1beta1
+name: github.com/rk-dev/rk-grpc
+build:
+  roots:
+    - boot/api
+    - third-party/googleapis

@@ -1,19 +1,26 @@
 type: google.api.Service
 config_version: 3
 
+# Please refer google.api.Http in third-party/googleapis/google/api/http.proto file for details.
 http:
   rules:
-    - selector: rk.grpc.common.v1.RkCommonService.GC
-      get: /v1/rk/gc
-    - selector: rk.grpc.common.v1.RkCommonService.Config
-      get: /v1/rk/config
-    - selector: rk.grpc.common.v1.RkCommonService.Info
-      get: /v1/rk/info
-    - selector: rk.grpc.common.v1.RkCommonService.Healthy
-      get: /v1/rk/healthy
-    - selector: rk.grpc.common.v1.RkCommonService.APIS
-      get: /v1/rk/apis
-    - selector: rk.grpc.common.v1.RkCommonService.Sys
-      get: /v1/rk/sys
-    - selector: rk.grpc.common.v1.RkCommonService.Req
-      get: /v1/rk/req
+    - selector: rk.api.v1.RkCommonService.Healthy
+      get: /rk/v1/healthy
+    - selector: rk.api.v1.RkCommonService.Gc
+      get: /rk/v1/gc
+    - selector: rk.api.v1.RkCommonService.Info
+      get: /rk/v1/info
+    - selector: rk.api.v1.RkCommonService.Configs
+      get: /rk/v1/configs
+    - selector: rk.api.v1.RkCommonService.Apis
+      get: /rk/v1/apis
+    - selector: rk.api.v1.RkCommonService.Sys
+      get: /rk/v1/sys
+    - selector: rk.api.v1.RkCommonService.Req
+      get: /rk/v1/req
+    - selector: rk.api.v1.RkCommonService.Entries
+      get: /rk/v1/entries
+    - selector: rk.api.v1.RkCommonService.Certs
+      get: /rk/v1/certs
+    - selector: rk.api.v1.RkCommonService.Logs
+      get: /rk/v1/logs

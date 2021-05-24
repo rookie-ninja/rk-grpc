@@ -1,4 +1,4 @@
-// Copyright (c) 2020 rookie-ninja
+// Copyright (c) 2021 rookie-ninja
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
@@ -8,12 +8,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto"
+	"github.com/rookie-ninja/rk-grpc/interceptor/auth/basic_auth"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
-	"github.com/rookie-ninja/rk-logger"
-	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"log"
@@ -28,16 +31,40 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// create event factory
-	factory := rk_query.NewEventFactory()
+	entryName := "example-entry-server-name"
+	entryType := "example-entry-client"
 
 	// create server interceptor
+	// basic interceptor
+	basicInter := rkgrpcbasic.UnaryServerInterceptor(
+		rkgrpcbasic.WithEntryNameAndType(entryName, entryType))
+
+	// logging interceptor
+	logInter := rkgrpclog.UnaryServerInterceptor(
+		rkgrpclog.WithEntryNameAndType(entryName, entryType),
+		rkgrpclog.WithZapLoggerEntry(rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()),
+		rkgrpclog.WithEventLoggerEntry(rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()))
+
+	// prometheus metrics interceptor
+	metricsInter := rkgrpcmetrics.UnaryServerInterceptor(
+		rkgrpcmetrics.WithEntryNameAndType(entryName, entryType),
+		rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()))
+
+	// basic auth interceptor
+	basicAuthInter := rkgrpcbasicauth.UnaryServerInterceptor(
+		rkgrpcbasicauth.WithEntryNameAndType(entryName, entryType),
+		rkgrpcbasicauth.WithCredential("user:name"))
+
+	// panic interceptor
+	panicInter := rkgrpcpanic.UnaryServerInterceptor()
+
 	opt := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			rk_grpc_log.UnaryServerInterceptor(
-				rk_grpc_log.WithEventFactory(factory),
-				rk_grpc_log.WithLogger(rk_logger.StdoutLogger)),
-			rk_grpc_panic.UnaryServerInterceptor(rk_grpc_panic.PanicToStderr)),
+			basicInter,
+			logInter,
+			metricsInter,
+			basicAuthInter,
+			panicInter),
 	}
 
 	// create server
@@ -53,7 +80,7 @@ func main() {
 type GreeterServer struct{}
 
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
-	event := rk_grpc_ctx.GetEvent(ctx)
+	event := rkgrpcctx.GetEvent(ctx)
 	// add fields
 	event.AddFields(zap.String("key", "value"))
 	// add error
@@ -67,15 +94,16 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	time.Sleep(1 * time.Second)
 	event.EndTimer("sleep")
 	// add to metadata
-	rk_grpc_ctx.AddToOutgoingMD(ctx, "key", "1", "2")
+	rkgrpcctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
 
 	// print incoming metadata
-	bytes, _ := json.Marshal(rk_grpc_ctx.GetIncomingMD(ctx))
+	bytes, _ := json.Marshal(rkgrpcctx.GetIncomingMD(ctx))
 	println(string(bytes))
 
-	rk_grpc_ctx.GetLogger(ctx).Info("this is info message")
+	// print with logger to check whether id was printed
+	rkgrpcctx.GetZapLogger(ctx).Info("this is info message")
 
 	return &proto.HelloResponse{
 		Message: "hello",

@@ -1,0 +1,614 @@
+// Copyright (c) 2021 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
+package rkgrpc
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/rookie-ninja/rk-common/common"
+	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
+	"github.com/rookie-ninja/rk-query"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
+	"runtime"
+)
+
+const (
+	CommonServiceEntryType         = "GrpcCommonServiceEntry"
+	CommonServiceEntryNameDefault  = "GrpcCommonServiceDefault"
+	CommonServiceEntryDescription  = "Internal RK entry which implements commonly used API with grpc framework."
+	CommonServiceGwMappingFilePath = "api/v1/gw_mapping.yaml"
+)
+
+// Bootstrap config of common service.
+// 1: Enabled: Enable common service.
+type BootConfigCommonService struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// RK common service which contains commonly used APIs
+// 1: Healthy GET Returns true if process is alive
+// 2: Gc GET Trigger gc()
+// 3: Info GET Returns entry basic information
+// 4: Configs GET Returns viper configs in GlobalAppCtx
+// 5: Apis GET Returns list of apis registered in gin router
+// 6: Sys GET Returns CPU and Memory information
+// 7: Req GET Returns request metrics
+// 8: Certs GET Returns certificates
+// 9: Entries GET Returns entries
+type CommonServiceEntry struct {
+	EntryName         string                    `json:"entryName" yaml:"entryName"`
+	EntryType         string                    `json:"entryType" yaml:"entryType"`
+	EntryDescription  string                    `json:"entryDescription" yaml:"entryDescription"`
+	EventLoggerEntry  *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	ZapLoggerEntry    *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
+	RegFuncGrpc       GrpcRegFunc               `json:"regFuncGrpc" yaml:"regFuncGrpc"`
+	RegFuncGw         GwRegFunc                 `json:"regFuncGw" yaml:"regFuncGw"`
+	GwMappingFilePath string                    `json:"gwMappingFilePath" yaml:"gwMappingFilePath"`
+	GwMapping         map[string]string         `json:"gwMapping" yaml:"gwMapping"`
+}
+
+// Common service entry option function.
+type CommonServiceEntryOption func(*CommonServiceEntry)
+
+// Provide name.
+func WithNameCommonService(name string) CommonServiceEntryOption {
+	return func(entry *CommonServiceEntry) {
+		entry.EntryName = name
+	}
+}
+
+// Provide rkentry.EventLoggerEntry.
+func WithEventLoggerEntryCommonService(eventLoggerEntry *rkentry.EventLoggerEntry) CommonServiceEntryOption {
+	return func(entry *CommonServiceEntry) {
+		entry.EventLoggerEntry = eventLoggerEntry
+	}
+}
+
+// Provide rkentry.ZapLoggerEntry.
+func WithZapLoggerEntryCommonService(zapLoggerEntry *rkentry.ZapLoggerEntry) CommonServiceEntryOption {
+	return func(entry *CommonServiceEntry) {
+		entry.ZapLoggerEntry = zapLoggerEntry
+	}
+}
+
+// Create new common service entry with options.
+func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry {
+	entry := &CommonServiceEntry{
+		EntryName:         CommonServiceEntryNameDefault,
+		EntryType:         CommonServiceEntryType,
+		EntryDescription:  CommonServiceEntryDescription,
+		ZapLoggerEntry:    rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
+		EventLoggerEntry:  rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
+		RegFuncGrpc:       registerRkCommonService,
+		RegFuncGw:         rk_grpc_common_v1.RegisterRkCommonServiceHandlerFromEndpoint,
+		GwMappingFilePath: CommonServiceGwMappingFilePath,
+		GwMapping:         make(map[string]string),
+	}
+
+	for i := range opts {
+		opts[i](entry)
+	}
+
+	if entry.ZapLoggerEntry == nil {
+		entry.ZapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
+	}
+
+	if entry.EventLoggerEntry == nil {
+		entry.EventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
+	}
+
+	if len(entry.EntryName) < 1 {
+		entry.EntryName = CommonServiceEntryNameDefault
+	}
+
+	return entry
+}
+
+// Bootstrap common service entry
+func (entry *CommonServiceEntry) Bootstrap(context.Context) {
+	// No op
+	event := entry.EventLoggerEntry.GetEventHelper().Start(
+		"bootstrap",
+		rkquery.WithEntryName(entry.EntryName),
+		rkquery.WithEntryType(entry.EntryType))
+
+	entry.logBasicInfo(event)
+
+	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
+
+	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping CommonServiceEntry.", event.GetFields()...)
+}
+
+// Interrupt common service entry
+func (entry *CommonServiceEntry) Interrupt(context.Context) {
+	event := entry.EventLoggerEntry.GetEventHelper().Start(
+		"interrupt",
+		rkquery.WithEntryName(entry.EntryName),
+		rkquery.WithEntryType(entry.EntryType))
+
+	entry.logBasicInfo(event)
+
+	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
+
+	entry.ZapLoggerEntry.GetLogger().Info("Interrupting CommonServiceEntry.", event.GetFields()...)
+}
+
+// Get name of entry.
+func (entry *CommonServiceEntry) GetName() string {
+	return entry.EntryName
+}
+
+// Get entry type.
+func (entry *CommonServiceEntry) GetType() string {
+	return entry.EntryType
+}
+
+// Stringfy entry.
+func (entry *CommonServiceEntry) String() string {
+	bytes, _ := json.Marshal(entry)
+	return string(bytes)
+}
+
+// Marshal entry.
+func (entry *CommonServiceEntry) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{
+		"entryName":        entry.EntryName,
+		"entryType":        entry.EntryType,
+		"entryDescription": entry.EntryDescription,
+		"zapLoggerEntry":   entry.ZapLoggerEntry.GetName(),
+		"eventLoggerEntry": entry.EventLoggerEntry.GetName(),
+	}
+
+	return json.Marshal(&m)
+}
+
+// Not supported.
+func (entry *CommonServiceEntry) UnmarshalJSON([]byte) error {
+	return nil
+}
+
+// Get description of entry.
+func (entry *CommonServiceEntry) GetDescription() string {
+	return entry.EntryDescription
+}
+
+func (entry *CommonServiceEntry) logBasicInfo(event rkquery.Event) {
+	event.AddFields(
+		zap.String("entryName", entry.EntryName),
+		zap.String("entryType", entry.EntryType),
+	)
+}
+
+// Helper function of /healthy call.
+func doHealthy(context.Context) *rkentry.HealthyResponse {
+	return &rkentry.HealthyResponse{
+		Healthy: true,
+	}
+}
+
+// Healthy Stub.
+func (entry *CommonServiceEntry) Healthy(ctx context.Context, request *rk_grpc_common_v1.HealthyRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+	event := rkgrpcctx.GetEvent(ctx)
+
+	event.AddPair("healthy", "true")
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doHealthy(ctx)))
+}
+
+// Helper function of /gc.
+func doGc(context.Context) *rkentry.GcResponse {
+	before := rkentry.NewMemInfo()
+	runtime.GC()
+	after := rkentry.NewMemInfo()
+
+	return &rkentry.GcResponse{
+		MemStatBeforeGc: before,
+		MemStatAfterGc:  after,
+	}
+}
+
+// Gc Stub.
+func (entry *CommonServiceEntry) Gc(ctx context.Context, request *rk_grpc_common_v1.GcRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGc(ctx)))
+}
+
+// Helper function of /info.
+func doInfo(context.Context) *rkentry.ProcessInfo {
+	return rkentry.NewProcessInfo()
+}
+
+// Info Stub.
+func (entry *CommonServiceEntry) Info(ctx context.Context, request *rk_grpc_common_v1.InfoRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doInfo(ctx)))
+}
+
+// Helper function of /configs.
+func doConfigs(context.Context) *rkentry.ConfigsResponse {
+	res := &rkentry.ConfigsResponse{
+		Entries: make([]*rkentry.ConfigsResponse_ConfigEntry, 0),
+	}
+
+	for _, v := range rkentry.GlobalAppCtx.ListConfigEntries() {
+		configEntry := &rkentry.ConfigsResponse_ConfigEntry{
+			EntryName:        v.GetName(),
+			EntryType:        v.GetType(),
+			EntryDescription: v.GetDescription(),
+			EntryMeta:        v.GetViperAsMap(),
+			Path:             v.Path,
+		}
+
+		res.Entries = append(res.Entries, configEntry)
+	}
+
+	return res
+}
+
+// Configs Stub.
+func (entry *CommonServiceEntry) Configs(ctx context.Context, request *rk_grpc_common_v1.ConfigsRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doConfigs(ctx)))
+}
+
+// Compose swagger URL based on SwEntry.
+func getSwUrl(entry *GwEntry, ctx context.Context) string {
+	if entry.IsSwEnabled() {
+		remoteIp, _, _ := rkgrpcctx.GetRemoteAddressSet(ctx)
+		scheme := "http"
+		if entry.IsServerTlsEnabled() {
+			scheme = "https"
+		}
+
+		return fmt.Sprintf("%s://%s:%d%s",
+			scheme,
+			remoteIp,
+			entry.SwEntry.Port,
+			entry.SwEntry.Path)
+	}
+
+	return ""
+}
+
+// Compose gateway related elements based on GwEntry and SwEntry.
+func getGwMapping(entry *GrpcEntry, ctx context.Context, grpcMethod string) *rkentry.ApisResponse_Rest {
+	res := &rkentry.ApisResponse_Rest{}
+
+	if !entry.IsGwEnabled() {
+		return res
+	}
+
+	if v, ok := entry.GwEntry.GwMapping[grpcMethod]; !ok {
+		return res
+	} else {
+		res.Port = entry.GwEntry.HttpPort
+		res.Method = v.Method
+		res.Pattern = v.Pattern
+		res.SwUrl = getSwUrl(entry.GwEntry, ctx)
+	}
+
+	return res
+}
+
+func doApis(ctx context.Context) *rkentry.ApisResponse {
+	res := &rkentry.ApisResponse{
+		Entries: make([]*rkentry.ApisResponse_Entry, 0),
+	}
+
+	grpcEntry := getEntry(ctx)
+
+	if grpcEntry == nil {
+		return res
+	}
+
+	for serviceName, serviceInfo := range grpcEntry.Server.GetServiceInfo() {
+		for i := range serviceInfo.Methods {
+			method := serviceInfo.Methods[i]
+			entry := &rkentry.ApisResponse_Entry{
+				EntryName: grpcEntry.GetName(),
+				Grpc: &rkentry.ApisResponse_Grpc{
+					Service: serviceName,
+					Method:  method.Name,
+					Port:    grpcEntry.Port,
+					Gw:      getGwMapping(grpcEntry, ctx, serviceName+"."+method.Name),
+				},
+			}
+
+			res.Entries = append(res.Entries, entry)
+		}
+	}
+
+	return res
+}
+
+// Apis Stub
+func (entry *CommonServiceEntry) Apis(ctx context.Context, request *rk_grpc_common_v1.ApisRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doApis(ctx)))
+}
+
+// Helper function of /sys
+func doSys(context.Context) *rkentry.SysResponse {
+	return &rkentry.SysResponse{
+		CpuInfo:   rkentry.NewCpuInfo(),
+		MemInfo:   rkentry.NewMemInfo(),
+		NetInfo:   rkentry.NewNetInfo(),
+		OsInfo:    rkentry.NewOsInfo(),
+		GoEnvInfo: rkentry.NewGoEnvInfo(),
+	}
+}
+
+// Sys Stub
+func (entry *CommonServiceEntry) Sys(ctx context.Context, request *rk_grpc_common_v1.SysRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doSys(ctx)))
+}
+
+// Helper function for Req call
+func doReq(ctx context.Context) *rkentry.ReqResponse {
+	vector := rkgrpcmetrics.GetMetricsSet(ctx).GetSummary(rkgrpcmetrics.ElapsedNano)
+	reqMetrics := rkentry.NewPromMetricsInfo(vector)
+
+	// Fill missed metrics
+	type innerGrpcInfo struct {
+		grpcService string
+		grpcMethod  string
+	}
+
+	apis := make([]*innerGrpcInfo, 0)
+
+	grpcEntry := GetGrpcEntry(rkgrpcctx.GetEntryName(ctx))
+
+	if grpcEntry != nil {
+		infos := grpcEntry.Server.GetServiceInfo()
+		for serviceName, serviceInfo := range infos {
+			for j := range serviceInfo.Methods {
+				apis = append(apis, &innerGrpcInfo{
+					grpcService: serviceName,
+					grpcMethod:  serviceInfo.Methods[j].Name,
+				})
+			}
+		}
+	}
+
+	// Add empty metrics into result
+	for i := range apis {
+		api := apis[i]
+		contains := false
+		// check whether api was in request metrics from prometheus
+		for j := range reqMetrics {
+			if reqMetrics[j].GrpcMethod == api.grpcMethod && reqMetrics[j].GrpcService == api.grpcService {
+				contains = true
+			}
+		}
+
+		if !contains {
+			reqMetrics = append(reqMetrics, &rkentry.ReqMetricsRK{
+				GrpcService: apis[i].grpcService,
+				GrpcMethod:  apis[i].grpcMethod,
+				ResCode:     make([]*rkentry.ResCodeRK, 0),
+			})
+		}
+	}
+
+	return &rkentry.ReqResponse{
+		Metrics: reqMetrics,
+	}
+}
+
+// Req Stub
+func (entry *CommonServiceEntry) Req(ctx context.Context, request *rk_grpc_common_v1.ReqRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReq(ctx)))
+}
+
+// Helper function of /entries
+func doEntriesHelper(m map[string]rkentry.Entry, res *rkentry.EntriesResponse) {
+	entries := make([]*rkentry.EntriesResponse_Entry, 0)
+
+	// Iterate entries and construct EntryElement
+	for i := range m {
+		entry := m[i]
+		element := &rkentry.EntriesResponse_Entry{
+			EntryName:        entry.GetName(),
+			EntryType:        entry.GetType(),
+			EntryDescription: entry.GetDescription(),
+			EntryMeta:        entry,
+		}
+
+		entries = append(entries, element)
+	}
+
+	var entryType string
+
+	if len(entries) > 0 {
+		entryType = entries[0].EntryType
+		res.Entries[entryType] = entries
+	}
+}
+
+// Helper function of /entries
+func doEntries(ctx context.Context) *rkentry.EntriesResponse {
+	res := &rkentry.EntriesResponse{
+		Entries: make(map[string][]*rkentry.EntriesResponse_Entry),
+	}
+
+	if ctx == nil {
+		return res
+	}
+
+	// Iterate all internal and external entries in GlobalAppCtx
+	doEntriesHelper(rkentry.GlobalAppCtx.ListEntries(), res)
+	doEntriesHelper(rkentry.GlobalAppCtx.ListEventLoggerEntriesRaw(), res)
+	doEntriesHelper(rkentry.GlobalAppCtx.ListZapLoggerEntriesRaw(), res)
+	doEntriesHelper(rkentry.GlobalAppCtx.ListConfigEntriesRaw(), res)
+	doEntriesHelper(rkentry.GlobalAppCtx.ListCertEntriesRaw(), res)
+
+	// App info entry
+	appInfoEntry := rkentry.GlobalAppCtx.GetAppInfoEntry()
+	res.Entries[appInfoEntry.GetType()] = []*rkentry.EntriesResponse_Entry{
+		{
+			EntryName:        appInfoEntry.GetName(),
+			EntryType:        appInfoEntry.GetType(),
+			EntryDescription: appInfoEntry.GetDescription(),
+			EntryMeta:        appInfoEntry,
+		},
+	}
+
+	return res
+}
+
+// Entries Stub
+func (entry *CommonServiceEntry) Entries(ctx context.Context, request *rk_grpc_common_v1.EntriesRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doEntries(ctx)))
+}
+
+// Helper function of /entries
+func doCerts(context.Context) *rkentry.CertsResponse {
+	res := &rkentry.CertsResponse{
+		Entries: make([]*rkentry.CertsResponse_Entry, 0),
+	}
+
+	entries := rkentry.GlobalAppCtx.ListCertEntries()
+
+	// Iterator cert entries and construct CertResponse
+	for i := range entries {
+		entry := entries[i]
+
+		certEntry := &rkentry.CertsResponse_Entry{
+			EntryName:        entry.GetName(),
+			EntryType:        entry.GetType(),
+			EntryDescription: entry.GetDescription(),
+		}
+
+		if entry.Retriever != nil {
+			certEntry.Endpoint = entry.Retriever.GetEndpoint()
+			certEntry.Locale = entry.Retriever.GetLocale()
+			certEntry.Provider = entry.Retriever.GetProvider()
+			certEntry.ServerCertPath = entry.Retriever.GetServerCertPath()
+			certEntry.ServerKeyPath = entry.Retriever.GetServerKeyPath()
+			certEntry.ClientCertPath = entry.Retriever.GetClientCertPath()
+			certEntry.ClientKeyPath = entry.Retriever.GetClientKeyPath()
+		}
+
+		if entry.Store != nil {
+			certEntry.ServerCert = entry.Store.SeverCertString()
+			certEntry.ClientCert = entry.Store.ClientCertString()
+		}
+
+		res.Entries = append(res.Entries, certEntry)
+	}
+
+	return res
+}
+
+func (entry *CommonServiceEntry) Certs(ctx context.Context, request *rk_grpc_common_v1.CertsRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	res, err := structpb.NewStruct(rkcommon.ConvertStructToMap(doCerts(ctx)))
+	return res, err
+}
+
+// Helper function of /logs
+func doLogsHelper(m map[string]rkentry.Entry, res *rkentry.LogsResponse) {
+	entries := make([]*rkentry.LogsResponse_Entry, 0)
+
+	// Iterate logger related entries and construct LogEntryElement
+	for i := range m {
+		entry := m[i]
+		element := &rkentry.LogsResponse_Entry{
+			EntryName:        entry.GetName(),
+			EntryType:        entry.GetType(),
+			EntryDescription: entry.GetDescription(),
+			EntryMeta:        entry,
+		}
+
+		if val, ok := entry.(*rkentry.ZapLoggerEntry); ok {
+			if val.LoggerConfig != nil {
+				element.OutputPaths = val.LoggerConfig.OutputPaths
+				element.ErrorOutputPaths = val.LoggerConfig.ErrorOutputPaths
+			}
+		}
+
+		if val, ok := entry.(*rkentry.EventLoggerEntry); ok {
+			if val.LoggerConfig != nil {
+				element.OutputPaths = val.LoggerConfig.OutputPaths
+				element.ErrorOutputPaths = val.LoggerConfig.ErrorOutputPaths
+			}
+		}
+
+		entries = append(entries, element)
+	}
+
+	var entryType string
+
+	if len(entries) > 0 {
+		entryType = entries[0].EntryType
+	}
+
+	res.Entries[entryType] = entries
+}
+
+// Helper function of /logs
+func doLogs(context.Context) *rkentry.LogsResponse {
+	res := &rkentry.LogsResponse{
+		Entries: make(map[string][]*rkentry.LogsResponse_Entry),
+	}
+
+	doLogsHelper(rkentry.GlobalAppCtx.ListEventLoggerEntriesRaw(), res)
+	doLogsHelper(rkentry.GlobalAppCtx.ListZapLoggerEntriesRaw(), res)
+
+	return res
+}
+
+func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_common_v1.LogsRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
+}
+
+// Register common service
+func registerRkCommonService(server *grpc.Server) {
+	rk_grpc_common_v1.RegisterRkCommonServiceServer(server, NewCommonServiceEntry())
+}
+
+// Extract grpc entry from grpc_zap middleware
+func getEntry(ctx context.Context) *GrpcEntry {
+	if ctx == nil {
+		return nil
+	}
+
+	entryRaw := rkentry.GlobalAppCtx.GetEntry(rkgrpcctx.GetEntryName(ctx))
+	if entryRaw == nil {
+		return nil
+	}
+
+	entry, _ := entryRaw.(*GrpcEntry)
+	return entry
+}

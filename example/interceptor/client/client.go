@@ -1,4 +1,4 @@
-// Copyright (c) 2020 rookie-ninja
+// Copyright (c) 2021 rookie-ninja
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
@@ -7,28 +7,46 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
-	"github.com/rookie-ninja/rk-grpc/interceptor/retry"
-	"github.com/rookie-ninja/rk-logger"
-	"github.com/rookie-ninja/rk-query"
+	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
+	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
 	"google.golang.org/grpc"
 	"log"
 	"time"
 )
 
 func main() {
-	// create event factory
-	factory := rk_query.NewEventFactory()
+	entryName := "example-entry-client-name"
+	entryType := "example-entry-client"
+
+	// create server interceptor
+	basicInter := rkgrpcbasic.UnaryClientInterceptor(
+		rkgrpcbasic.WithEntryNameAndType(entryName, entryType))
+
+	logInter := rkgrpclog.UnaryClientInterceptor(
+		rkgrpclog.WithEntryNameAndType(entryName, entryType),
+		rkgrpclog.WithZapLoggerEntry(rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()),
+		rkgrpclog.WithEventLoggerEntry(rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()))
+
+	metricsInter := rkgrpcmetrics.UnaryClientInterceptor(
+		rkgrpcmetrics.WithEntryNameAndType(entryName, entryType),
+		rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()))
+
+	panicInter := rkgrpcpanic.UnaryClientInterceptor()
 
 	// create client interceptor
 	opt := []grpc.DialOption{
 		grpc.WithChainUnaryInterceptor(
-			rk_grpc_log.UnaryClientInterceptor(
-				rk_grpc_log.WithEventFactory(factory),
-				rk_grpc_log.WithLogger(rk_logger.StdoutLogger)),
-			rk_grpc_retry.UnaryClientInterceptor()),
+			basicInter,
+			logInter,
+			metricsInter,
+			panicInter,
+		),
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	}
@@ -43,21 +61,21 @@ func main() {
 	// create grpc client
 	c := proto.NewGreeterClient(conn)
 	// create with rk context
-	ctx, cancel := context.WithTimeout(rk_grpc_ctx.NewContext(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(rkgrpcctx.NewContext(), 5*time.Second)
 	defer cancel()
 
 	// add metadata
-	rk_grpc_ctx.AddToOutgoingMD(ctx, "key", "1", "2")
+	rkgrpcctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rk_grpc_ctx.AddRequestIdToOutgoingMD(ctx)
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
 
 	// call server
 	r, err := c.SayHello(ctx, &proto.HelloRequest{Name: "name"})
 
-	rk_grpc_ctx.GetLogger(ctx).Info("This is info message")
+	rkgrpcctx.GetZapLogger(ctx).Info("This is info message")
 
 	// print incoming metadata
-	bytes, _ := json.Marshal(rk_grpc_ctx.GetIncomingMD(ctx))
+	bytes, _ := json.Marshal(rkgrpcctx.GetIncomingMD(ctx))
 	println(string(bytes))
 
 	if err != nil {

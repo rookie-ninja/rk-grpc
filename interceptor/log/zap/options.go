@@ -1,87 +1,80 @@
-// Copyright (c) 2020 rookie-ninja
+// Copyright (c) 2021 rookie-ninja
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_grpc_log
+package rkgrpclog
 
 import (
-	"github.com/rookie-ninja/rk-logger"
-	"github.com/rookie-ninja/rk-query"
-	"go.uber.org/zap"
+	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var (
-	defaultOptions = &options{
-		enableLogging:        true,
-		enablePayloadLogging: true,
-		enableMetrics:        true,
-		errorToCode:          defaultErrorToCodes,
-		eventFactory:         rk_query.NewEventFactory(),
-		logger:               rk_logger.NoopLogger,
-	}
-)
+// Interceptor would distinguish metrics set based on.
+var optionsMap = make(map[string]*optionSet)
 
-func mergeOpt(opts []Option) {
+func newOptionSet(rpcType string, opts ...Option) *optionSet {
+	set := &optionSet{
+		EntryName: rkgrpcctx.RkEntryNameValue,
+		EntryType: rkgrpcctx.RkEntryTypeValue,
+		ErrorToCodeFunc: func(err error) codes.Code {
+			return status.Code(err)
+		},
+		ZapLoggerEntry:   rkentry.NoopZapLoggerEntry(),
+		EventLoggerEntry: rkentry.NoopEventLoggerEntry(),
+	}
+
 	for i := range opts {
-		opts[i](defaultOptions)
+		opts[i](set)
+	}
+
+	key := rkgrpcctx.ToOptionsKey(set.EntryName, rpcType)
+	if _, ok := optionsMap[key]; !ok {
+		optionsMap[key] = set
+	}
+
+	return set
+}
+
+// options which is used while initializing logging interceptor
+type optionSet struct {
+	EntryName        string
+	EntryType        string
+	ErrorToCodeFunc  func(err error) codes.Code
+	ZapLoggerEntry   *rkentry.ZapLoggerEntry
+	EventLoggerEntry *rkentry.EventLoggerEntry
+}
+
+type Option func(*optionSet)
+
+func WithEntryNameAndType(entryName, entryType string) Option {
+	return func(set *optionSet) {
+		set.EntryName = entryName
+		set.EntryType = entryType
 	}
 }
 
-func defaultErrorToCodes(err error) codes.Code {
-	return status.Code(err)
-}
-
-type options struct {
-	enableMetrics        bool
-	enableLogging        bool
-	enablePayloadLogging bool
-	errorToCode          func(err error) codes.Code
-	eventFactory         *rk_query.EventFactory
-	logger               *zap.Logger
-}
-
-type Option func(*options)
-
-func WithEventFactory(factory *rk_query.EventFactory) Option {
-	return func(opt *options) {
-		if factory == nil {
-			factory = rk_query.NewEventFactory()
+func WithErrorToCode(errorToCodeFunc func(err error) codes.Code) Option {
+	return func(set *optionSet) {
+		if errorToCodeFunc != nil {
+			set.ErrorToCodeFunc = errorToCodeFunc
 		}
-		opt.eventFactory = factory
 	}
 }
 
-func WithLogger(logger *zap.Logger) Option {
-	return func(opt *options) {
-		if logger == nil {
-			logger = rk_logger.NoopLogger
+func WithZapLoggerEntry(zapLoggerEntry *rkentry.ZapLoggerEntry) Option {
+	return func(set *optionSet) {
+		if zapLoggerEntry != nil {
+			set.ZapLoggerEntry = zapLoggerEntry
 		}
-		opt.logger = logger
 	}
 }
 
-func WithEnableLogging(enable bool) Option {
-	return func(opt *options) {
-		opt.enableLogging = enable
-	}
-}
-
-func WithEnableMetrics(enable bool) Option {
-	return func(opt *options) {
-		opt.enableMetrics = enable
-	}
-}
-
-func WithEnablePayloadLogging(enable bool) Option {
-	return func(opt *options) {
-		opt.enablePayloadLogging = enable
-	}
-}
-
-func WithErrorToCode(funcs func(err error) codes.Code) Option {
-	return func(opt *options) {
-		opt.errorToCode = funcs
+func WithEventLoggerEntry(eventLoggerEntry *rkentry.EventLoggerEntry) Option {
+	return func(set *optionSet) {
+		if eventLoggerEntry != nil {
+			set.EventLoggerEntry = eventLoggerEntry
+		}
 	}
 }
