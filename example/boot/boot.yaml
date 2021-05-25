@@ -22,8 +22,7 @@ cert:                                                # Optional
     locale: "*::*::*::*"                             # Optional, default: *::*::*::*
     serverCertPath: "example/boot/server.pem"        # Optional, default: "", path of certificate on local FS
     serverKeyPath: "example/boot/server-key.pem"     # Optional, default: "", path of certificate on local FS
-#    clientCertPath: "example/client.pem"            # Optional, default: "", path of certificate on local FS
-#    clientKeyPath: "example/client.pem"             # Optional, default: "", path of certificate on local FS
+    clientCertPath: "example/boot/server.pem"        # Optional, default: "", path of certificate on local FS
 config:
   - name: rk-main                                    # Required
     path: "example/boot/config.yaml"                 # Required
@@ -40,6 +39,8 @@ grpc:
     gw:
       enabled: true                                  # Optional, default: false
       port: 8080                                     # Required
+#      gwMappingFilePaths:                           # Optional
+#        - ""
       cert:
         ref: "local-cert"                            # Optional, default: "", reference of cert entry declared above
       tv:

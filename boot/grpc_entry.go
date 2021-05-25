@@ -6,6 +6,7 @@ package rkgrpc
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-common/common"
@@ -20,6 +21,7 @@ import (
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"net"
 	"path"
 	"reflect"
@@ -276,6 +278,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithZapLoggerEntryGw(zapLoggerEntry),
 				WithEventLoggerEntryGw(eventLoggerEntry),
 				WithGrpcDialOptionsGw(dialOptions...),
+				WithGwMappingFilePathsGw(element.GW.GwMappingFilePaths...),
 				WithHttpPortGw(element.GW.Port),
 				WithGrpcPortGw(element.Port),
 				WithCertEntryGw(rkentry.GlobalAppCtx.GetCertEntry(element.GW.Cert.Ref)),
@@ -564,6 +567,13 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	}
 
 	entry.Listener = listener
+
+	if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
+		rkcommon.ShutdownWithError(err)
+	} else {
+		tls := credentials.NewServerTLSFromCert(&cert)
+		entry.ServerOpts = append(entry.ServerOpts, grpc.Creds(tls))
+	}
 
 	// make unary and stream interceptors into server opts
 	entry.ServerOpts = append(entry.ServerOpts,

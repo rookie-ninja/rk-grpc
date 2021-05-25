@@ -338,8 +338,8 @@ func (entry *SwEntry) listFilesWithSuffix(urlConfig *swUrlConfig) {
 			swaggerJsonFiles[key] = string(bytes)
 
 			urlConfig.Urls = append(urlConfig.Urls, &swUrl{
-				Name: path.Join(entry.Path, key),
-				Url:  key,
+				Name: key,
+				Url:  path.Join(entry.Path, key),
 			})
 		}
 	}

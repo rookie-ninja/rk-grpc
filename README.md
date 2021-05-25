@@ -85,7 +85,8 @@ User can start multiple servers at the same time
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
 | grpc.cert.ref | Reference of cert entry declared in cert section | string | "" |
 | grpc.gw.enabled | Enable gateway service over gRpc server | boolean | false |
-| grpc.gw.port | The port of gRpc gateway | nil, server won't start |
+| grpc.gw.port | The port of gRpc gateway | integer | nil, server won't start |
+| grpc.gw.gwMappingFilePaths | The grpc gateway mapping file path | string array | empty array |
 | grpc.gw.cert.ref | Reference of cert entry declared in cert section | string | "" |
 | grpc.gw.tv.enabled | Enable RK TV | boolean | false |
 | grpc.gw.sw.enabled | Enable swagger service over gRpc server | boolean | false |

@@ -250,12 +250,6 @@ func (entry *GwEntry) addRegFuncsGw(funcs ...GwRegFunc) {
 }
 
 func (entry *GwEntry) parseGwMapping() {
-	grpcEntry := GetGrpcEntry(entry.EntryName)
-
-	if grpcEntry == nil || grpcEntry.Server == nil {
-		return
-	}
-
 	// Parse common service.
 	bytes := readFileFromPkger(entry.CommonServiceEntry.GwMappingFilePath)
 	entry.parseGwMappingHelper(bytes)

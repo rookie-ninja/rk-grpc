@@ -30,7 +30,3 @@ buf:
 pkger:
 	@echo "running pkger..."
 	@pkger -o boot
-
-
-
-
