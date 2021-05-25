@@ -15,6 +15,3 @@
 # vendor/
 
 .idea
-
-# Protobuf generated file
-boot/api/gen
