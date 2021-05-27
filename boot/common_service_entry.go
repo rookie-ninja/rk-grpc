@@ -425,8 +425,6 @@ func (entry *CommonServiceEntry) Req(ctx context.Context, request *rk_grpc_commo
 
 // Helper function of /entries
 func doEntriesHelper(m map[string]rkentry.Entry, res *rkentry.EntriesResponse) {
-	entries := make([]*rkentry.EntriesResponse_Entry, 0)
-
 	// Iterate entries and construct EntryElement
 	for i := range m {
 		entry := m[i]
@@ -437,14 +435,11 @@ func doEntriesHelper(m map[string]rkentry.Entry, res *rkentry.EntriesResponse) {
 			EntryMeta:        entry,
 		}
 
-		entries = append(entries, element)
-	}
-
-	var entryType string
-
-	if len(entries) > 0 {
-		entryType = entries[0].EntryType
-		res.Entries[entryType] = entries
+		if entries, ok := res.Entries[entry.GetType()]; ok {
+			entries = append(entries, element)
+		} else {
+			res.Entries[entry.GetType()] = []*rkentry.EntriesResponse_Entry{element}
+		}
 	}
 }
 
