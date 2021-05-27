@@ -409,21 +409,30 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 
 	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping GwEntry.", event.GetFields()...)
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
-	if entry.IsServerTlsEnabled() {
-		if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
-			rkcommon.ShutdownWithError(err)
-		} else {
-			entry.Server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
-		}
 
-		if err := entry.Server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-			rkcommon.ShutdownWithError(err)
+	go func(*GwEntry) {
+		if entry.IsServerTlsEnabled() {
+			if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
+				event.AddErr(err)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing TLS.", event.GetFields()...)
+				rkcommon.ShutdownWithError(err)
+			} else {
+				entry.Server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+			}
+
+			if err := entry.Server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				event.AddErr(err)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener-tls.", event.GetFields()...)
+				rkcommon.ShutdownWithError(err)
+			}
+		} else {
+			if err := entry.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				event.AddErr(err)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener.", event.GetFields()...)
+				rkcommon.ShutdownWithError(err)
+			}
 		}
-	} else {
-		if err := entry.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			rkcommon.ShutdownWithError(err)
-		}
-	}
+	}(entry)
 }
 
 // Interrupt GwEntry.
@@ -435,13 +444,6 @@ func (entry *GwEntry) Interrupt(ctx context.Context) {
 
 	entry.logBasicInfo(event)
 
-	if entry.Server != nil {
-		entry.ZapLoggerEntry.GetLogger().Info("Stopping gwEntry")
-		if err := entry.Server.Shutdown(context.Background()); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Error occurs while stopping gwEntry")
-		}
-	}
-
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Interrupt(ctx)
 	}
@@ -452,6 +454,15 @@ func (entry *GwEntry) Interrupt(ctx context.Context) {
 
 	if entry.IsSwEnabled() {
 		entry.SwEntry.Interrupt(ctx)
+	}
+
+	entry.ZapLoggerEntry.GetLogger().Info("Interrupting gwEntry.", event.GetFields()...)
+
+	if entry.Server != nil {
+		if err := entry.Server.Shutdown(context.Background()); err != nil {
+			event.AddErr(err)
+			entry.ZapLoggerEntry.GetLogger().Warn("Error occurs while stopping gwEntry")
+		}
 	}
 
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)

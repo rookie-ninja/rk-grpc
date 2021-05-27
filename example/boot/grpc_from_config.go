@@ -18,7 +18,7 @@ func main() {
 	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/boot.yaml")
 
 	// Bootstrap gin entry
-	go res["greeter"].Bootstrap(context.Background())
+	res["greeter"].Bootstrap(context.Background())
 
 	// Wait for shutdown signal
 	rkentry.GlobalAppCtx.WaitForShutdownSig()

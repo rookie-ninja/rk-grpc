@@ -551,13 +551,13 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 	// Common service enabled?
 	if entry.IsCommonServiceEnabled() {
-		go entry.CommonServiceEntry.Bootstrap(ctx)
+		entry.CommonServiceEntry.Bootstrap(ctx)
 	}
 
 	// Gateway enabled?
 	// Start gateway first since we do not want to block goroutine here
 	if entry.IsGwEnabled() {
-		go entry.GwEntry.Bootstrap(ctx)
+		entry.GwEntry.Bootstrap(ctx)
 	}
 
 	listener, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.Port, 10))
@@ -587,11 +587,16 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	}
 
 	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping grpcEntry.", event.GetFields()...)
+	go func(*GrpcEntry) {
+		// start grpc server
+		if err := entry.Server.Serve(listener); err != nil {
+			event.AddErr(err)
+			entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-server.", event.GetFields()...)
+			rkcommon.ShutdownWithError(err)
+		}
+	}(entry)
+
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
-	// start grpc server
-	if err := entry.Server.Serve(listener); err != nil {
-		rkcommon.ShutdownWithError(err)
-	}
 }
 
 // Interrupt GrpcEntry.
@@ -603,21 +608,21 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 
 	entry.logBasicInfo(event)
 
-	if entry.Server != nil {
-		if entry.GwEntry != nil {
-			entry.GwEntry.Interrupt(ctx)
-		}
-
-		entry.Server.GracefulStop()
-	}
-
 	if entry.IsCommonServiceEnabled() {
 		entry.CommonServiceEntry.Interrupt(ctx)
 	}
 
-	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
+	if entry.IsGwEnabled() {
+		entry.GwEntry.Interrupt(ctx)
+	}
+
 	entry.ZapLoggerEntry.GetLogger().Info("Interrupting grpcEntry.", event.GetFields()...)
 
+	if entry.Server != nil {
+		entry.Server.GracefulStop()
+	}
+
+	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 }
 
 // Marshal entry.
