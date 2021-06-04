@@ -4,7 +4,10 @@
 {{template "head"}}
 
 <body>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 {{template "svg-sprite"}}
+
 <div class="wrapper dark-mode-dim">
   {{template "header"}}
   <main class="container flex flex-even">
@@ -12,128 +15,25 @@
     <!--- main page --->
     <div class="gdoc-page">
       <!--- header nav --->
-      <div class="gdoc-page__header flex flex-wrap justify-between">
+      <div class="gdoc-page__header flex flex-wrap justify-between" itemprop="breadcrumb">
         <div>
           <svg class="icon gdoc_path hidden-mobile"><use xlink:href="#gdoc_path"></use></svg>
           <ol class="breadcrumb">
-            <li><a href="/rk/v1/tv/application"><span itemprop="name">Application</span></a></li>
+            <li><a href="/v1/rk/tv/application"><span>Application</span></a></li>
             <li>/</li>
-            <li><span itemprop="name">Overview</span></li>
+            <li><span itemprop="name">Readme</span></li>
           </ol>
         </div>
       </div>
+
       <!--- content --->
       <article class="gdoc-markdown">
-        <!--- title --->
-        <div class="gdoc-page__anchorwrap">
-          <h1 id="example"> Overview </h1>
-        </div>
-        <!--- content --->
-        <div class="gdoc-tabs">
-          <!--- Application Info --->
-          <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-0" checked="checked">
-          <label for="tabs-uniqueid-0" class="gdoc-tabs__label"> Application </label>
-          <div class="gdoc-tabs__content">
-            <div class="gdoc-columns flex flex-wrap">
-              <!--- Name --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> Name </h2></div>
-                <p>{{ .AppName }}</p>
-              </div>
-              <!--- Version --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> Version </h2></div>
-                <p>{{ .Version }}</p>
-              </div>
-              <!--- Description --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="right-content"> Description </h2></div>
-                <p>{{ .Description }}</p>
-              </div>
-              <!--- Keywords --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> Keywords </h2></div>
-                {{ range .Keywords}}
-                <li>{{.}}</li>
-                {{ end }}
-              </div>
-              <!--- Home URL --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> Home URL </h2></div>
-                <p>{{ .HomeUrl }}</p>
-              </div>
-              <!--- Icon URL --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="right-content"> Icon URL </h2></div>
-                <p>{{ .IconUrl }}</p>
-              </div>
-              <!--- Docs URL --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> Docs URL </h2></div>
-                {{ range .DocsUrl}}
-                <li>{{.}}</li>
-                {{ end }}
-              </div>
-              <!--- Maintainers --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> Maintainers </h2></div>
-                {{ range .Maintainers}}
-                <li>{{.}}</li>
-                {{ end }}
-              </div>
-            </div>
-          </div>
-          <!--- Process Info --->
-          <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-1">
-          <label for="tabs-uniqueid-1" class="gdoc-tabs__label"> Process </label>
-          <div class="gdoc-tabs__content">
-            <div class="gdoc-columns flex flex-wrap">
-              <!--- Start time --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> Start time </h2></div>
-                <p>{{ .StartTime }}</p>
-              </div>
-              <!--- Up time --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> Up time </h2></div>
-                <p>{{ .UpTimeStr }}</p>
-              </div>
-              <!--- Username --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="right-content"> Username </h2></div>
-                <p>{{ .Username }}</p>
-              </div>
-              <!--- GID --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> GID </h2></div>
-                <p>{{ .GID }}</p>
-              </div>
-              <!--- PID --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> UID </h2></div>
-                <p>{{ .UID }}</p>
-              </div>
-              <!--- REALM --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="right-content"> Realm </h2></div>
-                <p>{{ .Realm }}</p>
-              </div>
-              <!--- Region --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="left"> Region </h2></div>
-                <p>{{ .Region }}</p>
-              </div>
-              <!--- AZ --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> AZ </h2></div>
-                <p>{{ .AZ }}</p>
-              </div>
-              <!--- Domain --->
-              <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-                <div class="gdoc-page__anchorwrap"><h2 id="mid-content"> Domain </h2></div>
-                <p>{{ .Domain }}</p>
-              </div>
-            </div>
+        <div class="gdoc-markdown--nested">
+          <div class="highlight" id="readme">
+            <script>
+              document.getElementById('readme').innerHTML =
+              marked('{{ .Readme }}');
+            </script>
           </div>
         </div>
       </article>

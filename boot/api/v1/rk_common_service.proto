@@ -7,35 +7,47 @@ import "google/protobuf/struct.proto";
 option go_package = "rk/api/v1/rk_grpc_common_v1";
 
 service RkCommonService {
-    // Healthy stub
+    // Get application healthy status
     rpc Healthy(HealthyRequest) returns (google.protobuf.Struct) {};
 
-    // GC stub
+    // Trigger Gc
     rpc Gc(GcRequest) returns (google.protobuf.Struct) {};
 
-    // Info stub
+    // Get application and process info
     rpc Info(InfoRequest) returns (google.protobuf.Struct) {};
 
-    // Config Stub
+    // List ConfigEntry
     rpc Configs(ConfigsRequest) returns (google.protobuf.Struct) {};
 
-    // List API Stub
+    // List API
     rpc Apis(ApisRequest) returns (google.protobuf.Struct) {};
 
-    // Sys Stub
+    // Get OS Stat
     rpc Sys(SysRequest) returns (google.protobuf.Struct) {};
 
-    // Req Stub
+    // List prometheus metrics of requests
     rpc Req(ReqRequest) returns (google.protobuf.Struct) {};
 
-    // Entries Stub
+    // List all Entry
     rpc Entries(EntriesRequest) returns (google.protobuf.Struct) {};
 
-    // Certs Stub
+    // List CertEntry
     rpc Certs(CertsRequest) returns (google.protobuf.Struct) {};
 
-    // Logs Stub
+    // List logger related entries
     rpc Logs(LogsRequest) returns (google.protobuf.Struct) {};
+
+    // List dependencies related application
+    rpc Deps(DepsRequest) returns (google.protobuf.Struct) {};
+
+    // Get license related application
+    rpc License(LicenseRequest) returns (google.protobuf.Struct) {};
+
+    // List dependencies related application
+    rpc Readme(ReadmeRequest) returns (google.protobuf.Struct) {};
+
+    // List grpc error to grpc-gateway error mappings.
+    rpc GwErrorMapping(GwErrorMappingRequest) returns (google.protobuf.Struct) {};
 }
 
 message HealthyRequest {}
@@ -57,3 +69,11 @@ message EntriesRequest {}
 message CertsRequest {}
 
 message LogsRequest {}
+
+message DepsRequest {}
+
+message LicenseRequest {}
+
+message ReadmeRequest {}
+
+message GwErrorMappingRequest {}

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	runtime2 "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
@@ -15,8 +16,11 @@ import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
+	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
+	"net/http"
 	"runtime"
 )
 
@@ -319,12 +323,18 @@ func doApis(ctx context.Context) *rkentry.ApisResponse {
 	for serviceName, serviceInfo := range grpcEntry.Server.GetServiceInfo() {
 		for i := range serviceInfo.Methods {
 			method := serviceInfo.Methods[i]
+			apiType := "Unary"
+			if method.IsServerStream {
+				apiType = "Stream"
+			}
+
 			entry := &rkentry.ApisResponse_Entry{
 				EntryName: grpcEntry.GetName(),
 				Grpc: &rkentry.ApisResponse_Grpc{
 					Service: serviceName,
 					Method:  method.Name,
 					Port:    grpcEntry.Port,
+					Type:    apiType,
 					Gw:      getGwMapping(grpcEntry, ctx, serviceName+"."+method.Name),
 				},
 			}
@@ -586,6 +596,100 @@ func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_comm
 	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
 
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
+}
+
+// Helper function /deps
+func doDeps(context.Context) *rkentry.DepResponse {
+	res := &rkentry.DepResponse{}
+
+	appInfoEntry := rkentry.GlobalAppCtx.GetAppInfoEntry()
+	if appInfoEntry == nil {
+		return res
+	}
+
+	res.GoMod = appInfoEntry.GoMod
+
+	return res
+}
+
+func (entry *CommonServiceEntry) Deps(ctx context.Context, request *rk_grpc_common_v1.DepsRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doDeps(ctx)))
+}
+
+// Helper function /license
+func doLicense(context.Context) *rkentry.LicenseResponse {
+	res := &rkentry.LicenseResponse{}
+
+	appInfoEntry := rkentry.GlobalAppCtx.GetAppInfoEntry()
+	if appInfoEntry == nil {
+		return res
+	}
+
+	res.License = appInfoEntry.License
+
+	return res
+}
+
+func (entry *CommonServiceEntry) License(ctx context.Context, request *rk_grpc_common_v1.LicenseRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLicense(ctx)))
+}
+
+// Helper function /readme
+func doReadme(context.Context) *rkentry.ReadmeResponse {
+	res := &rkentry.ReadmeResponse{}
+
+	appInfoEntry := rkentry.GlobalAppCtx.GetAppInfoEntry()
+	if appInfoEntry == nil {
+		return res
+	}
+
+	res.Readme = appInfoEntry.Readme
+
+	return res
+}
+
+func (entry *CommonServiceEntry) Readme(ctx context.Context, request *rk_grpc_common_v1.ReadmeRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReadme(ctx)))
+}
+
+func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *rk_grpc_common_v1.GwErrorMappingRequest) (*structpb.Struct, error) {
+	// Add auto generated request ID
+	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGwErrorMapping(ctx)))
+}
+
+func doGwErrorMapping(context.Context) *rkentry.GwErrorMappingResponse {
+	res := &rkentry.GwErrorMappingResponse{
+		Mapping: make(map[int32]*rkentry.GwErrorMappingResponse_Mapping),
+	}
+
+	// list grpc errors
+	for k, v := range code.Code_name {
+		element := &rkentry.GwErrorMappingResponse_Mapping{
+			GrpcCode: k,
+			GrpcText: v,
+		}
+
+		restCode := runtime2.HTTPStatusFromCode(codes.Code(k))
+		restText := http.StatusText(restCode)
+
+		element.RestCode = int32(restCode)
+		element.RestText = restText
+
+		res.Mapping[element.GrpcCode] = element
+	}
+
+	return res
 }
 
 // Register common service

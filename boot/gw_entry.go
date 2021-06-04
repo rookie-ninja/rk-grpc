@@ -250,13 +250,19 @@ func (entry *GwEntry) addRegFuncsGw(funcs ...GwRegFunc) {
 }
 
 func (entry *GwEntry) parseGwMapping() {
-	// Parse common service.
-	bytes := readFileFromPkger(entry.CommonServiceEntry.GwMappingFilePath)
-	entry.parseGwMappingHelper(bytes)
+	// Parse common service if common service is enabled and GwMappingFilePath is not empty.
+	if entry.IsCommonServiceEnabled() && len(entry.CommonServiceEntry.GwMappingFilePath) > 0 {
+		bytes := readFileFromPkger(entry.CommonServiceEntry.GwMappingFilePath)
+		entry.parseGwMappingHelper(bytes)
+	}
 
 	// Parse user services.
 	for i := range entry.GwMappingFilePaths {
 		filePath := entry.GwMappingFilePaths[i]
+
+		if len(filePath) < 1 {
+			continue
+		}
 
 		// Deal with relative directory.
 		if !path.IsAbs(filePath) {

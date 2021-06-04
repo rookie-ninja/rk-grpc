@@ -13,7 +13,7 @@
   "paths": {
     "/rk/v1/apis": {
       "get": {
-        "summary": "List API Stub",
+        "summary": "List API",
         "operationId": "RkCommonService_Apis",
         "responses": {
           "200": {
@@ -36,7 +36,7 @@
     },
     "/rk/v1/certs": {
       "get": {
-        "summary": "Certs Stub",
+        "summary": "List CertEntry",
         "operationId": "RkCommonService_Certs",
         "responses": {
           "200": {
@@ -59,8 +59,31 @@
     },
     "/rk/v1/configs": {
       "get": {
-        "summary": "Config Stub",
+        "summary": "List ConfigEntry",
         "operationId": "RkCommonService_Configs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/rk/v1/deps": {
+      "get": {
+        "summary": "List dependencies related application",
+        "operationId": "RkCommonService_Deps",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -82,7 +105,7 @@
     },
     "/rk/v1/entries": {
       "get": {
-        "summary": "Entries Stub",
+        "summary": "List all Entry",
         "operationId": "RkCommonService_Entries",
         "responses": {
           "200": {
@@ -105,8 +128,31 @@
     },
     "/rk/v1/gc": {
       "get": {
-        "summary": "GC stub",
+        "summary": "Trigger Gc",
         "operationId": "RkCommonService_Gc",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/rk/v1/gwErrorMapping": {
+      "get": {
+        "summary": "List grpc error to grpc-gateway error mappings.",
+        "operationId": "RkCommonService_GwErrorMapping",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -128,7 +174,7 @@
     },
     "/rk/v1/healthy": {
       "get": {
-        "summary": "Healthy stub",
+        "summary": "Get application healthy status",
         "operationId": "RkCommonService_Healthy",
         "responses": {
           "200": {
@@ -151,8 +197,31 @@
     },
     "/rk/v1/info": {
       "get": {
-        "summary": "Info stub",
+        "summary": "Get application and process info",
         "operationId": "RkCommonService_Info",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/rk/v1/license": {
+      "get": {
+        "summary": "Get license related application",
+        "operationId": "RkCommonService_License",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -174,8 +243,31 @@
     },
     "/rk/v1/logs": {
       "get": {
-        "summary": "Logs Stub",
+        "summary": "List logger related entries",
         "operationId": "RkCommonService_Logs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RkCommonService"
+        ]
+      }
+    },
+    "/rk/v1/readme": {
+      "get": {
+        "summary": "List dependencies related application",
+        "operationId": "RkCommonService_Readme",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -197,7 +289,7 @@
     },
     "/rk/v1/req": {
       "get": {
-        "summary": "Req Stub",
+        "summary": "List prometheus metrics of requests",
         "operationId": "RkCommonService_Req",
         "responses": {
           "200": {
@@ -220,7 +312,7 @@
     },
     "/rk/v1/sys": {
       "get": {
-        "summary": "Sys Stub",
+        "summary": "Get OS Stat",
         "operationId": "RkCommonService_Sys",
         "responses": {
           "200": {

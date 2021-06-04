@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"path"
 	"reflect"
@@ -81,7 +82,10 @@ type BootConfigGrpc struct {
 		Name        string `yaml:"name" json:"name"`
 		Description string `yaml:"description" json:"description"`
 		Port        uint64 `yaml:"port" json:"port"`
-		Cert        struct {
+		Reflection  struct {
+			Enabled bool `yaml:"enabled" json:"enabled"`
+		} `yaml:"reflection" json:"reflection"`
+		Cert struct {
 			Ref string `yaml:"ref" json:"ref"`
 		} `yaml:"cert" json:"cert"`
 		GW            BootConfigGw            `yaml:"gw" json:"gw"`
@@ -130,6 +134,7 @@ type BootConfigGrpc struct {
 // 10: StreamInterceptors: Interceptors user enabled from YAML config.
 // 11: RegFuncs: Grpc registration functions.
 // 12: Listener: Listener of grpc.
+// 13: EnableReflection: Enable grpc serve reflection.
 type GrpcEntry struct {
 	EntryName          string                         `json:"entryName" yaml:"entryName"`
 	EntryType          string                         `json:"entryType" yaml:"entryType"`
@@ -146,6 +151,7 @@ type GrpcEntry struct {
 	StreamInterceptors []grpc.StreamServerInterceptor `json:"-" yaml:"-"`
 	RegFuncs           []GrpcRegFunc                  `json:"-" yaml:"-"`
 	Listener           net.Listener                   `json:"-" yaml:"-"`
+	EnableReflection   bool                           `json:"enableReflection" yaml:"enableRefelction"`
 }
 
 // Grpc registration func.
@@ -296,6 +302,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithPortGrpc(element.Port),
 			WithGwEntryGrpc(gw),
 			WithCommonServiceEntryGrpc(commonService),
+			WithEnableReflectionGrpc(element.Reflection.Enabled),
 			WithCertEntryGrpc(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
 
 		// did we enabled logging interceptor?
@@ -438,6 +445,13 @@ func WithCommonServiceEntryGrpc(commonService *CommonServiceEntry) GrpcEntryOpti
 	}
 }
 
+// Provice EnableReflection.
+func WithEnableReflectionGrpc(enabled bool) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.EnableReflection = enabled
+	}
+}
+
 // Register GrpcEntry with options.
 func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	entry := &GrpcEntry{
@@ -568,11 +582,13 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 	entry.Listener = listener
 
-	if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
-		rkcommon.ShutdownWithError(err)
-	} else {
-		tls := credentials.NewServerTLSFromCert(&cert)
-		entry.ServerOpts = append(entry.ServerOpts, grpc.Creds(tls))
+	if entry.IsTlsEnabled() {
+		if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
+			rkcommon.ShutdownWithError(err)
+		} else {
+			tls := credentials.NewServerTLSFromCert(&cert)
+			entry.ServerOpts = append(entry.ServerOpts, grpc.Creds(tls))
+		}
 	}
 
 	// make unary and stream interceptors into server opts
@@ -584,6 +600,11 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	entry.Server = grpc.NewServer(entry.ServerOpts...)
 	for _, regFunc := range entry.RegFuncs {
 		regFunc(entry.Server)
+	}
+
+	// enable reflection
+	if entry.EnableReflection {
+		reflection.Register(entry.Server)
 	}
 
 	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping grpcEntry.", event.GetFields()...)
@@ -636,6 +657,7 @@ func (entry *GrpcEntry) MarshalJSON() ([]byte, error) {
 		"port":               entry.Port,
 		"gwEntry":            entry.GwEntry,
 		"commonServiceEntry": entry.CommonServiceEntry,
+		"reflection":         entry.EnableReflection,
 	}
 
 	if entry.CertEntry != nil {
@@ -686,7 +708,7 @@ func (entry *GrpcEntry) UnmarshalJSON([]byte) error {
 
 // Is TLS enabled?
 func (entry *GrpcEntry) IsTlsEnabled() bool {
-	return entry.CertEntry != nil
+	return entry.CertEntry != nil && entry.CertEntry.Store != nil
 }
 
 // Is grpc gateway enabled?
@@ -707,7 +729,8 @@ func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
 		zap.Uint64("grpcPort", entry.Port),
 		zap.Bool("commonServiceEnabled", entry.IsCommonServiceEnabled()),
 		zap.Bool("tlsEnabled", entry.IsTlsEnabled()),
-		zap.Bool("gwEnabled", entry.IsGwEnabled()))
+		zap.Bool("gwEnabled", entry.IsGwEnabled()),
+		zap.Bool("reflectionEnabled", entry.EnableReflection))
 
 	if entry.IsGwEnabled() {
 		event.AddFields(

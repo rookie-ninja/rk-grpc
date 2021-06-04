@@ -34,15 +34,15 @@ grpc:
     port: 1949                                       # Optional
     commonService:
       enabled: true                                  # Optional, default: false
-    cert:
-      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
+#    cert:
+#      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
     gw:
       enabled: true                                  # Optional, default: false
       port: 8080                                     # Required
 #      gwMappingFilePaths:                           # Optional
 #        - ""
-      cert:
-        ref: "local-cert"                            # Optional, default: "", reference of cert entry declared above
+#      cert:
+#        ref: "local-cert"                            # Optional, default: "", reference of cert entry declared above
       tv:
         enabled: true                                # Optional, default: false
       sw:

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/markbates/pkger"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
@@ -22,22 +23,7 @@ import (
 )
 
 var (
-	HeaderTemplate        = readFileFromPkger("/assets/tv/header.tmpl")
-	FooterTemplate        = readFileFromPkger("/assets/tv/footer.tmpl")
-	AsideTemplate         = readFileFromPkger("/assets/tv/aside.tmpl")
-	HeadTemplate          = readFileFromPkger("/assets/tv/head.tmpl")
-	SVGSpriteTemplate     = readFileFromPkger("/assets/tv/svg-sprite.tmpl")
-	OverviewTemplate      = readFileFromPkger("/assets/tv/overview.tmpl")
-	APITemplate           = readFileFromPkger("/assets/tv/api.tmpl")
-	EntryTemplate         = readFileFromPkger("/assets/tv/entry.tmpl")
-	ConfigTemplate        = readFileFromPkger("/assets/tv/config.tmpl")
-	CertTemplate          = readFileFromPkger("/assets/tv/cert.tmpl")
-	NotFoundTemplate      = readFileFromPkger("/assets/tv/not-found.tmpl")
-	InternalErrorTemplate = readFileFromPkger("/assets/tv/internal-error.tmpl")
-	OsTemplate            = readFileFromPkger("/assets/tv/os.tmpl")
-	EnvTemplate           = readFileFromPkger("/assets/tv/env.tmpl")
-	PrometheusTemplate    = readFileFromPkger("/assets/tv/prometheus.tmpl")
-	LogTemplate           = readFileFromPkger("/assets/tv/log.tmpl")
+	Templates = map[string][]byte{}
 )
 
 const (
@@ -45,6 +31,29 @@ const (
 	TvEntryNameDefault = "GrpcTvDefault"
 	TvEntryDescription = "Internal RK entry which implements tv web with grpc framework."
 )
+
+func init() {
+	Templates["header"] = readFileFromPkger("/assets/tv/header.tmpl")
+	Templates["footer"] = readFileFromPkger("/assets/tv/footer.tmpl")
+	Templates["aside"] = readFileFromPkger("/assets/tv/aside.tmpl")
+	Templates["head"] = readFileFromPkger("/assets/tv/head.tmpl")
+	Templates["svg-sprite"] = readFileFromPkger("/assets/tv/svg-sprite.tmpl")
+	Templates["overview"] = readFileFromPkger("/assets/tv/overview.tmpl")
+	Templates["apis"] = readFileFromPkger("/assets/tv/apis.tmpl")
+	Templates["entries"] = readFileFromPkger("/assets/tv/entries.tmpl")
+	Templates["configs"] = readFileFromPkger("/assets/tv/configs.tmpl")
+	Templates["certs"] = readFileFromPkger("/assets/tv/certs.tmpl")
+	Templates["not-found"] = readFileFromPkger("/assets/tv/not-found.tmpl")
+	Templates["internal-error"] = readFileFromPkger("/assets/tv/internal-error.tmpl")
+	Templates["os"] = readFileFromPkger("/assets/tv/os.tmpl")
+	Templates["env"] = readFileFromPkger("/assets/tv/env.tmpl")
+	Templates["prometheus"] = readFileFromPkger("/assets/tv/prometheus.tmpl")
+	Templates["deps"] = readFileFromPkger("/assets/tv/deps.tmpl")
+	Templates["license"] = readFileFromPkger("/assets/tv/license.tmpl")
+	Templates["info"] = readFileFromPkger("/assets/tv/info.tmpl")
+	Templates["logs"] = readFileFromPkger("/assets/tv/logs.tmpl")
+	Templates["gw-error-mapping"] = readFileFromPkger("/assets/tv/error-mapping.tmpl")
+}
 
 // Bootstrap config of tv.
 // 1: Enabled: Enable tv service.
@@ -140,6 +149,9 @@ func (entry *TvEntry) AssetsFileHandler(w http.ResponseWriter, r *http.Request) 
 // 12: env.tmpl
 // 13: prometheus.tmpl
 // 14: log.tmpl
+// 15: dep.tmpl
+// 16: license.tmpl
+// 17: info.tmpl
 func (entry *TvEntry) Bootstrap(ctx context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"bootstrap",
@@ -154,116 +166,13 @@ func (entry *TvEntry) Bootstrap(ctx context.Context) {
 
 	entry.Template = template.New("rk-tv")
 
-	// Parse head template
-	if _, err := entry.Template.Parse(string(HeadTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing head template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse header template
-	if _, err := entry.Template.Parse(string(HeaderTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing header template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse footer template
-	if _, err := entry.Template.Parse(string(FooterTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing footer template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse aside template
-	if _, err := entry.Template.Parse(string(AsideTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing aside template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse svg-sprite template
-	if _, err := entry.Template.Parse(string(SVGSpriteTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing svg-sprite template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse overview template
-	if _, err := entry.Template.Parse(string(OverviewTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while overview template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse api template
-	if _, err := entry.Template.Parse(string(APITemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while api template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse entry template
-	if _, err := entry.Template.Parse(string(EntryTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while entry template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse config template
-	if _, err := entry.Template.Parse(string(ConfigTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while config template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse cert template
-	if _, err := entry.Template.Parse(string(CertTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while cert template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse os template
-	if _, err := entry.Template.Parse(string(OsTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while os template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse env template
-	if _, err := entry.Template.Parse(string(EnvTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while env template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse prometheus template
-	if _, err := entry.Template.Parse(string(PrometheusTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while prometheus template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse log template
-	if _, err := entry.Template.Parse(string(LogTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while log template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse not found template
-	if _, err := entry.Template.Parse(string(NotFoundTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while not-found template.")
-		rkcommon.ShutdownWithError(err)
-	}
-
-	// Parse internal server template
-	if _, err := entry.Template.Parse(string(InternalErrorTemplate)); err != nil {
-		entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-		entry.ZapLoggerEntry.GetLogger().Error("Error occurs while internal-server template.")
-		rkcommon.ShutdownWithError(err)
+	// Parse templates
+	for k, v := range Templates {
+		if _, err := entry.Template.Parse(string(v)); err != nil {
+			entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
+			entry.ZapLoggerEntry.GetLogger().Error(fmt.Sprintf("Error occurs while parsing %s template.", k))
+			rkcommon.ShutdownWithError(err)
+		}
 	}
 
 	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping tvEntry.", event.GetFields()...)
@@ -360,86 +269,58 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 		}))
 
 	switch path {
-	case "rk/v1/tv", "rk/v1/tv/overview":
-		buf := new(bytes.Buffer)
-
-		if err := entry.Template.ExecuteTemplate(buf, "overview", doInfo(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv", "rk/v1/tv/overview", "rk/v1/tv/application":
+		buf := entry.doExecuteTemplate("overview", doReadme(ctx))
 		w.Write(buf.Bytes())
-	case "rk/v1/tv/api":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "api", doApis(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv/apis":
+		buf := entry.doExecuteTemplate("apis", doApis(ctx))
 		w.Write(buf.Bytes())
-	case "rk/v1/tv/entry":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "entry", doEntries(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv/entries":
+		buf := entry.doExecuteTemplate("entries", doEntries(ctx))
 		w.Write(buf.Bytes())
-	case "rk/v1/tv/config":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "config", doConfigs(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv/configs":
+		buf := entry.doExecuteTemplate("configs", doConfigs(ctx))
 		w.Write(buf.Bytes())
-	case "rk/v1/tv/cert":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "cert", doCerts(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv/certs":
+		buf := entry.doExecuteTemplate("certs", doCerts(ctx))
 		w.Write(buf.Bytes())
 	case "rk/v1/tv/os":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "os", doSys(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+		buf := entry.doExecuteTemplate("os", doSys(ctx))
 		w.Write(buf.Bytes())
 	case "rk/v1/tv/env":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "env", doSys(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+		buf := entry.doExecuteTemplate("env", doSys(ctx))
 		w.Write(buf.Bytes())
 	case "rk/v1/tv/prometheus":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "prometheus", nil); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+		buf := entry.doExecuteTemplate("prometheus", nil)
 		w.Write(buf.Bytes())
-	case "rk/v1/tv/log":
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "log", doLogs(ctx)); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+	case "rk/v1/tv/logs":
+		buf := entry.doExecuteTemplate("logs", doLogs(ctx))
+		w.Write(buf.Bytes())
+	case "rk/v1/tv/deps":
+		buf := entry.doExecuteTemplate("deps", doDeps(ctx))
+		w.Write(buf.Bytes())
+	case "rk/v1/tv/license":
+		buf := entry.doExecuteTemplate("license", doLicense(ctx))
+		w.Write(buf.Bytes())
+	case "rk/v1/tv/info":
+		buf := entry.doExecuteTemplate("info", doInfo(ctx))
+		w.Write(buf.Bytes())
+	case "rk/v1/tv/gwErrorMapping":
+		buf := entry.doExecuteTemplate("gw-error-mapping", doGwErrorMapping(ctx))
 		w.Write(buf.Bytes())
 	default:
-		buf := new(bytes.Buffer)
-		if err := entry.Template.ExecuteTemplate(buf, "not-found", nil); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
-			buf.Reset()
-			entry.Template.ExecuteTemplate(buf, "internal-error", nil)
-		}
+		buf := entry.doExecuteTemplate("not-found", nil)
 		w.Write(buf.Bytes())
 	}
+}
+
+func (entry *TvEntry) doExecuteTemplate(templateName string, data interface{}) *bytes.Buffer {
+	buf := new(bytes.Buffer)
+	if err := entry.Template.ExecuteTemplate(buf, templateName, data); err != nil {
+		entry.ZapLoggerEntry.GetLogger().Warn("Failed to execute template", zap.Error(err))
+		buf.Reset()
+		entry.Template.ExecuteTemplate(buf, "internal-error", nil)
+	}
+
+	return buf
 }

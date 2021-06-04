@@ -82,7 +82,9 @@ User can start multiple servers at the same time
 | ------ | ------ | ------ | ------ |
 | grpc.name | The name of gRpc server | string | N/A |
 | grpc.port | The port of gRpc server | integer | nil, server won't start |
+| grpc.description | Description of grpc entry. | string | "" |
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
+| grpc.reflection.enabled | Enable grpc server reflection | boolean | false |
 | grpc.cert.ref | Reference of cert entry declared in cert section | string | "" |
 | grpc.gw.enabled | Enable gateway service over gRpc server | boolean | false |
 | grpc.gw.port | The port of gRpc gateway | integer | nil, server won't start |
@@ -90,17 +92,17 @@ User can start multiple servers at the same time
 | grpc.gw.cert.ref | Reference of cert entry declared in cert section | string | "" |
 | grpc.gw.tv.enabled | Enable RK TV | boolean | false |
 | grpc.gw.sw.enabled | Enable swagger service over gRpc server | boolean | false |
-| grpc.sw.path | The path access swagger service from web | string | sw |
-| grpc.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
-| grpc.sw.headers | Headers would be sent to caller | map<string, string> | nil |
-| grpc.prom.enabled | Enable prometheus | boolean | false |
-| grpc.prom.path | Path of prometheus | string | metrics |
-| grpc.prom.pusher.enabled | Enable prometheus pusher | bool | false |
-| grpc.prom.pusher.jobName | Job name would be attached as label while pushing to remote pushgateway | string | "" |
-| grpc.prom.pusher.remoteAddress | PushGateWay address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
-| grpc.prom.pusher.intervalMs | Push interval in milliseconds | string | 1000 |
-| grpc.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of \<user:pass\> | string | "" |
-| grpc.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
+| grpc.gw.sw.path | The path access swagger service from web | string | sw |
+| grpc.gw.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
+| grpc.gw.sw.headers | Headers would be sent to caller | map<string, string> | nil |
+| grpc.gw.prom.enabled | Enable prometheus | boolean | false |
+| grpc.gw.prom.path | Path of prometheus | string | metrics |
+| grpc.gw.prom.pusher.enabled | Enable prometheus pusher | bool | false |
+| grpc.gw.prom.pusher.jobName | Job name would be attached as label while pushing to remote pushgateway | string | "" |
+| grpc.gw.prom.pusher.remoteAddress | PushGateWay address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
+| grpc.gw.prom.pusher.intervalMs | Push interval in milliseconds | string | 1000 |
+| grpc.gw.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of \<user:pass\> | string | "" |
+| grpc.gw.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
 | grpc.logger.zapLogger.ref | Reference of logger entry declared above | string | "" |
 | grpc.logger.eventLogger.ref | Reference of logger entry declared above | string | "" |
 | grpc.interceptors.loggingZap.enabled | Enable logging interceptor | boolean | false |

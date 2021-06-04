@@ -24,3 +24,11 @@ http:
       get: /rk/v1/certs
     - selector: rk.api.v1.RkCommonService.Logs
       get: /rk/v1/logs
+    - selector: rk.api.v1.RkCommonService.Deps
+      get: /rk/v1/deps
+    - selector: rk.api.v1.RkCommonService.License
+      get: /rk/v1/license
+    - selector: rk.api.v1.RkCommonService.Readme
+      get: /rk/v1/readme
+    - selector: rk.api.v1.RkCommonService.GwErrorMapping
+      get: /rk/v1/gwErrorMapping

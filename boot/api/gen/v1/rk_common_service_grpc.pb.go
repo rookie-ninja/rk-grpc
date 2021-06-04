@@ -18,26 +18,34 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RkCommonServiceClient interface {
-	// Healthy stub
+	// Get application healthy status
 	Healthy(ctx context.Context, in *HealthyRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// GC stub
+	// Trigger Gc
 	Gc(ctx context.Context, in *GcRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Info stub
+	// Get application and process info
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Config Stub
+	// List ConfigEntry
 	Configs(ctx context.Context, in *ConfigsRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// List API Stub
+	// List API
 	Apis(ctx context.Context, in *ApisRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Sys Stub
+	// Get OS Stat
 	Sys(ctx context.Context, in *SysRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Req Stub
+	// List prometheus metrics of requests
 	Req(ctx context.Context, in *ReqRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Entries Stub
+	// List all Entry
 	Entries(ctx context.Context, in *EntriesRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Certs Stub
+	// List CertEntry
 	Certs(ctx context.Context, in *CertsRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
-	// Logs Stub
+	// List logger related entries
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
+	// List dependencies related application
+	Deps(ctx context.Context, in *DepsRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
+	// Get license related application
+	License(ctx context.Context, in *LicenseRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
+	// List dependencies related application
+	Readme(ctx context.Context, in *ReadmeRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
+	// List grpc error to grpc-gateway error mappings.
+	GwErrorMapping(ctx context.Context, in *GwErrorMappingRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
 }
 
 type rkCommonServiceClient struct {
@@ -138,30 +146,74 @@ func (c *rkCommonServiceClient) Logs(ctx context.Context, in *LogsRequest, opts 
 	return out, nil
 }
 
+func (c *rkCommonServiceClient) Deps(ctx context.Context, in *DepsRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/Deps", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rkCommonServiceClient) License(ctx context.Context, in *LicenseRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/License", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rkCommonServiceClient) Readme(ctx context.Context, in *ReadmeRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/Readme", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rkCommonServiceClient) GwErrorMapping(ctx context.Context, in *GwErrorMappingRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/GwErrorMapping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RkCommonServiceServer is the server API for RkCommonService service.
 // All implementations should embed UnimplementedRkCommonServiceServer
 // for forward compatibility
 type RkCommonServiceServer interface {
-	// Healthy stub
+	// Get application healthy status
 	Healthy(context.Context, *HealthyRequest) (*structpb.Struct, error)
-	// GC stub
+	// Trigger Gc
 	Gc(context.Context, *GcRequest) (*structpb.Struct, error)
-	// Info stub
+	// Get application and process info
 	Info(context.Context, *InfoRequest) (*structpb.Struct, error)
-	// Config Stub
+	// List ConfigEntry
 	Configs(context.Context, *ConfigsRequest) (*structpb.Struct, error)
-	// List API Stub
+	// List API
 	Apis(context.Context, *ApisRequest) (*structpb.Struct, error)
-	// Sys Stub
+	// Get OS Stat
 	Sys(context.Context, *SysRequest) (*structpb.Struct, error)
-	// Req Stub
+	// List prometheus metrics of requests
 	Req(context.Context, *ReqRequest) (*structpb.Struct, error)
-	// Entries Stub
+	// List all Entry
 	Entries(context.Context, *EntriesRequest) (*structpb.Struct, error)
-	// Certs Stub
+	// List CertEntry
 	Certs(context.Context, *CertsRequest) (*structpb.Struct, error)
-	// Logs Stub
+	// List logger related entries
 	Logs(context.Context, *LogsRequest) (*structpb.Struct, error)
+	// List dependencies related application
+	Deps(context.Context, *DepsRequest) (*structpb.Struct, error)
+	// Get license related application
+	License(context.Context, *LicenseRequest) (*structpb.Struct, error)
+	// List dependencies related application
+	Readme(context.Context, *ReadmeRequest) (*structpb.Struct, error)
+	// List grpc error to grpc-gateway error mappings.
+	GwErrorMapping(context.Context, *GwErrorMappingRequest) (*structpb.Struct, error)
 }
 
 // UnimplementedRkCommonServiceServer should be embedded to have forward compatible implementations.
@@ -197,6 +249,18 @@ func (UnimplementedRkCommonServiceServer) Certs(context.Context, *CertsRequest) 
 }
 func (UnimplementedRkCommonServiceServer) Logs(context.Context, *LogsRequest) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logs not implemented")
+}
+func (UnimplementedRkCommonServiceServer) Deps(context.Context, *DepsRequest) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Deps not implemented")
+}
+func (UnimplementedRkCommonServiceServer) License(context.Context, *LicenseRequest) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method License not implemented")
+}
+func (UnimplementedRkCommonServiceServer) Readme(context.Context, *ReadmeRequest) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Readme not implemented")
+}
+func (UnimplementedRkCommonServiceServer) GwErrorMapping(context.Context, *GwErrorMappingRequest) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GwErrorMapping not implemented")
 }
 
 // UnsafeRkCommonServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -390,6 +454,78 @@ func _RkCommonService_Logs_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RkCommonService_Deps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DepsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RkCommonServiceServer).Deps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rk.api.v1.RkCommonService/Deps",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RkCommonServiceServer).Deps(ctx, req.(*DepsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RkCommonService_License_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LicenseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RkCommonServiceServer).License(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rk.api.v1.RkCommonService/License",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RkCommonServiceServer).License(ctx, req.(*LicenseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RkCommonService_Readme_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadmeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RkCommonServiceServer).Readme(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rk.api.v1.RkCommonService/Readme",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RkCommonServiceServer).Readme(ctx, req.(*ReadmeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RkCommonService_GwErrorMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GwErrorMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RkCommonServiceServer).GwErrorMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rk.api.v1.RkCommonService/GwErrorMapping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RkCommonServiceServer).GwErrorMapping(ctx, req.(*GwErrorMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _RkCommonService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "rk.api.v1.RkCommonService",
 	HandlerType: (*RkCommonServiceServer)(nil),
@@ -433,6 +569,22 @@ var _RkCommonService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logs",
 			Handler:    _RkCommonService_Logs_Handler,
+		},
+		{
+			MethodName: "Deps",
+			Handler:    _RkCommonService_Deps_Handler,
+		},
+		{
+			MethodName: "License",
+			Handler:    _RkCommonService_License_Handler,
+		},
+		{
+			MethodName: "Readme",
+			Handler:    _RkCommonService_Readme_Handler,
+		},
+		{
+			MethodName: "GwErrorMapping",
+			Handler:    _RkCommonService_GwErrorMapping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

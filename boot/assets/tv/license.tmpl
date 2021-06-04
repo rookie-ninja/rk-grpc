@@ -1,0 +1,45 @@
+{{define "license"}}
+<!DOCTYPE html>
+<html lang="en" class="color-toggle-light" color-mode="light">
+{{template "head"}}
+
+<body>
+{{template "svg-sprite"}}
+
+<div class="wrapper dark-mode-dim">
+  {{template "header"}}
+  <main class="container flex flex-even">
+    {{template "aside"}}
+    <!--- main page --->
+    <div class="gdoc-page">
+      <!--- header nav --->
+      <div class="gdoc-page__header flex flex-wrap justify-between" itemprop="breadcrumb">
+        <div>
+          <svg class="icon gdoc_path hidden-mobile"><use xlink:href="#gdoc_path"></use></svg>
+          <ol class="breadcrumb">
+            <li><a href="/v1/rk/tv/application"><span>Application</span></a></li>
+            <li>/</li>
+            <li><span itemprop="name">License</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <!--- content --->
+      <article class="gdoc-markdown">
+        <!--- title --->
+        <div class="gdoc-page__anchorwrap">
+          <h1 id="dep"> License </h1>
+        </div>
+        <div class="gdoc-markdown--nested">
+          <div class="highlight">
+            <pre class="" id="license">{{ .License }}</pre>
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+  {{template "footer"}}
+</div>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,62 @@
+{{define "gw-error-mapping"}}
+<!DOCTYPE html>
+<html lang="en" class="color-toggle-light" color-mode="light">
+{{template "head"}}
+
+<body>
+{{template "svg-sprite"}}
+
+<div class="wrapper dark-mode-dim">
+  {{template "header"}}
+  <main class="container flex flex-even">
+    {{template "aside"}}
+    <!--- main page --->
+    <div class="gdoc-page">
+      <!--- header nav --->
+      <div class="gdoc-page__header flex flex-wrap justify-between" itemprop="breadcrumb">
+        <div>
+          <svg class="icon gdoc_path hidden-mobile"><use xlink:href="#gdoc_path"></use></svg>
+          <ol class="breadcrumb">
+            <li><a href="/v1/rk/tv/application"><span>Application</span></a></li>
+            <li>/</li>
+            <li><span itemprop="name">Error Mapping</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <!--- content --->
+      <article class="gdoc-markdown">
+        <!--- title --->
+        <div class="gdoc-page__anchorwrap">
+          <h1 id="mapping"> Error Mapping </h1>
+          </div>
+          <!--- content --->
+          <table>
+            <thead>
+              <tr>
+                <th>Grpc Code</th>
+                <th>Grpc Text</th>
+                <th>Http Code</th>
+                <th>Http Text</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range .Mapping }}
+              <tr>
+                <td>{{ .GrpcCode }}</td>
+                <td>{{ .GrpcText }}</td>
+                <td>{{ .RestCode }}</td>
+                <td>{{ .RestText }}</td>
+              </tr>
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </main>
+  {{template "footer"}}
+</div>
+</body>
+</html>
+{{end}}
