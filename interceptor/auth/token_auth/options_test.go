@@ -5,32 +5,32 @@
 package rkgrpctokenauth
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestWithEntryNameAndType_HappyCase(t *testing.T) {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.Equal(t, "ut-entry-name", set.EntryName)
 	assert.Equal(t, "ut-entry", set.EntryType)
 	assert.Equal(t, set,
-		optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)])
+		optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)])
 }
 
 func TestWithToken_HappyCase(t *testing.T) {
 	token := "token"
 
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithToken(token, true))
 
 	assert.True(t, set.tokens["token"])
 }
 
 func TestOptionSet_Authorized_HappyCase(t *testing.T) {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithToken("token-1", true),
 		WithToken("token-2", false))
 

@@ -7,7 +7,7 @@ package rkgrpcbasicauth
 import (
 	"context"
 	"encoding/base64"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	rkgrpcbasic "github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 	"testing"
@@ -20,7 +20,7 @@ func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
 
 	assert.NotNil(t, inter)
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 }
 
@@ -31,7 +31,7 @@ func TestStreamServerInterceptor_HappyCase(t *testing.T) {
 
 	assert.NotNil(t, inter)
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeStreamServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeStreamServer)]
 	assert.NotNil(t, set)
 }
 

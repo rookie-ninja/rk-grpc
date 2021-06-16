@@ -8,17 +8,21 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth/basic_auth"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth/token_auth"
 	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	rkgrpcextension "github.com/rookie-ninja/rk-grpc/interceptor/extension"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
+	rkgrpctrace "github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -35,6 +39,7 @@ import (
 const (
 	GrpcEntryType        = "GrpcEntry"
 	GrpcEntryDescription = "Internal RK entry which helps to bootstrap with Grpc framework."
+	bootstrapEventIdKey  = "bootstrapEventId"
 )
 
 // This must be declared in order to register registration function into rk context
@@ -102,12 +107,29 @@ type BootConfigGrpc struct {
 				Credentials []string `yaml:"credentials" json:"credentials"`
 			} `yaml:"basicAuth" json:"basicAuth"`
 			TokenAuth struct {
-				Enable bool `yaml:"enabled" json:"enabled"`
-				Tokens []struct {
+				Enabled bool `yaml:"enabled" json:"enabled"`
+				Tokens  []struct {
 					Token   string `yaml:"token" json:"token"`
 					Expired bool   `yaml:"expired" json:"expired"`
 				} `yaml:"tokens" json:"tokens"`
-			}
+			} `yaml:"tokenAuth" json:"tokenAuth"`
+			Extension struct {
+				Enabled bool   `yaml:"enabled" json:"enabled"`
+				Prefix  string `yaml:"prefix" json:"prefix"`
+			} `yaml:"extension" json:"extension"`
+			TracingTelemetry struct {
+				Enabled  bool `yaml:"enabled" json:"enabled"`
+				Exporter struct {
+					File struct {
+						Enabled    bool   `yaml:"enabled" json:"enabled"`
+						OutputPath string `yaml:"outputPath" json:"outputPath"`
+					} `yaml:"file" json:"file"`
+					Jaeger struct {
+						Enabled       bool   `yaml:"enabled" json:"enabled"`
+						AgentEndpoint string `yaml:"agentEndpoint" json:"agentEndpoint"`
+					} `yaml:"jaeger" json:"jaeger"`
+				} `yaml:"exporter" json:"exporter"`
+			} `tracingTelemetry`
 		} `yaml:"interceptors" json:"interceptors"`
 		Logger struct {
 			ZapLogger struct {
@@ -279,9 +301,17 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 					WithPusherProm(pusher))
 			}
 
+			// Did we enable RK style GW server mux option?
+			serverMuxOpts := make([]gwruntime.ServeMuxOption, 0)
+
+			if element.GW.RkServerOption {
+				serverMuxOpts = append(serverMuxOpts, RkGwServerMuxOptions...)
+			}
+
 			gw = NewGwEntry(
 				WithNameGw(element.Name),
 				WithZapLoggerEntryGw(zapLoggerEntry),
+				WithServerMuxOptionsGw(serverMuxOpts...),
 				WithEventLoggerEntryGw(eventLoggerEntry),
 				WithGrpcDialOptionsGw(dialOptions...),
 				WithGwMappingFilePathsGw(element.GW.GwMappingFilePaths...),
@@ -354,6 +384,41 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpctokenauth.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpctokenauth.StreamServerInterceptor(opts...))
+		}
+
+		// Did we enabled extension interceptor?
+		if element.Interceptors.Extension.Enabled {
+			opts := []rkgrpcextension.Option{
+				rkgrpcextension.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpcextension.WithPrefix(element.Interceptors.Extension.Prefix),
+			}
+
+			entry.AddUnaryInterceptors(rkgrpcextension.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpcextension.StreamServerInterceptor(opts...))
+		}
+
+		// Did we enabled tracing interceptor?
+		if element.Interceptors.TracingTelemetry.Enabled {
+			var exporter trace.SpanExporter
+
+			if element.Interceptors.TracingTelemetry.Exporter.File.Enabled {
+				exporter = rkgrpctrace.CreateFileExporter(element.Interceptors.TracingTelemetry.Exporter.File.OutputPath)
+			}
+
+			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Enabled {
+				host, port, _ := net.SplitHostPort(element.Interceptors.TracingTelemetry.Exporter.Jaeger.AgentEndpoint)
+				exporter = rkgrpctrace.CreateJaegerExporter(host, port)
+			}
+
+			opts := []rkgrpctrace.Option{
+				rkgrpctrace.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpctrace.WithExporter(exporter),
+			}
+
+			entry.AddUnaryInterceptors(rkgrpctrace.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
+
+			rkentry.GlobalAppCtx.AddShutdownHook("tracing exporter", rkgrpctrace.ShutdownExporters)
 		}
 
 		res[element.Name] = entry
@@ -561,6 +626,9 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	ctx = context.WithValue(context.Background(), bootstrapEventIdKey, event.GetEventId())
+	logger := entry.ZapLoggerEntry.GetLogger().With(zap.String("eventId", event.GetEventId()))
+
 	entry.logBasicInfo(event)
 
 	// Common service enabled?
@@ -607,12 +675,12 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		reflection.Register(entry.Server)
 	}
 
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping grpcEntry.", event.GetFields()...)
+	logger.Info("Bootstrapping grpcEntry.", event.ListPayloads()...)
 	go func(*GrpcEntry) {
 		// start grpc server
 		if err := entry.Server.Serve(listener); err != nil {
 			event.AddErr(err)
-			entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-server.", event.GetFields()...)
+			logger.Error("Error occurs while serving grpc-server.", event.ListPayloads()...)
 			rkcommon.ShutdownWithError(err)
 		}
 	}(entry)
@@ -627,6 +695,9 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	ctx = context.WithValue(context.Background(), bootstrapEventIdKey, event.GetEventId())
+	logger := entry.ZapLoggerEntry.GetLogger().With(zap.String("eventId", event.GetEventId()))
+
 	entry.logBasicInfo(event)
 
 	if entry.IsCommonServiceEnabled() {
@@ -637,7 +708,7 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 		entry.GwEntry.Interrupt(ctx)
 	}
 
-	entry.ZapLoggerEntry.GetLogger().Info("Interrupting grpcEntry.", event.GetFields()...)
+	logger.Info("Interrupting grpcEntry.", event.ListPayloads()...)
 
 	if entry.Server != nil {
 		entry.Server.GracefulStop()
@@ -723,7 +794,7 @@ func (entry *GrpcEntry) IsCommonServiceEnabled() bool {
 
 // Add basic fields into event.
 func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
-	event.AddFields(
+	event.AddPayloads(
 		zap.String("entryName", entry.EntryName),
 		zap.String("entryType", entry.EntryType),
 		zap.Uint64("grpcPort", entry.Port),
@@ -733,7 +804,7 @@ func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
 		zap.Bool("reflectionEnabled", entry.EnableReflection))
 
 	if entry.IsGwEnabled() {
-		event.AddFields(
+		event.AddPayloads(
 			zap.Bool("swEnabled", entry.GwEntry.IsSwEnabled()),
 			zap.Bool("tvEnabled", entry.GwEntry.IsTvEnabled()),
 			zap.Bool("promEnabled", entry.GwEntry.IsPromEnabled()),
@@ -741,13 +812,13 @@ func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
 			zap.Bool("gwServerTlsEnabled", entry.GwEntry.IsServerTlsEnabled()))
 
 		if entry.GwEntry.IsSwEnabled() {
-			event.AddFields(
+			event.AddPayloads(
 				zap.String("swPath", entry.GwEntry.SwEntry.Path),
 				zap.Any("headers", entry.GwEntry.SwEntry.Headers))
 		}
 
 		if entry.GwEntry.IsTvEnabled() {
-			event.AddFields(
+			event.AddPayloads(
 				zap.String("tvPath", "/rk/v1/tv"))
 		}
 	}

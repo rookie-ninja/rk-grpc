@@ -6,7 +6,7 @@ package rkgrpclog
 
 import (
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,18 +15,18 @@ import (
 )
 
 func TestWithEntryNameAndType_HappyCase(t *testing.T) {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.Equal(t, "ut-entry-name", set.EntryName)
 	assert.Equal(t, "ut-entry", set.EntryType)
 	assert.Equal(t, set,
-		optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)])
+		optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)])
 }
 
 func TestWithEventLoggerEntry_HappyCase(t *testing.T) {
 	eventLoggerEntry := rkentry.NoopEventLoggerEntry()
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEventLoggerEntry(eventLoggerEntry))
 
 	assert.Equal(t, eventLoggerEntry, set.EventLoggerEntry)
@@ -34,7 +34,7 @@ func TestWithEventLoggerEntry_HappyCase(t *testing.T) {
 
 func TestWithZapLoggerEntry_HappyCase(t *testing.T) {
 	zapLoggerEntry := rkentry.NoopZapLoggerEntry()
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithZapLoggerEntry(zapLoggerEntry))
 
 	assert.Equal(t, zapLoggerEntry, set.ZapLoggerEntry)
@@ -45,7 +45,7 @@ func TestWithErrorToCode_HappyCase(t *testing.T) {
 		return status.Code(err)
 	}
 
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithErrorToCode(errFunc))
 
 	assert.Equal(t,

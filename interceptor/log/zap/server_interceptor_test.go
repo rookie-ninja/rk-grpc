@@ -5,7 +5,7 @@
 package rkgrpclog
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -14,7 +14,7 @@ func TestUnaryServerInterceptor_WithoutOptions(t *testing.T) {
 	inter := UnaryServerInterceptor()
 
 	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeUnaryServer)])
+	assert.NotNil(t, optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeUnaryServer)])
 }
 
 func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
@@ -22,14 +22,14 @@ func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)])
+	assert.NotNil(t, optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)])
 }
 
 func TestStreamServerInterceptor_WithoutOptions(t *testing.T) {
 	inter := StreamServerInterceptor()
 
 	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeStreamServer)])
+	assert.NotNil(t, optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeStreamServer)])
 }
 
 func TestStreamServerInterceptor_HappyCase(t *testing.T) {
@@ -37,5 +37,5 @@ func TestStreamServerInterceptor_HappyCase(t *testing.T) {
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeStreamServer)])
+	assert.NotNil(t, optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeStreamServer)])
 }

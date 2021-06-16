@@ -7,6 +7,7 @@ package rkgrpctokenauth
 import (
 	"context"
 	"encoding/base64"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -15,7 +16,7 @@ import (
 )
 
 func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer, opts...)
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer, opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		// Before invoking
@@ -32,7 +33,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 }
 
 func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeStreamServer, opts...)
+	set := newOptionSet(rkgrpcbasic.RpcTypeStreamServer, opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking

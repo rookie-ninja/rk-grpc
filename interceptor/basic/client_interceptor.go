@@ -8,31 +8,33 @@ import (
 	"context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
+	"net"
 )
 
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryClient, opts...)
+	set := newOptionSet(RpcTypeUnaryClient, opts...)
 
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// Extract outgoing metadata from context
 		outgoingMD := rkgrpcctx.GetOutgoingMD(ctx)
 		incomingMD := rkgrpcctx.GetIncomingMD(ctx)
 
-		remoteIp, remotePort, _ := rkgrpcctx.GetRemoteAddressSet(ctx)
+		remoteIp, remotePort, _ := net.SplitHostPort(cc.Target())
+		grpcService, grpcMethod := getGrpcInfo(method)
+		gwMethod, gwPath, gwScheme, gwUserAgent := getGwInfo(incomingMD)
 
-		grpcService, grpcMethod, gwMethod, gwPath := parseRpcPath(ctx, method)
-
-		ctx = rkgrpcctx.ContextWithPayload(ctx,
+		ctx = rkgrpcctx.ToRkContext(ctx,
 			rkgrpcctx.WithEntryName(set.EntryName),
 			rkgrpcctx.WithIncomingMD(incomingMD),
 			rkgrpcctx.WithOutgoingMD(outgoingMD),
 			rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-				Target:      cc.Target(),
 				GrpcService: grpcService,
 				GrpcMethod:  grpcMethod,
 				GwMethod:    gwMethod,
 				GwPath:      gwPath,
-				Type:        rkgrpcctx.RpcTypeUnaryClient,
+				GwScheme:    gwScheme,
+				GwUserAgent: gwUserAgent,
+				Type:        RpcTypeUnaryClient,
 				RemoteIp:    remoteIp,
 				RemotePort:  remotePort,
 			}))
@@ -54,28 +56,29 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 }
 
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeStreamClient, opts...)
+	set := newOptionSet(RpcTypeStreamClient, opts...)
 
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		// Extract outgoing metadata from context
 		outgoingMD := rkgrpcctx.GetOutgoingMD(ctx)
 		incomingMD := rkgrpcctx.GetIncomingMD(ctx)
 
-		remoteIp, remotePort, _ := rkgrpcctx.GetRemoteAddressSet(ctx)
+		remoteIp, remotePort, _ := net.SplitHostPort(cc.Target())
+		grpcService, grpcMethod := getGrpcInfo(method)
+		gwMethod, gwPath, gwScheme, gwUserAgent := getGwInfo(incomingMD)
 
-		grpcService, grpcMethod, gwMethod, gwPath := parseRpcPath(ctx, method)
-
-		ctx = rkgrpcctx.ContextWithPayload(ctx,
+		ctx = rkgrpcctx.ToRkContext(ctx,
 			rkgrpcctx.WithEntryName(set.EntryName),
 			rkgrpcctx.WithIncomingMD(incomingMD),
 			rkgrpcctx.WithOutgoingMD(outgoingMD),
 			rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-				Target:      cc.Target(),
 				GrpcService: grpcService,
 				GrpcMethod:  grpcMethod,
 				GwMethod:    gwMethod,
 				GwPath:      gwPath,
-				Type:        rkgrpcctx.RpcTypeStreamClient,
+				GwScheme:    gwScheme,
+				GwUserAgent: gwUserAgent,
+				Type:        RpcTypeStreamClient,
 				RemoteIp:    remoteIp,
 				RemotePort:  remotePort,
 			}))

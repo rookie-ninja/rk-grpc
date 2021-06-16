@@ -19,7 +19,10 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/structpb"
+	"net"
 	"net/http"
 	"runtime"
 )
@@ -117,32 +120,46 @@ func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry
 }
 
 // Bootstrap common service entry
-func (entry *CommonServiceEntry) Bootstrap(context.Context) {
+func (entry *CommonServiceEntry) Bootstrap(ctx context.Context) {
 	// No op
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"bootstrap",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping CommonServiceEntry.", event.GetFields()...)
+	logger.Info("Bootstrapping CommonServiceEntry.", event.ListPayloads()...)
 }
 
 // Interrupt common service entry
-func (entry *CommonServiceEntry) Interrupt(context.Context) {
+func (entry *CommonServiceEntry) Interrupt(ctx context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"interrupt",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Interrupting CommonServiceEntry.", event.GetFields()...)
+	logger.Info("Interrupting CommonServiceEntry.", event.ListPayloads()...)
 }
 
 // Get name of entry.
@@ -185,7 +202,7 @@ func (entry *CommonServiceEntry) GetDescription() string {
 }
 
 func (entry *CommonServiceEntry) logBasicInfo(event rkquery.Event) {
-	event.AddFields(
+	event.AddPayloads(
 		zap.String("entryName", entry.EntryName),
 		zap.String("entryType", entry.EntryType),
 	)
@@ -200,8 +217,6 @@ func doHealthy(context.Context) *rkentry.HealthyResponse {
 
 // Healthy Stub.
 func (entry *CommonServiceEntry) Healthy(ctx context.Context, request *rk_grpc_common_v1.HealthyRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
 	event := rkgrpcctx.GetEvent(ctx)
 
 	event.AddPair("healthy", "true")
@@ -223,9 +238,6 @@ func doGc(context.Context) *rkentry.GcResponse {
 
 // Gc Stub.
 func (entry *CommonServiceEntry) Gc(ctx context.Context, request *rk_grpc_common_v1.GcRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGc(ctx)))
 }
 
@@ -236,8 +248,6 @@ func doInfo(context.Context) *rkentry.ProcessInfo {
 
 // Info Stub.
 func (entry *CommonServiceEntry) Info(ctx context.Context, request *rk_grpc_common_v1.InfoRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doInfo(ctx)))
 }
 
@@ -264,20 +274,18 @@ func doConfigs(context.Context) *rkentry.ConfigsResponse {
 
 // Configs Stub.
 func (entry *CommonServiceEntry) Configs(ctx context.Context, request *rk_grpc_common_v1.ConfigsRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doConfigs(ctx)))
 }
 
 // Compose swagger URL based on SwEntry.
 func getSwUrl(entry *GwEntry, ctx context.Context) string {
 	if entry.IsSwEnabled() {
-		remoteIp, _, _ := rkgrpcctx.GetRemoteAddressSet(ctx)
 		scheme := "http"
 		if entry.IsServerTlsEnabled() {
 			scheme = "https"
 		}
+
+		remoteIp, _, _ := getRemoteAddressSet(ctx)
 
 		return fmt.Sprintf("%s://%s:%d%s",
 			scheme,
@@ -287,6 +295,73 @@ func getSwUrl(entry *GwEntry, ctx context.Context) string {
 	}
 
 	return ""
+}
+
+// Read remote Ip and port from metadata first.
+func getRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	ip, port = getRemoteAddressSetFromMeta(md)
+	// no ip and port were passed through gateway
+	if len(ip) < 1 {
+		ip, port, netType = "0.0.0.0", "0", ""
+		if peer, ok := peer.FromContext(ctx); ok {
+			netType = peer.Addr.Network()
+
+			// Here is the tricky part
+			// We only try to parse IPV4 style Address
+			// Rest of peer.Addr implementations are not well formatted string
+			// and in this case, we leave port as zero and IP as the returned
+			// String from Addr.String() function
+			//
+			// BTW, just skip the error since it would not impact anything
+			// Operators could observe this error from monitor dashboards by
+			// validating existence of IP & PORT fields
+			ip, port, _ = net.SplitHostPort(peer.Addr.String())
+		}
+
+		headers, ok := metadata.FromIncomingContext(ctx)
+
+		if ok {
+			forwardedRemoteIPList := headers["x-forwarded-for"]
+
+			// Deal with forwarded remote ip
+			if len(forwardedRemoteIPList) > 0 {
+				forwardedRemoteIP := forwardedRemoteIPList[0]
+
+				if forwardedRemoteIP == "::1" {
+					forwardedRemoteIP = "localhost"
+				}
+
+				ip = forwardedRemoteIP
+			}
+		}
+
+		if ip == "::1" {
+			ip = "localhost"
+		}
+	}
+
+	return ip, port, netType
+}
+
+// Read remote Ip and port from metadata.
+// If user enabled RK style gateway server mux option, then there would be bellow headers forwarded
+// to grpc metadata
+// 1: x-forwarded-method
+// 2: x-forwarded-path
+// 3: x-forwarded-scheme
+// 4: x-forwarded-user-agent
+// 5: x-forwarded-remote-addr
+func getRemoteAddressSetFromMeta(md metadata.MD) (ip, port string) {
+	if v := md.Get("x-forwarded-remote-addr"); len(v) > 0 {
+		ip, port, _ = net.SplitHostPort(v[0])
+	}
+
+	if ip == "::1" {
+		ip = "localhost"
+	}
+
+	return ip, port
 }
 
 // Compose gateway related elements based on GwEntry and SwEntry.
@@ -348,9 +423,6 @@ func doApis(ctx context.Context) *rkentry.ApisResponse {
 
 // Apis Stub
 func (entry *CommonServiceEntry) Apis(ctx context.Context, request *rk_grpc_common_v1.ApisRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doApis(ctx)))
 }
 
@@ -367,9 +439,6 @@ func doSys(context.Context) *rkentry.SysResponse {
 
 // Sys Stub
 func (entry *CommonServiceEntry) Sys(ctx context.Context, request *rk_grpc_common_v1.SysRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doSys(ctx)))
 }
 
@@ -427,9 +496,6 @@ func doReq(ctx context.Context) *rkentry.ReqResponse {
 
 // Req Stub
 func (entry *CommonServiceEntry) Req(ctx context.Context, request *rk_grpc_common_v1.ReqRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReq(ctx)))
 }
 
@@ -486,9 +552,6 @@ func doEntries(ctx context.Context) *rkentry.EntriesResponse {
 
 // Entries Stub
 func (entry *CommonServiceEntry) Entries(ctx context.Context, request *rk_grpc_common_v1.EntriesRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doEntries(ctx)))
 }
 
@@ -532,9 +595,6 @@ func doCerts(context.Context) *rkentry.CertsResponse {
 }
 
 func (entry *CommonServiceEntry) Certs(ctx context.Context, request *rk_grpc_common_v1.CertsRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	res, err := structpb.NewStruct(rkcommon.ConvertStructToMap(doCerts(ctx)))
 	return res, err
 }
@@ -592,9 +652,6 @@ func doLogs(context.Context) *rkentry.LogsResponse {
 }
 
 func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_common_v1.LogsRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
 }
 
@@ -613,9 +670,6 @@ func doDeps(context.Context) *rkentry.DepResponse {
 }
 
 func (entry *CommonServiceEntry) Deps(ctx context.Context, request *rk_grpc_common_v1.DepsRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doDeps(ctx)))
 }
 
@@ -634,9 +688,6 @@ func doLicense(context.Context) *rkentry.LicenseResponse {
 }
 
 func (entry *CommonServiceEntry) License(ctx context.Context, request *rk_grpc_common_v1.LicenseRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLicense(ctx)))
 }
 
@@ -655,16 +706,10 @@ func doReadme(context.Context) *rkentry.ReadmeResponse {
 }
 
 func (entry *CommonServiceEntry) Readme(ctx context.Context, request *rk_grpc_common_v1.ReadmeRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReadme(ctx)))
 }
 
 func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *rk_grpc_common_v1.GwErrorMappingRequest) (*structpb.Struct, error) {
-	// Add auto generated request ID
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
-
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGwErrorMapping(ctx)))
 }
 

@@ -7,6 +7,7 @@ package rkgrpcmetrics
 import (
 	"context"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -17,13 +18,13 @@ import (
 
 func TestWithEntryNameAndType_HappyCase(t *testing.T) {
 	defer clearOptionsMap()
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.Equal(t, "ut-entry-name", set.EntryName)
 	assert.Equal(t, "ut-entry", set.EntryType)
 	assert.Equal(t, set,
-		optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)])
+		optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)])
 
 	clearInterceptorMetrics(set.MetricsSet)
 }
@@ -34,7 +35,7 @@ func TestWithErrorToCode_HappyCase(t *testing.T) {
 		return status.Code(err)
 	}
 
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithErrorToCode(errFunc))
 
 	assert.Equal(t,
@@ -47,7 +48,7 @@ func TestWithErrorToCode_HappyCase(t *testing.T) {
 func TestWithRegisterer_HappyCase(t *testing.T) {
 	defer clearOptionsMap()
 	registerer := prometheus.DefaultRegisterer
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithRegisterer(registerer))
 
 	assert.Equal(t, set.registerer, registerer)
@@ -68,13 +69,13 @@ func TestGetOptionSet_WithoutRkContext(t *testing.T) {
 
 func TestGetOptionSet_HappyCase(t *testing.T) {
 	defer clearOptionsMap()
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName("ut-entry-name"),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.Equal(t, set, GetOptionSet(ctx))
@@ -96,13 +97,13 @@ func TestGetDurationMetrics_WithDefaultRegisterer(t *testing.T) {
 	UnaryServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetDurationMetrics(ctx))
@@ -120,13 +121,13 @@ func TestGetDurationMetrics_WithCustomRegisterer(t *testing.T) {
 		WithEntryNameAndType(entryName, entryType),
 		WithRegisterer(prometheus.NewRegistry()))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetDurationMetrics(ctx))
 
@@ -147,13 +148,13 @@ func TestGetErrorMetrics_WithDefaultRegisterer(t *testing.T) {
 	UnaryServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetErrorMetrics(ctx))
 
@@ -170,13 +171,13 @@ func TestGetErrorMetrics_WithCustomRegisterer(t *testing.T) {
 		WithEntryNameAndType(entryName, entryType),
 		WithRegisterer(prometheus.NewRegistry()))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetErrorMetrics(ctx))
 
@@ -197,13 +198,13 @@ func TestGetResCodeMetrics_WithDefaultRegisterer(t *testing.T) {
 	UnaryServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetErrorMetrics(ctx))
 
@@ -220,13 +221,13 @@ func TestGetResCodeMetrics_WithCustomRegisterer(t *testing.T) {
 		WithEntryNameAndType(entryName, entryType),
 		WithRegisterer(prometheus.NewRegistry()))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetResCodeMetrics(ctx))
 
@@ -247,13 +248,13 @@ func TestGetMetricsSet_WithDefaultRegisterer(t *testing.T) {
 	UnaryServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetMetricsSet(ctx))
 
@@ -270,13 +271,13 @@ func TestGetMetricsSet_WithCustomRegisterer(t *testing.T) {
 		WithEntryNameAndType(entryName, entryType),
 		WithRegisterer(prometheus.NewRegistry()))
 
-	ctx := rkgrpcctx.ContextWithPayload(context.TODO(),
+	ctx := rkgrpcctx.ToRkContext(context.TODO(),
 		rkgrpcctx.WithEntryName(entryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			Type: rkgrpcctx.RpcTypeUnaryServer,
+			Type: rkgrpcbasic.RpcTypeUnaryServer,
 		}))
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(entryName, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, GetMetricsSet(ctx))
 

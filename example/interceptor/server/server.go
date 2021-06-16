@@ -82,7 +82,7 @@ type GreeterServer struct{}
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
 	event := rkgrpcctx.GetEvent(ctx)
 	// add fields
-	event.AddFields(zap.String("key", "value"))
+	event.AddPayloads(zap.String("key", "value"))
 	// add error
 	event.AddErr(errors.New(""))
 	// add pair
@@ -96,14 +96,14 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	// add to metadata
 	rkgrpcctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+	rkgrpcctx.SetRequestIdToOutgoingMD(ctx)
 
 	// print incoming metadata
 	bytes, _ := json.Marshal(rkgrpcctx.GetIncomingMD(ctx))
 	println(string(bytes))
 
 	// print with logger to check whether id was printed
-	rkgrpcctx.GetZapLogger(ctx).Info("this is info message")
+	rkgrpcctx.GetLogger(ctx).Info("this is info message")
 
 	return &proto.HelloResponse{
 		Message: "hello",

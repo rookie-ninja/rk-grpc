@@ -4,15 +4,17 @@
 // license that can be found in the LICENSE file.
 package rkgrpctokenauth
 
-import "github.com/rookie-ninja/rk-grpc/interceptor/context"
+import (
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+)
 
 // Interceptor would distinguish token set based on.
 var optionsMap = make(map[string]*optionSet)
 
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName: rkgrpcctx.RkEntryNameValue,
-		EntryType: rkgrpcctx.RkEntryTypeValue,
+		EntryName: rkgrpcbasic.RkEntryNameValue,
+		EntryType: rkgrpcbasic.RkEntryTypeValue,
 		tokens:    make(map[string]bool),
 	}
 
@@ -20,7 +22,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 		opts[i](set)
 	}
 
-	key := rkgrpcctx.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}

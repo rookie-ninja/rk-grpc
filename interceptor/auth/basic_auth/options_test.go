@@ -5,26 +5,26 @@
 package rkgrpcbasicauth
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	rkgrpcbasic "github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestWithEntryNameAndType_HappyCase(t *testing.T) {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.Equal(t, "ut-entry-name", set.EntryName)
 	assert.Equal(t, "ut-entry", set.EntryType)
 	assert.Equal(t, set,
-		optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)])
+		optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)])
 }
 
 func TestWithCredential_HappyCase(t *testing.T) {
 	credOne := "user-1:pass-1"
 	credTwo := "user-2:pass-2"
 
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryServer,
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryServer,
 		WithCredential(credOne, credTwo))
 
 	assert.Equal(t, "pass-1", set.credentials["user-1"])

@@ -12,6 +12,7 @@ import (
 	"github.com/markbates/pkger"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkgrpcbasic "github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
@@ -158,11 +159,18 @@ func (entry *TvEntry) Bootstrap(ctx context.Context) {
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping TvEntry.", event.GetFields()...)
+	logger.Info("Bootstrapping TvEntry.", event.ListPayloads()...)
 
-	event.AddFields(zap.String("path", "/rk/v1/tv/*item"))
+	event.AddPayloads(zap.String("path", "/rk/v1/tv/*item"))
 
 	entry.Template = template.New("rk-tv")
 
@@ -170,33 +178,38 @@ func (entry *TvEntry) Bootstrap(ctx context.Context) {
 	for k, v := range Templates {
 		if _, err := entry.Template.Parse(string(v)); err != nil {
 			entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
-			entry.ZapLoggerEntry.GetLogger().Error(fmt.Sprintf("Error occurs while parsing %s template.", k))
+			logger.Error(fmt.Sprintf("Error occurs while parsing %s template.", k))
 			rkcommon.ShutdownWithError(err)
 		}
 	}
-
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping tvEntry.", event.GetFields()...)
 
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 }
 
 // Interrupt entry.
-func (entry *TvEntry) Interrupt(context.Context) {
+func (entry *TvEntry) Interrupt(ctx context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"interrupt",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Interrupting TvEntry.", event.GetFields()...)
+	logger.Info("Interrupting TvEntry.", event.ListPayloads()...)
 }
 
 // Log basic info into rkquery.Event
 func (entry *TvEntry) logBasicInfo(event rkquery.Event) {
-	event.AddFields(
+	event.AddPayloads(
 		zap.String("entryName", entry.EntryName),
 		zap.String("entryType", entry.EntryType))
 }
@@ -246,7 +259,7 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("charset", "utf-8")
 	w.Header().Set("content-type", "text/html")
-	w.Header().Set(rkgrpcctx.RequestIdKeyDefault, rkcommon.GenerateRequestId())
+	w.Header().Set(rkgrpcctx.RequestIdMetadataKey, rkcommon.GenerateRequestId())
 
 	var remoteIp, remotePort string
 	tokens := strings.Split(r.RemoteAddr, ":")
@@ -256,14 +269,14 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 		remotePort = tokens[1]
 	}
 
-	ctx := rkgrpcctx.ContextWithPayload(context.Background(),
+	ctx := rkgrpcctx.ToRkContext(context.Background(),
 		rkgrpcctx.WithEntryName(entry.EntryName),
 		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
 			GwMethod:    r.Method,
 			GwPath:      r.URL.Path,
 			GrpcService: "unset",
 			GrpcMethod:  "unset",
-			Type:        rkgrpcctx.RpcTypeStreamServer,
+			Type:        rkgrpcbasic.RpcTypeStreamServer,
 			RemoteIp:    remoteIp,
 			RemotePort:  remotePort,
 		}))

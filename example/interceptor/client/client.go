@@ -67,12 +67,12 @@ func main() {
 	// add metadata
 	rkgrpcctx.AddToOutgoingMD(ctx, "key", "1", "2")
 	// add request id
-	rkgrpcctx.AddRequestIdToOutgoingMD(ctx)
+	rkgrpcctx.SetRequestIdToOutgoingMD(ctx)
 
 	// call server
 	r, err := c.SayHello(ctx, &proto.HelloRequest{Name: "name"})
 
-	rkgrpcctx.GetZapLogger(ctx).Info("This is info message")
+	rkgrpcctx.GetLogger(ctx).Info("This is info message")
 
 	// print incoming metadata
 	bytes, _ := json.Marshal(rkgrpcctx.GetIncomingMD(ctx))

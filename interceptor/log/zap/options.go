@@ -6,18 +6,18 @@ package rkgrpclog
 
 import (
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// Interceptor would distinguish metrics set based on.
+// Interceptor would distinguish logs set based on.
 var optionsMap = make(map[string]*optionSet)
 
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName: rkgrpcctx.RkEntryNameValue,
-		EntryType: rkgrpcctx.RkEntryTypeValue,
+		EntryName: rkgrpcbasic.RkEntryNameValue,
+		EntryType: rkgrpcbasic.RkEntryTypeValue,
 		ErrorToCodeFunc: func(err error) codes.Code {
 			return status.Code(err)
 		},
@@ -29,7 +29,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 		opts[i](set)
 	}
 
-	key := rkgrpcctx.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}

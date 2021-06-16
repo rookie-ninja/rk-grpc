@@ -181,33 +181,47 @@ func NewSwEntry(opts ...SwOption) *SwEntry {
 }
 
 // Bootstrap swagger entry.
-func (entry *SwEntry) Bootstrap(context.Context) {
+func (entry *SwEntry) Bootstrap(ctx context.Context) {
 	// No op
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"bootstrap",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping SwEntry.", event.GetFields()...)
+	logger.Info("Bootstrapping SwEntry.", event.ListPayloads()...)
 }
 
 // Interrupt swagger entry.
-func (entry *SwEntry) Interrupt(context.Context) {
+func (entry *SwEntry) Interrupt(ctx context.Context) {
 	// No op
 	event := entry.EventLoggerEntry.GetEventHelper().Start(
 		"interrupt",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
-	entry.ZapLoggerEntry.GetLogger().Info("Interrupting SwEntry.", event.GetFields()...)
+	logger.Info("Interrupting SwEntry.", event.ListPayloads()...)
 }
 
 // Get name of entry.
@@ -255,7 +269,7 @@ func (entry *SwEntry) UnmarshalJSON([]byte) error {
 
 // Add basic fields into event
 func (entry *SwEntry) logBasicInfo(event rkquery.Event) {
-	event.AddFields(
+	event.AddPayloads(
 		zap.String("entryName", entry.EntryName),
 		zap.String("entryType", entry.EntryType),
 		zap.String("swPath", entry.Path),

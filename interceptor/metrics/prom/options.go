@@ -8,9 +8,11 @@ import (
 	"context"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-prom"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -53,10 +55,10 @@ var optionsMap = make(map[string]*optionSet)
 
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName:       rkgrpcctx.RkEntryNameValue,
-		EntryType:       rkgrpcctx.RkEntryTypeValue,
+		EntryName:       rkgrpcbasic.RkEntryNameValue,
+		EntryType:       rkgrpcbasic.RkEntryTypeValue,
 		registerer:      prometheus.DefaultRegisterer,
-		ErrorToCodeFunc: rkgrpcctx.ErrorToCodesFuncDefault,
+		ErrorToCodeFunc: errorToCodesFuncDefault,
 	}
 
 	for i := range opts {
@@ -68,7 +70,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 		set.EntryName,
 		set.registerer)
 
-	key := rkgrpcctx.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}
@@ -122,7 +124,7 @@ func GetOptionSet(ctx context.Context) *optionSet {
 	info := rkgrpcctx.GetRpcInfo(ctx)
 
 	if info != nil {
-		return optionsMap[rkgrpcctx.ToOptionsKey(entryName, info.Type)]
+		return optionsMap[rkgrpcbasic.ToOptionsKey(entryName, info.Type)]
 	}
 	return nil
 }
@@ -191,11 +193,11 @@ func getValues(ctx context.Context) []string {
 	values := []string{
 		entryName,
 		entryType,
-		rkgrpcctx.Realm.String,
-		rkgrpcctx.Region.String,
-		rkgrpcctx.AZ.String,
-		rkgrpcctx.Domain.String,
-		rkgrpcctx.LocalHostname.String,
+		rkgrpcbasic.Realm.String,
+		rkgrpcbasic.Region.String,
+		rkgrpcbasic.AZ.String,
+		rkgrpcbasic.Domain.String,
+		rkgrpcbasic.LocalHostname.String,
 		rkentry.GlobalAppCtx.GetAppInfoEntry().Version,
 		rkentry.GlobalAppCtx.GetAppInfoEntry().AppName,
 		rpcInfo.GrpcService,
@@ -207,4 +209,8 @@ func getValues(ctx context.Context) []string {
 	}
 
 	return values
+}
+
+func errorToCodesFuncDefault(err error) codes.Code {
+	return status.Code(err)
 }

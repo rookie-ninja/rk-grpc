@@ -22,7 +22,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		defer func() {
 			if err := recover(); err != nil {
 				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetZapLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
+				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
 					zap.Any("err", err))
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
@@ -40,7 +40,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 				}
 
 				if brokenPipe {
-					rkgrpcctx.GetZapLogger(ctx).Error(string(debug.Stack()))
+					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
 					event.SetEndTime(time.Now())
 					event.SetResCode(codes.Internal.String())
 					return
@@ -60,7 +60,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		defer func() {
 			if err := recover(); err != nil {
 				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetZapLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
+				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
 					zap.Any("err", err))
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
@@ -78,7 +78,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 				}
 
 				if brokenPipe {
-					rkgrpcctx.GetZapLogger(ctx).Error(string(debug.Stack()))
+					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
 					event.SetEndTime(time.Now())
 					event.SetResCode(codes.Internal.String())
 					return
@@ -98,7 +98,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		defer func() {
 			if err := recover(); err != nil {
 				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetZapLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
+				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
 					zap.Any("err", err))
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
@@ -116,7 +116,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 				}
 
 				if brokenPipe {
-					rkgrpcctx.GetZapLogger(ctx).Error(string(debug.Stack()))
+					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
 					event.SetEndTime(time.Now())
 					event.SetResCode(codes.Internal.String())
 					return
@@ -139,7 +139,7 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 
 			if err := recover(); err != nil {
 				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetZapLogger(ctx).Error("panic occurs\n" + string(debug.Stack()))
+				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n" + string(debug.Stack()))
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
 				var brokenPipe bool
@@ -156,7 +156,7 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 				}
 
 				if brokenPipe {
-					rkgrpcctx.GetZapLogger(ctx).Error(string(debug.Stack()))
+					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
 					event.SetEndTime(time.Now())
 					event.SetResCode(codes.Internal.String())
 					return

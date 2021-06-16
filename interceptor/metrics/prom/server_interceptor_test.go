@@ -6,7 +6,7 @@ package rkgrpcmetrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,7 +18,7 @@ func TestUnaryServerInterceptor_WithoutOptions(t *testing.T) {
 
 	assert.NotNil(t, inter)
 
-	set := optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -29,10 +29,10 @@ func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
 	inter := UnaryServerInterceptor(
 		WithEntryNameAndType("ut-entry-name", "ut-entry"),
 		WithRegisterer(prometheus.NewRegistry()),
-		WithErrorToCode(rkgrpcctx.ErrorToCodesFuncDefault))
+		WithErrorToCode(errorToCodesFuncDefault))
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -43,7 +43,7 @@ func TestStreamServerInterceptor_WithoutOptions(t *testing.T) {
 	inter := StreamServerInterceptor()
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeStreamServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeStreamServer)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -54,10 +54,10 @@ func TestStreamServerInterceptor_HappyCase(t *testing.T) {
 	inter := StreamServerInterceptor(
 		WithEntryNameAndType("ut-entry-name", "ut-entry"),
 		WithRegisterer(prometheus.NewRegistry()),
-		WithErrorToCode(rkgrpcctx.ErrorToCodesFuncDefault))
+		WithErrorToCode(errorToCodesFuncDefault))
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeStreamServer)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeStreamServer)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)

@@ -6,13 +6,13 @@ package rkgrpcmetrics
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"google.golang.org/grpc"
 	"time"
 )
 
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
-	newOptionSet(rkgrpcctx.RpcTypeUnaryClient, opts...)
+	newOptionSet(rkgrpcbasic.RpcTypeUnaryClient, opts...)
 
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// Before invoking
@@ -41,7 +41,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 }
 
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
-	newOptionSet(rkgrpcctx.RpcTypeStreamClient, opts...)
+	newOptionSet(rkgrpcbasic.RpcTypeStreamClient, opts...)
 
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		// Before invoking

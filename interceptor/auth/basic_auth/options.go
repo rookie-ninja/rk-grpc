@@ -5,7 +5,7 @@
 package rkgrpcbasicauth
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	rkgrpcbasic "github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"strings"
 )
 
@@ -14,8 +14,8 @@ var optionsMap = make(map[string]*optionSet)
 
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName:   rkgrpcctx.RkEntryNameValue,
-		EntryType:   rkgrpcctx.RkEntryTypeValue,
+		EntryName:   rkgrpcbasic.RkEntryNameValue,
+		EntryType:   rkgrpcbasic.RkEntryTypeValue,
 		credentials: make(map[string]string),
 	}
 
@@ -23,7 +23,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 		opts[i](set)
 	}
 
-	key := rkgrpcctx.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}

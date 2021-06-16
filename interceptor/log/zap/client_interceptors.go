@@ -5,18 +5,17 @@
 package rkgrpclog
 
 import (
-	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
 	"path"
 	"time"
 )
 
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeUnaryClient, opts...)
+	set := newOptionSet(rkgrpcbasic.RpcTypeUnaryClient, opts...)
 
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// 1: Before invoking
@@ -39,7 +38,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 }
 
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
-	set := newOptionSet(rkgrpcctx.RpcTypeStreamClient, opts...)
+	set := newOptionSet(rkgrpcbasic.RpcTypeStreamClient, opts...)
 
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		// Before invoking
@@ -67,43 +66,30 @@ func clientBefore(ctx context.Context, set *optionSet) context.Context {
 	event := set.EventLoggerEntry.GetEventFactory().CreateEvent()
 	event.SetStartTime(time.Now())
 
-	outgoingRequestIds := rkgrpcctx.GetRequestIdsFromOutgoingMD(ctx)
-
-	remoteIP, remotePort, _ := net.SplitHostPort(rpcInfo.Target)
-	event.SetRemoteAddr(remoteIP)
+	event.SetRemoteAddr(rpcInfo.RemoteIp + ":" + rpcInfo.RemotePort)
 	event.SetOperation(path.Base(rpcInfo.GrpcMethod))
 
-	fields := []zap.Field{
-		rkgrpcctx.Realm,
-		rkgrpcctx.Region,
-		rkgrpcctx.AZ,
-		rkgrpcctx.Domain,
-		zap.String("appName", rkentry.GlobalAppCtx.GetAppInfoEntry().AppName),
-		zap.String("appVersion", rkentry.GlobalAppCtx.GetAppInfoEntry().Version),
-		rkgrpcctx.LocalIp,
-		zap.String("remoteIp", remoteIP),
-		zap.String("remotePort", remotePort),
+	payloads := []zap.Field{
+		zap.String("remoteIp", rpcInfo.RemoteIp),
+		zap.String("remotePort", rpcInfo.RemotePort),
 		zap.String("grpcService", path.Dir(rpcInfo.GrpcMethod)[1:]),
 		zap.String("grpcMethod", path.Base(rpcInfo.GrpcMethod)),
 		zap.String("grpcType", rpcInfo.Type),
-		zap.Strings("outgoingRequestId", outgoingRequestIds),
-		zap.Time("startTime", event.GetStartTime()),
 	}
 
-	logger := set.ZapLoggerEntry.GetLogger().With(
-		zap.Strings("outgoingRequestId", outgoingRequestIds))
+	logger := set.ZapLoggerEntry.GetLogger()
 
 	if d, ok := ctx.Deadline(); ok {
-		fields = append(fields, zap.String("deadline", d.Format(time.RFC3339)))
+		payloads = append(payloads, zap.String("deadline", d.Format(time.RFC3339)))
 	}
 
-	event.AddFields(fields...)
+	event.AddPayloads(payloads...)
 
 	// Extract outgoing metadata from context
 	outgoingMD := rkgrpcctx.GetOutgoingMD(ctx)
 	incomingMD := rkgrpcctx.GetIncomingMD(ctx)
 
-	return rkgrpcctx.ContextWithPayload(ctx,
+	return rkgrpcctx.ToRkContext(ctx,
 		rkgrpcctx.WithEvent(event),
 		rkgrpcctx.WithZapLogger(logger),
 		rkgrpcctx.WithIncomingMD(incomingMD),
@@ -112,40 +98,31 @@ func clientBefore(ctx context.Context, set *optionSet) context.Context {
 }
 
 func clientAfter(ctx context.Context, set *optionSet) {
-	rpcInfo := rkgrpcctx.GetRpcInfo(ctx)
-	code := set.ErrorToCodeFunc(rpcInfo.Err)
 	event := rkgrpcctx.GetEvent(ctx)
-	event.AddErr(rpcInfo.Err)
-	endTime := time.Now()
-	elapsed := endTime.Sub(event.GetStartTime())
 
-	fields := make([]zap.Field, 0)
+	rpcInfo := rkgrpcctx.GetRpcInfo(ctx)
+	event.AddErr(rpcInfo.Err)
+	code := set.ErrorToCodeFunc(rpcInfo.Err)
+	endTime := time.Now()
 
 	// Check whether context is cancelled from server
 	select {
 	case <-ctx.Done():
 		event.AddErr(ctx.Err())
-		fields = append(fields, zap.NamedError("serverError", ctx.Err()))
 	default:
 		break
 	}
 
 	// Extract request id and log it
-	incomingRequestIds := rkgrpcctx.GetRequestIdsFromIncomingMD(ctx)
-	fields = append(fields,
-		zap.String("resCode", code.String()),
-		zap.Time("endTime", time.Now()),
-		zap.Int64("elapsedNano", elapsed.Nanoseconds()),
-		zap.Strings("incomingRequestId", incomingRequestIds))
+	incomingRequestId := rkgrpcctx.GetRequestId(ctx)
 
-	rkgrpcctx.SetZapLogger(ctx, rkgrpcctx.GetZapLogger(ctx).With(
-		zap.Strings("incomingRequestId", incomingRequestIds)))
-
-	event.AddFields(fields...)
-	if len(event.GetEventId()) < 1 {
-		event.SetEventId("fakeId")
+	if len(incomingRequestId) > 0 {
+		event.SetEventId(incomingRequestId)
+		event.SetRequestId(incomingRequestId)
+		event.SetTraceId(rkgrpcctx.GetTraceId(ctx))
 	}
-	event.SetEndTime(endTime)
 
-	event.WriteLog()
+	event.SetResCode(code.String())
+	event.SetEndTime(endTime)
+	event.Finish()
 }

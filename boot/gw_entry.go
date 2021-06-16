@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"io/ioutil"
 	"net/http"
@@ -51,9 +50,10 @@ type gwRule struct {
 // 8: Sw: See BootConfigSw for details.
 // 9: Prom: See BootConfigProm for details.
 type BootConfigGw struct {
-	Enabled bool   `yaml:"enabled" json:"enabled"`
-	Port    uint64 `yaml:"port" json:"port"`
-	Cert    struct {
+	Enabled        bool   `yaml:"enabled" json:"enabled"`
+	Port           uint64 `yaml:"port" json:"port"`
+	RkServerOption bool   `yaml:"rkServerOption" json:"rkServerOption"`
+	Cert           struct {
 		Ref string `yaml:"ref" json:"ref"`
 	} `yaml:"cert" json:"cert"`
 	Logger struct {
@@ -209,6 +209,13 @@ func WithGrpcDialOptionsGw(opts ...grpc.DialOption) GwOption {
 	}
 }
 
+// Provide gateway server mux options.
+func WithServerMuxOptionsGw(opts ...runtime.ServeMuxOption) GwOption {
+	return func(entry *GwEntry) {
+		entry.ServerMuxOptions = append(entry.ServerMuxOptions, opts...)
+	}
+}
+
 // Create new gateway entry with options.
 func NewGwEntry(opts ...GwOption) *GwEntry {
 	entry := &GwEntry{
@@ -338,6 +345,13 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
 
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
+
 	entry.logBasicInfo(event)
 
 	// Parse gateway mapping file paths.
@@ -355,22 +369,6 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 	}
 
 	grpcEndpoint := "0.0.0.0:" + strconv.FormatUint(entry.GrpcPort, 10)
-	// Use proto names for return value instead of camel case
-	entry.ServerMuxOptions = append(entry.ServerMuxOptions,
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-			MarshalOptions: protojson.MarshalOptions{
-				UseProtoNames:   true,
-				EmitUnpopulated: true,
-			},
-			UnmarshalOptions: protojson.UnmarshalOptions{},
-		}),
-		runtime.WithMetadata(func(c context.Context, req *http.Request) metadata.MD {
-			return metadata.Pairs(
-				"x-forwarded-method", req.Method,
-				"x-forwarded-path", req.URL.Path)
-		}),
-		runtime.WithIncomingHeaderMatcher(RkIncomingHeaderMatcher),
-		runtime.WithOutgoingHeaderMatcher(RkOutgoingHeaderMatcher))
 
 	entry.GwMux = runtime.NewServeMux(entry.ServerMuxOptions...)
 
@@ -385,7 +383,7 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/", entry.GwMux)
 
-	//// Is tv enabled?
+	// Is tv enabled?
 	if entry.IsTvEnabled() {
 		entry.TvEntry.Bootstrap(ctx)
 		httpMux.HandleFunc("/rk/v1/tv/", entry.TvEntry.TV)
@@ -413,14 +411,14 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 
 	entry.Mux = httpMux
 
-	entry.ZapLoggerEntry.GetLogger().Info("Bootstrapping GwEntry.", event.GetFields()...)
+	logger.Info("Bootstrapping GwEntry.", event.ListPayloads()...)
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
 	go func(*GwEntry) {
 		if entry.IsServerTlsEnabled() {
 			if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
 				event.AddErr(err)
-				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing TLS.", event.GetFields()...)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while parsing TLS.", event.ListPayloads()...)
 				rkcommon.ShutdownWithError(err)
 			} else {
 				entry.Server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
@@ -428,13 +426,13 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 
 			if err := entry.Server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 				event.AddErr(err)
-				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener-tls.", event.GetFields()...)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener-tls.", event.ListPayloads()...)
 				rkcommon.ShutdownWithError(err)
 			}
 		} else {
 			if err := entry.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				event.AddErr(err)
-				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener.", event.GetFields()...)
+				entry.ZapLoggerEntry.GetLogger().Error("Error occurs while serving grpc-listener.", event.ListPayloads()...)
 				rkcommon.ShutdownWithError(err)
 			}
 		}
@@ -447,6 +445,13 @@ func (entry *GwEntry) Interrupt(ctx context.Context) {
 		"interrupt",
 		rkquery.WithEntryName(entry.EntryName),
 		rkquery.WithEntryType(entry.EntryType))
+
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
+		event.SetEventId(raw.(string))
+		logger = logger.With(zap.String("eventId", event.GetEventId()))
+	}
 
 	entry.logBasicInfo(event)
 
@@ -462,12 +467,12 @@ func (entry *GwEntry) Interrupt(ctx context.Context) {
 		entry.SwEntry.Interrupt(ctx)
 	}
 
-	entry.ZapLoggerEntry.GetLogger().Info("Interrupting gwEntry.", event.GetFields()...)
+	logger.Info("Interrupting gwEntry.", event.ListPayloads()...)
 
 	if entry.Server != nil {
 		if err := entry.Server.Shutdown(context.Background()); err != nil {
 			event.AddErr(err)
-			entry.ZapLoggerEntry.GetLogger().Warn("Error occurs while stopping gwEntry")
+			logger.Warn("Error occurs while stopping gwEntry")
 		}
 	}
 
@@ -552,7 +557,7 @@ func (entry *GwEntry) IsServerTlsEnabled() bool {
 
 // Add basic fields into event.
 func (entry *GwEntry) logBasicInfo(event rkquery.Event) {
-	event.AddFields(
+	event.AddPayloads(
 		zap.String("entryName", entry.EntryName),
 		zap.String("entryType", entry.EntryType),
 		zap.Uint64("grpcPort", entry.GrpcPort),
@@ -573,13 +578,4 @@ func headMethodHandler(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
-}
-
-// Pass out all metadata in grpc to http header.
-func RkOutgoingHeaderMatcher(key string) (string, bool) {
-	return key, true
-}
-
-func RkIncomingHeaderMatcher(key string) (string, bool) {
-	return key, true
 }

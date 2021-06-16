@@ -3,6 +3,7 @@ syntax = "proto3";
 package rk.api.v1;
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
 
 option go_package = "rk/api/v1/rk_grpc_common_v1";
 

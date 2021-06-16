@@ -117,7 +117,7 @@ func TestCommonServiceEntry_Bootstrap_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry(
 		WithEventLoggerEntryCommonService(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryCommonService(rkentry.NoopZapLoggerEntry()))
-	entry.Bootstrap(nil)
+	entry.Bootstrap(context.TODO())
 }
 
 func TestCommonServiceEntry_Interrupt_HappyCase(t *testing.T) {
@@ -126,7 +126,7 @@ func TestCommonServiceEntry_Interrupt_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry(
 		WithEventLoggerEntryCommonService(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryCommonService(rkentry.NoopZapLoggerEntry()))
-	entry.Interrupt(nil)
+	entry.Interrupt(context.TODO())
 }
 
 func TestCommonServiceEntry_GetName_HappyCase(t *testing.T) {
@@ -181,8 +181,7 @@ func TestCommonServiceEntry_logBasicInfo(t *testing.T) {
 	event := rkentry.NoopEventLoggerEntry().GetEventFactory().CreateEvent()
 	entry.logBasicInfo(event)
 
-	zapFields := event.GetFields()
-	assert.Len(t, zapFields, 2)
+	assert.Len(t, event.ListPayloads(), 2)
 }
 
 func TestCommonServiceEntry_doHealthy_HappyCase(t *testing.T) {

@@ -5,7 +5,7 @@
 package rkgrpcmetrics
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
+	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,7 +15,7 @@ func TestUnaryClientInterceptor_WithoutOptions(t *testing.T) {
 	inter := UnaryClientInterceptor()
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeUnaryClient)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeUnaryClient)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -27,7 +27,7 @@ func TestUnaryClientInterceptor_HappyCase(t *testing.T) {
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeUnaryClient)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeUnaryClient)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -38,7 +38,7 @@ func TestStreamClientInterceptor_WithoutOptions(t *testing.T) {
 	inter := StreamClientInterceptor()
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey(rkgrpcctx.RkEntryNameValue, rkgrpcctx.RpcTypeStreamClient)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey(rkgrpcbasic.RkEntryNameValue, rkgrpcbasic.RpcTypeStreamClient)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)
@@ -50,7 +50,7 @@ func TestStreamClientInterceptor_HappyCase(t *testing.T) {
 		WithEntryNameAndType("ut-entry-name", "ut-entry"))
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcctx.ToOptionsKey("ut-entry-name", rkgrpcctx.RpcTypeStreamClient)]
+	set := optionsMap[rkgrpcbasic.ToOptionsKey("ut-entry-name", rkgrpcbasic.RpcTypeStreamClient)]
 	assert.NotNil(t, set)
 
 	clearInterceptorMetrics(set.MetricsSet)

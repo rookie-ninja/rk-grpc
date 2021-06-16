@@ -39,6 +39,7 @@ grpc:
     gw:
       enabled: true                                  # Optional, default: false
       port: 8080                                     # Required
+      rkServerOption: true                           # Optional, default: false
 #      gwMappingFilePaths:                           # Optional
 #        - ""
 #      cert:
@@ -80,3 +81,14 @@ grpc:
         tokens:
           - token: ""
             expired: false                           # Optional, default: ""
+      extension:
+        enabled: true                         # Optional, default: false
+      tracingTelemetry:
+        enabled: true                         # Optional, default: false
+        exporter:                             # Optional, default will create a stdout exporter
+          file:
+            enabled: true                     # Optional, default: false
+#            outputPath: "logs/trace.log"      # Optional, default: stdout
+#          jaeger:
+#            enabled: true                     # Optional, default: false
+#            agentEndpoint: ""                 # Optional, default: localhost:6832

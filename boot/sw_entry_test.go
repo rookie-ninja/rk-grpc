@@ -184,7 +184,7 @@ func TestSwEntry_logBasicInfo_HappyCase(t *testing.T) {
 	event := rkentry.NoopEventLoggerEntry().GetEventFactory().CreateEvent()
 
 	entry.logBasicInfo(event)
-	fields := event.GetFields()
+	fields := event.ListPayloads()
 
 	assert.Len(t, fields, 4)
 }
