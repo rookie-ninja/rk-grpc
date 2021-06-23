@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	runtime2 "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
@@ -705,14 +705,17 @@ func doReadme(context.Context) *rkentry.ReadmeResponse {
 	return res
 }
 
+// Get README file contents.
 func (entry *CommonServiceEntry) Readme(ctx context.Context, request *rk_grpc_common_v1.ReadmeRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReadme(ctx)))
 }
 
+// Get error mapping file contents.
 func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *rk_grpc_common_v1.GwErrorMappingRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGwErrorMapping(ctx)))
 }
 
+// Helper function /gwErrorMapping
 func doGwErrorMapping(context.Context) *rkentry.GwErrorMappingResponse {
 	res := &rkentry.GwErrorMappingResponse{
 		Mapping: make(map[int32]*rkentry.GwErrorMappingResponse_Mapping),
@@ -725,7 +728,7 @@ func doGwErrorMapping(context.Context) *rkentry.GwErrorMappingResponse {
 			GrpcText: v,
 		}
 
-		restCode := runtime2.HTTPStatusFromCode(codes.Code(k))
+		restCode := gwruntime.HTTPStatusFromCode(codes.Code(k))
 		restText := http.StatusText(restCode)
 
 		element.RestCode = int32(restCode)

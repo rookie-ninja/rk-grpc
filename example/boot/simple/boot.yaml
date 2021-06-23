@@ -1,0 +1,26 @@
+---
+rk: # NOT required
+  appName: rk-example-entry           # Optional, default: "rkApp"
+grpc:
+  - name: greeter
+    port: 1949
+    reflection: true
+    commonService:
+      enabled: true
+    gw:
+      enabled: true
+      port: 8080
+      rkServerOption: true
+      tv:
+        enabled: true
+      sw:
+        enabled: true
+      prom:
+        enabled: true
+    interceptors:
+      loggingZap:
+        enabled: true
+      metricsProm:
+        enabled: true
+      meta:
+        enabled: true

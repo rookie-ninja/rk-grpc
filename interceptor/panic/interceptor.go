@@ -5,49 +5,32 @@
 package rkgrpcpanic
 
 import (
+	"fmt"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"net"
-	"os"
+	"google.golang.org/grpc/status"
 	"runtime/debug"
-	"strings"
-	"time"
 )
 
+// Create new unary client interceptor.
 func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 		defer func() {
-			if err := recover(); err != nil {
-				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
-					zap.Any("err", err))
-				// Check for a broken connection, as it is not really a
-				// condition that warrants a panic stack trace.
-				var brokenPipe bool
-				if ne, ok := err.(*net.OpError); ok {
-					if se, ok := ne.Err.(*os.SyscallError); ok {
-						if strings.Contains(
-							strings.ToLower(se.Error()),
-							"broken pipe") || strings.Contains(strings.ToLower(se.Error()),
-							"connection reset by peer") {
-							brokenPipe = true
-							event.AddErr(se)
-						}
-					}
-				}
+			if recv := recover(); recv != nil {
+				var sts *status.Status
 
-				if brokenPipe {
-					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
-					event.SetEndTime(time.Now())
-					event.SetResCode(codes.Internal.String())
-					return
+				if se, ok := recv.(interface{ GRPCStatus() *status.Status }); ok {
+					sts = se.GRPCStatus()
+				} else {
+					sts = status.New(codes.Internal, fmt.Sprintf("%v", recv))
 				}
+				err = sts.Err()
 
-				event.SetEndTime(time.Now())
-				event.SetResCode(codes.Internal.String())
+				rkgrpcctx.GetEvent(ctx).SetCounter("panic", 1)
+				rkgrpcctx.GetLogger(ctx).Error(fmt.Sprintf("panic occurs:\n%s", string(debug.Stack())), zap.Error(err))
 			}
 		}()
 
@@ -55,37 +38,22 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	}
 }
 
+// Create new stream client interceptor.
 func StreamClientInterceptor() grpc.StreamClientInterceptor {
-	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (stream grpc.ClientStream, err error) {
 		defer func() {
-			if err := recover(); err != nil {
-				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
-					zap.Any("err", err))
-				// Check for a broken connection, as it is not really a
-				// condition that warrants a panic stack trace.
-				var brokenPipe bool
-				if ne, ok := err.(*net.OpError); ok {
-					if se, ok := ne.Err.(*os.SyscallError); ok {
-						if strings.Contains(
-							strings.ToLower(se.Error()),
-							"broken pipe") || strings.Contains(strings.ToLower(se.Error()),
-							"connection reset by peer") {
-							brokenPipe = true
-							event.AddErr(se)
-						}
-					}
-				}
+			if recv := recover(); recv != nil {
+				var sts *status.Status
 
-				if brokenPipe {
-					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
-					event.SetEndTime(time.Now())
-					event.SetResCode(codes.Internal.String())
-					return
+				if se, ok := recv.(interface{ GRPCStatus() *status.Status }); ok {
+					sts = se.GRPCStatus()
+				} else {
+					sts = status.New(codes.Internal, fmt.Sprintf("%v", recv))
 				}
+				err = sts.Err()
 
-				event.SetEndTime(time.Now())
-				event.SetResCode(codes.Internal.String())
+				rkgrpcctx.GetEvent(ctx).SetCounter("panic", 1)
+				rkgrpcctx.GetLogger(ctx).Error(fmt.Sprintf("panic occurs:\n%s", string(debug.Stack())), zap.Error(err))
 			}
 		}()
 
@@ -93,37 +61,22 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 	}
 }
 
+// Create new unary server interceptor.
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		defer func() {
-			if err := recover(); err != nil {
-				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n"+string(debug.Stack()),
-					zap.Any("err", err))
-				// Check for a broken connection, as it is not really a
-				// condition that warrants a panic stack trace.
-				var brokenPipe bool
-				if ne, ok := err.(*net.OpError); ok {
-					if se, ok := ne.Err.(*os.SyscallError); ok {
-						if strings.Contains(
-							strings.ToLower(se.Error()),
-							"broken pipe") || strings.Contains(strings.ToLower(se.Error()),
-							"connection reset by peer") {
-							brokenPipe = true
-							event.AddErr(se)
-						}
-					}
-				}
+			if recv := recover(); recv != nil {
+				var sts *status.Status
 
-				if brokenPipe {
-					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
-					event.SetEndTime(time.Now())
-					event.SetResCode(codes.Internal.String())
-					return
+				if se, ok := recv.(interface{ GRPCStatus() *status.Status }); ok {
+					sts = se.GRPCStatus()
+				} else {
+					sts = status.New(codes.Internal, fmt.Sprintf("%v", recv))
 				}
+				err = sts.Err()
 
-				event.SetEndTime(time.Now())
-				event.SetResCode(codes.Internal.String())
+				rkgrpcctx.GetEvent(ctx).SetCounter("panic", 1)
+				rkgrpcctx.GetLogger(ctx).Error(fmt.Sprintf("panic occurs:\n%s", string(debug.Stack())), zap.Error(err))
 			}
 		}()
 
@@ -131,39 +84,22 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
+// Create new stream server interceptor.
 func StreamServerInterceptor() grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 		defer func() {
-			wrappedStream := rkgrpcctx.WrapServerStream(stream)
-			ctx := wrappedStream.Context()
+			if recv := recover(); recv != nil {
+				var sts *status.Status
 
-			if err := recover(); err != nil {
-				event := rkgrpcctx.GetEvent(ctx)
-				rkgrpcctx.GetLogger(ctx).Error("panic occurs\n" + string(debug.Stack()))
-				// Check for a broken connection, as it is not really a
-				// condition that warrants a panic stack trace.
-				var brokenPipe bool
-				if ne, ok := err.(*net.OpError); ok {
-					if se, ok := ne.Err.(*os.SyscallError); ok {
-						if strings.Contains(
-							strings.ToLower(se.Error()),
-							"broken pipe") || strings.Contains(strings.ToLower(se.Error()),
-							"connection reset by peer") {
-							brokenPipe = true
-							event.AddErr(se)
-						}
-					}
+				if se, ok := recv.(interface{ GRPCStatus() *status.Status }); ok {
+					sts = se.GRPCStatus()
+				} else {
+					sts = status.New(codes.Internal, fmt.Sprintf("%v", recv))
 				}
+				err = sts.Err()
 
-				if brokenPipe {
-					rkgrpcctx.GetLogger(ctx).Error(string(debug.Stack()))
-					event.SetEndTime(time.Now())
-					event.SetResCode(codes.Internal.String())
-					return
-				}
-
-				event.SetEndTime(time.Now())
-				event.SetResCode(codes.Internal.String())
+				rkgrpcctx.GetEvent(stream.Context()).SetCounter("panic", 1)
+				rkgrpcctx.GetLogger(stream.Context()).Error(fmt.Sprintf("panic occurs:\n%s", string(debug.Stack())), zap.Error(err))
 			}
 		}()
 

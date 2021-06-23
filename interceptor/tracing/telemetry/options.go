@@ -8,7 +8,7 @@ import (
 	"context"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-logger"
 	"go.opentelemetry.io/contrib"
 	"go.opentelemetry.io/otel/attribute"
@@ -19,9 +19,9 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/metadata"
-	"log"
 	"os"
 	"path"
+	"strings"
 )
 
 // Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
@@ -76,7 +76,7 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 
 		writer.Filename = outputPath
 
-		opts = append(opts, stdout.WithWriter(writer))
+		opts = append(opts, stdout.WithWriter(writer), stdout.WithoutMetricExport())
 	}
 
 	exporter, _ := stdout.NewExporter(opts...)
@@ -84,21 +84,23 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 	return exporter
 }
 
+// Beta stage
 // TODO: Wait for opentelemetry update version of jeager exporter. Current exporter is not compatible with jaeger agent.
-func CreateJaegerExporter(host, port string) sdktrace.SpanExporter {
-	if len(host) < 1 {
-		host = "localhost"
+func CreateJaegerExporter(endpoint, username, password string) sdktrace.SpanExporter {
+	if len(endpoint) < 1 {
+		endpoint = "http://localhost:14368"
 	}
 
-	if len(port) < 1 {
-		port = "6832"
+	if !strings.HasPrefix(endpoint, "http://") {
+		endpoint = "http://" + endpoint
 	}
 
 	exporter, err := jaeger.NewRawExporter(
-		jaeger.WithAgentEndpoint(
-			jaeger.WithAgentHost(host),
-			jaeger.WithAgentPort(port),
-			jaeger.WithLogger(log.New(os.Stdout, "", 0))))
+		jaeger.WithCollectorEndpoint(
+			jaeger.WithEndpoint(endpoint+"/api/traces"),
+			jaeger.WithUsername(username),
+			jaeger.WithPassword(password)),
+	)
 
 	if err != nil {
 		rkcommon.ShutdownWithError(err)
@@ -113,8 +115,8 @@ var optionsMap = make(map[string]*optionSet)
 // Create an optionSet with rpc type.
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName: rkgrpcbasic.RkEntryNameValue,
-		EntryType: rkgrpcbasic.RkEntryTypeValue,
+		EntryName: rkgrpcinter.RpcEntryNameValue,
+		EntryType: rkgrpcinter.RpcEntryTypeValue,
 	}
 
 	for i := range opts {
@@ -122,7 +124,9 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	}
 
 	if set.Exporter == nil {
-		set.Exporter, _ = stdout.NewExporter(stdout.WithPrettyPrint())
+		set.Exporter, _ = stdout.NewExporter(
+			stdout.WithPrettyPrint(),
+			stdout.WithoutMetricExport())
 	}
 
 	if set.Processor == nil {
@@ -151,7 +155,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 			propagation.Baggage{})
 	}
 
-	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcinter.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}

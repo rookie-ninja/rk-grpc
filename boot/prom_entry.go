@@ -38,13 +38,13 @@ const (
 // 7: Pusher.BasicAuth: Basic auth used to interact with remote pushgateway.
 // 8: Pusher.Cert.Ref: Reference of rkentry.CertEntry.
 type BootConfigProm struct {
-	Path    string `yaml:"path" json:"path"`
 	Enabled bool   `yaml:"enabled" json:"enabled"`
+	Path    string `yaml:"path" json:"path"`
 	Pusher  struct {
 		Enabled       bool   `yaml:"enabled" json:"enabled"`
-		IntervalMs    int64  `yaml:"IntervalMs" json:"IntervalMs"`
 		JobName       string `yaml:"jobName" json:"jobName"`
 		RemoteAddress string `yaml:"remoteAddress" json:"remoteAddress"`
+		IntervalMs    int64  `yaml:"IntervalMs" json:"IntervalMs"`
 		BasicAuth     string `yaml:"basicAuth" json:"basicAuth"`
 		Cert          struct {
 			Ref string `yaml:"ref" json:"ref"`

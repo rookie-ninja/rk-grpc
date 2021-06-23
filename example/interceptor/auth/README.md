@@ -1,0 +1,195 @@
+# Auth interceptor
+In this example, we will try to create unary grpc server and client with auth interceptor enabled.
+
+Auth interceptor will validate bellow authorizations.
+
+| Type | Description | Example |
+| ---- | ---- | ---- |
+| Basic Auth | The client sends HTTP requests with the Authorization header that contains the word Basic, followed by a space and a base64-encoded(non-encrypted) string username: password. | Authorization: Basic AXVubzpwQDU1dzByYM== |
+| Bearer Token | Commonly known as token authentication. It is an HTTP authentication scheme that involves security tokens called bearer tokens. | Authorization: Bearer [token] |
+| API Key | An API key is a token that a client provides when making API calls. With API key auth, you send a key-value pair to the API in the request headers. | X-API-Key: abcdefgh123456789 | 
+
+**Please make sure panic interceptor to be added at last in chain of interceptors.**
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Quick start](#quick-start)
+  - [Code](#code)
+- [Options](#options)
+  - [Context Usage](#context-usage)
+- [Example](#example)
+  - [Unary](#unary)
+    - [Start server and client](#start-server-and-client)
+    - [Output unauthenticated](#output-unauthenticated)
+    - [Code](#code-1)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Quick start
+Get rk-grpc package from the remote repository.
+
+```go
+go get -u github.com/rookie-ninja/rk-grpc
+```
+
+### Code
+```go
+import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+```
+```go
+    // *************************************
+    // ********** Unary Server *************
+    // *************************************
+    opts := []grpc.ServerOption{
+        grpc.ChainUnaryInterceptor(
+            rkgrpcauth.UnaryServerInterceptor(
+                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
+                rkgrpcauth.WithBearerAuth("rk-token"),
+                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+            ),
+        ),
+    }
+
+    // *************************************
+    // ********** Stream Server ************
+    // *************************************
+    opts := []grpc.ServerOption {
+        grpc.ChainStreamInterceptor(
+            rkgrpcauth.StreamServerInterceptor(
+                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
+                rkgrpcauth.WithBearerAuth("rk-token"),
+                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+            ),
+        ),
+    }
+
+    // *************************************
+    // ********** Unary Client *************
+    // *************************************
+    opts := []grpc.DialOption {
+        grpc.WithChainUnaryInterceptor(
+            rkgrpcauth.UnaryClientInterceptor(
+                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
+                // rkgrpcauth.WithBearerAuth("rk-token"),
+                // rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+            ),
+        ),
+    }
+
+    // **************************************
+    // ********** Stream Client *************
+    // **************************************
+    opts := []grpc.DialOption{
+        grpc.WithChainStreamInterceptor(
+            rkgrpcauth.StreamClientInterceptor(
+                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
+                // rkgrpcauth.WithBearerAuth("rk-token"),
+                // rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+            ),
+        ),
+    }
+```
+
+## Options
+Auth interceptor validate authorization for each request.
+
+![server-arch](img/server-arch.png)
+![client-arch](img/client-arch.png)
+
+| Name | Default | Description |
+| ---- | ---- | ---- |
+| WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
+| WithBasicAuth(cred ...string) | []string | Provide Basic auth credential with scheme of [user:pass]. Multiple credential are available for server. |
+| WithBearerAuth(token ...string) | []string | Provide Bearer token. Multiple tokens are available for server. |
+| WithApiKeyAuth(key ...string) | []string | Provide API key. Multiple keys are available for server. |
+
+```go
+    // ********************************************
+    // ********** Enable interceptors *************
+    // ********************************************
+    opts := []grpc.ServerOption{
+        grpc.ChainUnaryInterceptor(
+            rkgrpcauth.UnaryServerInterceptor(
+                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
+                rkgrpcauth.WithBearerAuth("rk-token"),
+                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+            ),
+        ),
+    }
+```
+
+### Context Usage
+| Name | Functionality |
+| ------ | ------ |
+| rkgrpcctx.GetLogger(context.Context) | Get logger generated by log interceptor. If there are X-Request-Id or X-Trace-Id as headers in incoming and outgoing metadata, then loggers will has requestId and traceId attached by default. |
+| rkgrpcctx.GetEvent(context.Context) | Get event generated by log intercetor. Event would be printed as soon as RPC finished. ClientStream is a little bit tricky. Please refer rkgrpcctx.FinishClientStream() function for details. |
+| rkgrpcctx.GetIncomingHeaders(context.Context) | Get incoming header. ClientStream is a little bit tricky, please use stream.Header() instead. |
+| rkgrpcctx.AddHeaderToClient(ctx, "k", "v") | Add k/v to headers which would be sent to client. |
+| rkgrpcctx.AddHeaderToServer(ctx, "k", "v") | Add k/v to headers which would be sent to server. |
+
+## Example
+### Unary
+Create a simple unary server and client with bellow protocol buffer files. We will enable log interceptor at the same time.
+- [greeter.proto](../proto/greeter.proto)
+
+#### Start server and client
+```shell script
+$ go run greeter-server.go
+```
+```shell script
+$ go run greeter-client.go
+```
+
+#### Output unauthenticated
+- Server side (event)
+```shell script
+------------------------------------------------------------------------
+endTime=2021-06-24T00:18:37.554796+08:00
+startTime=2021-06-24T00:18:37.554773+08:00
+elapsedNano=22952
+timezone=CST
+ids={"eventId":"0b83739d-39c9-47a6-811b-afd0f98fbb84"}
+app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+error={"rpc error: code = Unauthenticated desc = Invalid credential":1}
+counters={}
+pairs={}
+timing={}
+remoteAddr=localhost:55001
+operation=/Greeter/SayHello
+resCode=Unauthenticated
+eventStatus=Ended
+EOE
+```
+
+- Client side (zap & event)
+```shell script
+2021-06-24T00:18:37.556+0800    FATAL   auth/greeter-client.go:47       Failed to send request to server.       {"error": "rpc error: code = Unauthenticated desc = Invalid credential"}
+```
+```shell script
+------------------------------------------------------------------------
+endTime=2021-06-24T00:18:37.556421+08:00
+startTime=2021-06-24T00:18:37.554136+08:00
+elapsedNano=2285585
+timezone=CST
+ids={"eventId":"650f2e07-6c17-4c2b-aa22-33efd4dffb6a"}
+app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
+error={"rpc error: code = Unauthenticated desc = Invalid credential":1}
+counters={}
+pairs={}
+timing={}
+remoteAddr=localhost:8080
+operation=/Greeter/SayHello
+resCode=Unauthenticated
+eventStatus=Ended
+EOE
+```
+
+#### Code
+- [greeter-server.go](greeter-server.go)
+- [greeter-client.go](greeter-client.go)

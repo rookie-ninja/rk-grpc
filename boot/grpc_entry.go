@@ -12,14 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor/auth/basic_auth"
-	"github.com/rookie-ninja/rk-grpc/interceptor/auth/token_auth"
-	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
-	rkgrpcextension "github.com/rookie-ninja/rk-grpc/interceptor/extension"
+	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
-	rkgrpctrace "github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
+	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -75,22 +73,19 @@ func init() {
 // 23: Grpc.CommonService.Enabled: Reference of CommonService.
 // 24: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
 // 25: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
-// 26: Grpc.Interceptors.BasicAuth.Enabled: Enable basic auth interceptor.
-// 27: Grpc.Interceptors.BasicAuth.Credentials: Basic auth credentials.
-// 28: Grpc.Interceptors.TokenAuth.Enabled: Enable token interceptor.
-// 29: Grpc.Interceptors.TokenAuth.Tokens.Token: Token of token auth interceptor.
-// 30: Grpc.Interceptors.TokenAuth.Tokens.Token: Is token of token auth expired?
-// 31: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 32: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 26: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
+// 27: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
+// 28: Grpc.Interceptors.Auth.Bearer: Bearer auth tokens.
+// 29: Grpc.Interceptors.Auth.API: API key.
+// 30: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
+// 31: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name        string `yaml:"name" json:"name"`
 		Description string `yaml:"description" json:"description"`
 		Port        uint64 `yaml:"port" json:"port"`
-		Reflection  struct {
-			Enabled bool `yaml:"enabled" json:"enabled"`
-		} `yaml:"reflection" json:"reflection"`
-		Cert struct {
+		Reflection  bool   `yaml:"reflection" json:"reflection"`
+		Cert        struct {
 			Ref string `yaml:"ref" json:"ref"`
 		} `yaml:"cert" json:"cert"`
 		GW            BootConfigGw            `yaml:"gw" json:"gw"`
@@ -102,21 +97,16 @@ type BootConfigGrpc struct {
 			MetricsProm struct {
 				Enabled bool `yaml:"enabled" json:"enabled"`
 			} `yaml:"metricsProm" json:"metricsProm"`
-			BasicAuth struct {
-				Enabled     bool     `yaml:"enabled" json:"enabled"`
-				Credentials []string `yaml:"credentials" json:"credentials"`
-			} `yaml:"basicAuth" json:"basicAuth"`
-			TokenAuth struct {
-				Enabled bool `yaml:"enabled" json:"enabled"`
-				Tokens  []struct {
-					Token   string `yaml:"token" json:"token"`
-					Expired bool   `yaml:"expired" json:"expired"`
-				} `yaml:"tokens" json:"tokens"`
-			} `yaml:"tokenAuth" json:"tokenAuth"`
-			Extension struct {
+			Auth struct {
+				Enabled bool     `yaml:"enabled" json:"enabled"`
+				Basic   []string `yaml:"basic" json:"basic"`
+				Bearer  []string `yaml:"bearer" json:"bearer"`
+				API     []string `yaml:"api" json:"api"`
+			} `yaml:"auth" json:"auth"`
+			Meta struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
 				Prefix  string `yaml:"prefix" json:"prefix"`
-			} `yaml:"extension" json:"extension"`
+			} `yaml:"meta" json:"meta"`
 			TracingTelemetry struct {
 				Enabled  bool `yaml:"enabled" json:"enabled"`
 				Exporter struct {
@@ -125,8 +115,10 @@ type BootConfigGrpc struct {
 						OutputPath string `yaml:"outputPath" json:"outputPath"`
 					} `yaml:"file" json:"file"`
 					Jaeger struct {
-						Enabled       bool   `yaml:"enabled" json:"enabled"`
-						AgentEndpoint string `yaml:"agentEndpoint" json:"agentEndpoint"`
+						Enabled           bool   `yaml:"enabled" json:"enabled"`
+						CollectorEndpoint string `yaml:"collectorEndpoint" json:"collectorEndpoint"`
+						CollectorUsername string `yaml:"collectorUsername" json:"collectorUsername"`
+						CollectorPassword string `yaml:"collectorPassword" json:"collectorPassword"`
 					} `yaml:"jaeger" json:"jaeger"`
 				} `yaml:"exporter" json:"exporter"`
 			} `tracingTelemetry`
@@ -332,7 +324,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithPortGrpc(element.Port),
 			WithGwEntryGrpc(gw),
 			WithCommonServiceEntryGrpc(commonService),
-			WithEnableReflectionGrpc(element.Reflection.Enabled),
+			WithEnableReflectionGrpc(element.Reflection),
 			WithCertEntryGrpc(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
 
 		// did we enabled logging interceptor?
@@ -358,45 +350,6 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			entry.AddStreamInterceptors(rkgrpcmetrics.StreamServerInterceptor(opts...))
 		}
 
-		// did we enabled basic auth interceptor?
-		if element.Interceptors.BasicAuth.Enabled {
-			opts := make([]rkgrpcbasicauth.Option, 0)
-			opts = append(opts,
-				rkgrpcbasicauth.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcbasicauth.WithCredential(element.Interceptors.BasicAuth.Credentials...))
-
-			entry.AddUnaryInterceptors(rkgrpcbasicauth.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcbasicauth.StreamServerInterceptor(opts...))
-		}
-
-		// did we enabled token auth interceptor?
-		if element.Interceptors.BasicAuth.Enabled {
-			opts := make([]rkgrpctokenauth.Option, 0)
-			opts = append(opts,
-				rkgrpctokenauth.WithEntryNameAndType(element.Name, GrpcEntryType))
-
-			for i := range element.Interceptors.TokenAuth.Tokens {
-				opts = append(opts,
-					rkgrpctokenauth.WithToken(
-						element.Interceptors.TokenAuth.Tokens[i].Token,
-						element.Interceptors.TokenAuth.Tokens[i].Expired))
-			}
-
-			entry.AddUnaryInterceptors(rkgrpctokenauth.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpctokenauth.StreamServerInterceptor(opts...))
-		}
-
-		// Did we enabled extension interceptor?
-		if element.Interceptors.Extension.Enabled {
-			opts := []rkgrpcextension.Option{
-				rkgrpcextension.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcextension.WithPrefix(element.Interceptors.Extension.Prefix),
-			}
-
-			entry.AddUnaryInterceptors(rkgrpcextension.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcextension.StreamServerInterceptor(opts...))
-		}
-
 		// Did we enabled tracing interceptor?
 		if element.Interceptors.TracingTelemetry.Enabled {
 			var exporter trace.SpanExporter
@@ -406,8 +359,10 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			}
 
 			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Enabled {
-				host, port, _ := net.SplitHostPort(element.Interceptors.TracingTelemetry.Exporter.Jaeger.AgentEndpoint)
-				exporter = rkgrpctrace.CreateJaegerExporter(host, port)
+				exporter = rkgrpctrace.CreateJaegerExporter(
+					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint,
+					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorUsername,
+					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorPassword)
 			}
 
 			opts := []rkgrpctrace.Option{
@@ -419,6 +374,30 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
 
 			rkentry.GlobalAppCtx.AddShutdownHook("tracing exporter", rkgrpctrace.ShutdownExporters)
+		}
+
+		// Did we enabled meta interceptor?
+		if element.Interceptors.Meta.Enabled {
+			opts := []rkgrpcmeta.Option{
+				rkgrpcmeta.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpcmeta.WithPrefix(element.Interceptors.Meta.Prefix),
+			}
+
+			entry.AddUnaryInterceptors(rkgrpcmeta.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpcmeta.StreamServerInterceptor(opts...))
+		}
+
+		// did we enabled auth interceptor?
+		if element.Interceptors.Auth.Enabled {
+			opts := make([]rkgrpcauth.Option, 0)
+			opts = append(opts,
+				rkgrpcauth.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpcauth.WithBasicAuth(element.Interceptors.Auth.Basic...),
+				rkgrpcauth.WithBearerAuth(element.Interceptors.Auth.Bearer...),
+				rkgrpcauth.WithApiKeyAuth(element.Interceptors.Auth.API...))
+
+			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(opts...))
 		}
 
 		res[element.Name] = entry
@@ -535,19 +514,33 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 		opts[i](entry)
 	}
 
-	// Append basic interceptor at the front.
-	entry.UnaryInterceptors = append([]grpc.UnaryServerInterceptor{
-		rkgrpcbasic.UnaryServerInterceptor(
-			rkgrpcbasic.WithEntryNameAndType(entry.EntryName, entry.EntryType))},
-		entry.UnaryInterceptors...)
-	// Append panic interceptor at the end.
-	entry.UnaryInterceptors = append(entry.UnaryInterceptors, rkgrpcpanic.UnaryServerInterceptor())
+	// The ideal interceptor sequence would be like bellow
 
-	// Append basic interceptor at the front.
-	entry.StreamInterceptors = append([]grpc.StreamServerInterceptor{
-		rkgrpcbasic.StreamServerInterceptor(rkgrpcbasic.WithEntryNameAndType(entry.EntryName, entry.EntryType))},
-		entry.StreamInterceptors...)
-	// Append panic interceptor at the end.
+	//    +-------+
+	//    |  log  |
+	//    +-------+
+	//        |
+	//    +-------+
+	//    | prom  |
+	//    +-------+
+	//        |
+	//   +---------+
+	//   | tracing |
+	//   +---------+
+	//        |
+	//    +------+
+	//    | meta |
+	//    +------+
+	//        |
+	//    +-------+
+	//    | auth  |
+	//    +-------+
+	//        |
+	//    +-------+
+	//    | panic |
+	//    +-------+
+	// Append panic interceptor at the end
+	entry.UnaryInterceptors = append(entry.UnaryInterceptors, rkgrpcpanic.UnaryServerInterceptor())
 	entry.StreamInterceptors = append(entry.StreamInterceptors, rkgrpcpanic.StreamServerInterceptor())
 
 	if entry.ZapLoggerEntry == nil {

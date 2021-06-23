@@ -12,7 +12,7 @@ import (
 	"github.com/markbates/pkger"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	rkgrpcbasic "github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
@@ -33,6 +33,7 @@ const (
 	TvEntryDescription = "Internal RK entry which implements tv web with grpc framework."
 )
 
+// Read go TV related template files into memory.
 func init() {
 	Templates["header"] = readFileFromPkger("/assets/tv/header.tmpl")
 	Templates["footer"] = readFileFromPkger("/assets/tv/footer.tmpl")
@@ -259,27 +260,10 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("charset", "utf-8")
 	w.Header().Set("content-type", "text/html")
-	w.Header().Set(rkgrpcctx.RequestIdMetadataKey, rkcommon.GenerateRequestId())
+	w.Header().Set(rkgrpcctx.RequestIdKey, rkcommon.GenerateRequestId())
 
-	var remoteIp, remotePort string
-	tokens := strings.Split(r.RemoteAddr, ":")
-
-	if len(tokens) > 1 {
-		remoteIp = tokens[0]
-		remotePort = tokens[1]
-	}
-
-	ctx := rkgrpcctx.ToRkContext(context.Background(),
-		rkgrpcctx.WithEntryName(entry.EntryName),
-		rkgrpcctx.WithRpcInfo(&rkgrpcctx.RpcInfo{
-			GwMethod:    r.Method,
-			GwPath:      r.URL.Path,
-			GrpcService: "unset",
-			GrpcMethod:  "unset",
-			Type:        rkgrpcbasic.RpcTypeStreamServer,
-			RemoteIp:    remoteIp,
-			RemotePort:  remotePort,
-		}))
+	ctx := rkgrpcinter.WrapContextForServer(context.Background())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, entry.GetName())
 
 	switch path {
 	case "rk/v1/tv", "rk/v1/tv/overview", "rk/v1/tv/application":
@@ -327,6 +311,7 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Execute go template into buffer.
 func (entry *TvEntry) doExecuteTemplate(templateName string, data interface{}) *bytes.Buffer {
 	buf := new(bytes.Buffer)
 	if err := entry.Template.ExecuteTemplate(buf, templateName, data); err != nil {

@@ -1,7 +1,11 @@
+// Copyright (c) 2021 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package rkgrpctrace
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/exporters/stdout"
 	"go.opentelemetry.io/otel/propagation"
@@ -23,7 +27,7 @@ func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
 		WithTracerProvider(provider),
 		WithPropagator(propagator))
 
-	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.Equal(t, exporter, set.Exporter)
 	assert.Equal(t, processor, set.Processor)
@@ -40,7 +44,7 @@ func TestUnaryServerInterceptor_WithoutOptions(t *testing.T) {
 	UnaryServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeUnaryServer)]
+	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, set.Exporter)
 	assert.NotNil(t, set.Processor)
@@ -65,7 +69,7 @@ func TestStreamServerInterceptor_HappyCase(t *testing.T) {
 		WithTracerProvider(provider),
 		WithPropagator(propagator))
 
-	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeStreamServer)]
+	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamServer)]
 	assert.NotNil(t, set)
 	assert.Equal(t, exporter, set.Exporter)
 	assert.Equal(t, processor, set.Processor)
@@ -82,7 +86,7 @@ func TestStreamServerInterceptor_WithoutOptions(t *testing.T) {
 	StreamServerInterceptor(
 		WithEntryNameAndType(entryName, entryType))
 
-	set := optionsMap[rkgrpcbasic.ToOptionsKey(entryName, rkgrpcbasic.RpcTypeStreamServer)]
+	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamServer)]
 	assert.NotNil(t, set)
 	assert.NotNil(t, set.Exporter)
 	assert.NotNil(t, set.Processor)

@@ -8,11 +8,11 @@ import (
 	"context"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-prom"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strings"
 )
 
 var (
@@ -39,9 +39,12 @@ const (
 	ElapsedNano = "elapsedNano"
 	Errors      = "errors"
 	ResCode     = "resCode"
-	unknown     = "unknown"
 )
 
+// Register bellow metrics into metrics set.
+// 1: Request elapsed time with summary.
+// 2: Error count with counter.
+// 3: ResCode count with counter.
 func initMetrics(set *optionSet) {
 	// Ignoring duplicate metrics registration.
 	// We don't want to break process because of it.
@@ -53,24 +56,26 @@ func initMetrics(set *optionSet) {
 // Interceptor would distinguish loggers based on.
 var optionsMap = make(map[string]*optionSet)
 
+// Create new optionSet with rpc type nad options.
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName:       rkgrpcbasic.RkEntryNameValue,
-		EntryType:       rkgrpcbasic.RkEntryTypeValue,
-		registerer:      prometheus.DefaultRegisterer,
-		ErrorToCodeFunc: errorToCodesFuncDefault,
+		EntryName:  rkgrpcinter.RpcEntryNameValue,
+		EntryType:  rkgrpcinter.RpcEntryTypeValue,
+		registerer: prometheus.DefaultRegisterer,
 	}
 
 	for i := range opts {
 		opts[i](set)
 	}
 
+	namespace := strings.ReplaceAll(rkentry.GlobalAppCtx.GetAppInfoEntry().AppName, "-", "_")
+	subSystem := strings.ReplaceAll(set.EntryName, "-", "_")
 	set.MetricsSet = rkprom.NewMetricsSet(
-		rkentry.GlobalAppCtx.GetAppInfoEntry().AppName,
-		set.EntryName,
+		namespace,
+		subSystem,
 		set.registerer)
 
-	key := rkgrpcbasic.ToOptionsKey(set.EntryName, rpcType)
+	key := rkgrpcinter.ToOptionsKey(set.EntryName, rpcType)
 	if _, ok := optionsMap[key]; !ok {
 		optionsMap[key] = set
 	}
@@ -82,11 +87,10 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 
 // Options which is used while initializing logging interceptor
 type optionSet struct {
-	EntryName       string
-	EntryType       string
-	registerer      prometheus.Registerer
-	MetricsSet      *rkprom.MetricsSet
-	ErrorToCodeFunc func(err error) codes.Code
+	EntryName  string
+	EntryType  string
+	registerer prometheus.Registerer
+	MetricsSet *rkprom.MetricsSet
 }
 
 type Option func(*optionSet)
@@ -108,25 +112,11 @@ func WithRegisterer(registerer prometheus.Registerer) Option {
 	}
 }
 
-// Provide error to code function.
-func WithErrorToCode(errorToCodeFunc func(err error) codes.Code) Option {
-	return func(set *optionSet) {
-		if errorToCodeFunc != nil {
-			set.ErrorToCodeFunc = errorToCodeFunc
-		}
-	}
-}
-
 // Get option set from context
-func GetOptionSet(ctx context.Context) *optionSet {
+func getOptionSet(ctx context.Context) *optionSet {
 	entryName := rkgrpcctx.GetEntryName(ctx)
-
-	info := rkgrpcctx.GetRpcInfo(ctx)
-
-	if info != nil {
-		return optionsMap[rkgrpcbasic.ToOptionsKey(entryName, info.Type)]
-	}
-	return nil
+	rpcType := rkgrpcctx.GetRpcType(ctx)
+	return optionsMap[rkgrpcinter.ToOptionsKey(entryName, rpcType)]
 }
 
 // Get duration metrics.
@@ -170,7 +160,7 @@ func GetResCodeMetrics(ctx context.Context) prometheus.Counter {
 
 // Get metrics set.
 func GetMetricsSet(ctx context.Context) *rkprom.MetricsSet {
-	if val := GetOptionSet(ctx); val != nil {
+	if val := getOptionSet(ctx); val != nil {
 		return val.MetricsSet
 	}
 
@@ -179,38 +169,37 @@ func GetMetricsSet(ctx context.Context) *rkprom.MetricsSet {
 
 // Metrics set already set into context.
 func getValues(ctx context.Context) []string {
-	var options = GetOptionSet(ctx)
+	method := rkgrpcctx.GetMethodName(ctx)
+	rpcType := rkgrpcctx.GetRpcType(ctx)
+	err := rkgrpcctx.GetError(ctx)
 
-	entryName, entryType := unknown, unknown
-	if options != nil {
-		entryName = options.EntryName
-		entryType = options.EntryType
+	entryName, entryType, resCode := "", "", ""
+	if set := getOptionSet(ctx); set != nil {
+		entryName = set.EntryName
+		entryType = set.EntryType
+		resCode = status.Code(err).String()
 	}
 
-	rpcInfo := rkgrpcctx.GetRpcInfo(ctx)
-	resCode := options.ErrorToCodeFunc(rpcInfo.Err).String()
+	grpcService, grpcMethod := rkgrpcinter.GetGrpcInfo(method)
+	gwMethod, gwPath, _, _ := rkgrpcinter.GetGwInfo(rkgrpcctx.GetIncomingHeaders(ctx))
 
 	values := []string{
 		entryName,
 		entryType,
-		rkgrpcbasic.Realm.String,
-		rkgrpcbasic.Region.String,
-		rkgrpcbasic.AZ.String,
-		rkgrpcbasic.Domain.String,
-		rkgrpcbasic.LocalHostname.String,
+		rkgrpcinter.Realm.String,
+		rkgrpcinter.Region.String,
+		rkgrpcinter.AZ.String,
+		rkgrpcinter.Domain.String,
+		rkgrpcinter.LocalHostname.String,
 		rkentry.GlobalAppCtx.GetAppInfoEntry().Version,
 		rkentry.GlobalAppCtx.GetAppInfoEntry().AppName,
-		rpcInfo.GrpcService,
-		rpcInfo.GrpcMethod,
-		rpcInfo.GwMethod,
-		rpcInfo.GwPath,
-		rpcInfo.Type,
+		grpcService,
+		grpcMethod,
+		gwMethod,
+		gwPath,
+		rpcType,
 		resCode,
 	}
 
 	return values
-}
-
-func errorToCodesFuncDefault(err error) codes.Code {
-	return status.Code(err)
 }

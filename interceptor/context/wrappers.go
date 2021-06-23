@@ -26,5 +26,6 @@ func WrapServerStream(stream grpc.ServerStream) *WrappedServerStream {
 	if existing, ok := stream.(*WrappedServerStream); ok {
 		return existing
 	}
+
 	return &WrappedServerStream{ServerStream: stream, WrappedContext: stream.Context()}
 }

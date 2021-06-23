@@ -64,18 +64,13 @@ func TestCreateFileExporter_WithFilepath(t *testing.T) {
 	assert.NotNil(t, exporter)
 }
 
-func TestCreateJaegerExporter_WithEmptyHost(t *testing.T) {
-	exporter := CreateJaegerExporter("", "1949")
-	assert.NotNil(t, exporter)
-}
-
-func TestCreateJaegerExporter_WithEmptyPort(t *testing.T) {
-	exporter := CreateJaegerExporter("localhost", "")
+func TestCreateJaegerExporter_WithEmptyEndpoint(t *testing.T) {
+	exporter := CreateJaegerExporter("", "", "")
 	assert.NotNil(t, exporter)
 }
 
 func TestCreateJaegerExporter_HappyCase(t *testing.T) {
-	exporter := CreateJaegerExporter("localhost", "1949")
+	exporter := CreateJaegerExporter("localhost:1949", "user", "pass")
 	assert.NotNil(t, exporter)
 }
 

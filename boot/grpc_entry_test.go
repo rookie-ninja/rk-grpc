@@ -25,8 +25,8 @@ func TestRegisterGrpcEntry_WithoutOptions(t *testing.T) {
 	assert.Equal(t, entry, rkentry.GlobalAppCtx.GetEntry(entryDefaultName))
 	assert.True(t, rkentry.GlobalAppCtx.RemoveEntry(entryDefaultName))
 
-	assert.Len(t, entry.UnaryInterceptors, 2)
-	assert.Len(t, entry.StreamInterceptors, 2)
+	assert.Len(t, entry.UnaryInterceptors, 1)
+	assert.Len(t, entry.StreamInterceptors, 1)
 	assert.NotNil(t, entry.ZapLoggerEntry)
 	assert.NotNil(t, entry.EventLoggerEntry)
 }
@@ -62,8 +62,8 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 	assert.Equal(t, eventLoggerEntry, entry.EventLoggerEntry)
 	assert.Equal(t, grpcPort, entry.Port)
 	assert.Len(t, entry.ServerOpts, 1)
-	assert.Len(t, entry.UnaryInterceptors, 3)
-	assert.Len(t, entry.StreamInterceptors, 3)
+	assert.Len(t, entry.UnaryInterceptors, 2)
+	assert.Len(t, entry.StreamInterceptors, 2)
 	assert.Equal(t, gwEntry, entry.GwEntry)
 	assert.Equal(t, certEntry, entry.CertEntry)
 	assert.Equal(t, commonServiceEntry, entry.CommonServiceEntry)
@@ -127,15 +127,10 @@ grpc:
         enabled: true                                # Optional, default: false
       metricsProm:
         enabled: true                                # Optional, default: false
-      basicAuth:
+      auth:
         enabled: true                                # Optional, default: false
-        credentials:
+        basic:
           - "user:pass"                              # Optional, default: ""
-      tokenAuth:
-        enabled: true
-        tokens:
-          - token: ""
-            expired: false                           # Optional, default: ""
 `
 
 	// Create bootstrap config file at ut temp dir
@@ -157,8 +152,8 @@ grpc:
 	assert.NotNil(t, entry.CommonServiceEntry)
 	assert.NotNil(t, entry.GwEntry)
 
-	assert.Len(t, entry.UnaryInterceptors, 6)
-	assert.Len(t, entry.StreamInterceptors, 6)
+	assert.Len(t, entry.UnaryInterceptors, 4)
+	assert.Len(t, entry.StreamInterceptors, 4)
 }
 
 func createFileAtTestTempDir(t *testing.T, content string) string {

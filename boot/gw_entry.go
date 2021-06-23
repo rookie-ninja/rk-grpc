@@ -42,13 +42,14 @@ type gwRule struct {
 // Bootstrap config of tv.
 // 1: Enabled: Enable gateway.
 // 2: Port: Http port exposed.
-// 3: Cert.Ref: Reference of rkentry.CertEntry.
-// 4: Logger.ZapLogger.Ref: Reference of rkentry.ZapLoggerEntry.
-// 5: Logger.EventLogger.Ref: Reference of rkentry.EventLoggerEntry.
-// 6: GwMappingFilePaths: Array of file path of gateway file path file.
-// 7: Tv: See BootConfigTv for details.
-// 8: Sw: See BootConfigSw for details.
-// 9: Prom: See BootConfigProm for details.
+// 3: Enable RK sytle server option?
+// 4: Cert.Ref: Reference of rkentry.CertEntry.
+// 5: Logger.ZapLogger.Ref: Reference of rkentry.ZapLoggerEntry.
+// 6: Logger.EventLogger.Ref: Reference of rkentry.EventLoggerEntry.
+// 7: GwMappingFilePaths: Array of file path of gateway file path file.
+// 8: Tv: See BootConfigTv for details.
+// 9: Sw: See BootConfigSw for details.
+// 10: Prom: See BootConfigProm for details.
 type BootConfigGw struct {
 	Enabled        bool   `yaml:"enabled" json:"enabled"`
 	Port           uint64 `yaml:"port" json:"port"`
@@ -56,14 +57,6 @@ type BootConfigGw struct {
 	Cert           struct {
 		Ref string `yaml:"ref" json:"ref"`
 	} `yaml:"cert" json:"cert"`
-	Logger struct {
-		ZapLogger struct {
-			Ref string `yaml:"ref" json:"ref"`
-		} `yaml:"zapLogger" json:"zapLogger"`
-		EventLogger struct {
-			Ref string `yaml:"ref" json:"ref"`
-		} `yaml:"eventLogger" json:"eventLogger"`
-	} `yaml:"logger" json:"logger"`
 	GwMappingFilePaths []string       `yaml:"gwMappingFilePaths" json:"gwMappingFilePaths"`
 	TV                 BootConfigTv   `yaml:"tv" json:"tv"`
 	SW                 BootConfigSw   `yaml:"sw" json:"sw"`

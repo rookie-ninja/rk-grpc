@@ -6,20 +6,26 @@ package rkgrpcmetrics
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-grpc/interceptor/basic"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"google.golang.org/grpc"
 	"time"
 )
 
+// Create new unary client interceptor.
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
-	newOptionSet(rkgrpcbasic.RpcTypeUnaryClient, opts...)
+	set := newOptionSet(rkgrpcinter.RpcTypeUnaryClient, opts...)
 
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryClient)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcMethodKey, method)
+
 		// Before invoking
 		startTime := time.Now()
 
 		// Invoking
 		err := invoker(ctx, method, req, resp, cc, opts...)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcErrorKey, err)
 
 		elapsed := time.Now().Sub(startTime)
 
@@ -40,15 +46,22 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	}
 }
 
+// Create new stream client interceptor.
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
-	newOptionSet(rkgrpcbasic.RpcTypeStreamClient, opts...)
+	set := newOptionSet(rkgrpcinter.RpcTypeStreamClient, opts...)
 
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeStreamClient)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcMethodKey, method)
+
 		// Before invoking
 		startTime := time.Now()
+		ctx = context.WithValue(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeStreamClient)
 
 		// Invoking
 		clientStream, err := streamer(ctx, desc, cc, method, opts...)
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcErrorKey, err)
 
 		elapsed := time.Now().Sub(startTime)
 
