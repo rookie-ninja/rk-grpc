@@ -22,7 +22,7 @@ Auth interceptor will validate bellow authorizations.
 - [Example](#example)
   - [Unary](#unary)
     - [Start server and client](#start-server-and-client)
-    - [Output unauthenticated](#output-unauthenticated)
+    - [Output unauthorized](#output-unauthorized)
     - [Code](#code-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
