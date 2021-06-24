@@ -35,16 +35,16 @@ grpc:
     reflection: true                                 # Optional, defualt: false
     commonService:
       enabled: true                                  # Optional, default: false
-    cert:
-      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
+#    cert:
+#      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
     gw:
       enabled: true                                  # Optional, default: false
       port: 8080                                     # Required
       rkServerOption: true                           # Optional, default: false
 #      gwMappingFilePaths:                           # Optional
 #        - ""
-      cert:
-        ref: "local-cert"                           # Optional, default: "", reference of cert entry declared above
+#      cert:
+#        ref: "local-cert"                           # Optional, default: "", reference of cert entry declared above
       tv:
         enabled: true                                # Optional, default: false
       sw:
@@ -61,8 +61,8 @@ grpc:
           remoteAddress: "localhost:9091"            # Required
           basicAuth: "user:pass"                     # Optional, default: ""
           intervalMs: 1000                           # Optional, default: 1000
-          cert:
-            ref: "local-cert"                        # Optional, default: "", reference of cert entry declared above
+#          cert:
+#            ref: "local-cert"                        # Optional, default: "", reference of cert entry declared above
     logger:                                          # Optional
       zapLogger:                                     # Optional
         ref: zap-logger                              # Optional, default: logger of STDOUT, reference of logger entry declared above
@@ -85,7 +85,7 @@ grpc:
         enabled: true                                # Optional, default: false
         prefix: "rk"                                 # Optional, default: "rk"
       tracingTelemetry:
-        enabled: true                                # Optional, default: false
+        enabled: false                                # Optional, default: false
         exporter:                                    # Optional, default will create a stdout exporter
           file:
             enabled: true                            # Optional, default: false
