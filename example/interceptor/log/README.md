@@ -78,7 +78,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 
 ## Options
 Log interceptor will init rkquery.Event, zap.Logger and entryName which will be injected into request context before user function.
-As soon as user funtion returns, interceptor will write event into files.
+As soon as user function returns, interceptor will write the event into files.
 
 ![arch](img/arch.png)
 
@@ -128,7 +128,7 @@ startTime=2021-06-21T22:20:36.823374+08:00
 elapsedNano=18272
 timezone=CST
 ids={"eventId":"15f1c8ba-f0ec-4ed6-9a72-ce190f97982c"}
-app={"appName":"rkApp","appVersion":"v0.0.0","entryName":"grpcEntry","entryType":"grpc"}
+app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpcEntry","entryType":"grpc"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"192.168.101.5","os":"darwin","realm":"*","region":"*"}
 payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
 error={}

@@ -71,6 +71,7 @@ Please refer example at [example/boot/simple](example/boot/simple).
 
 ### Start GRPC Service
 - [boot.yaml](example/boot/simple/boot.yaml)
+
 ```yaml
 ---
 rk: # NOT required
@@ -98,6 +99,7 @@ grpc:
         enabled: true
 ```
 - [main.go](example/boot/simple/main.go)
+
 ```go
 func main() {
     // Bootstrap basic entries from boot config.
@@ -303,7 +305,6 @@ http:
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.gw.tv.enabled | Enable RK TV | boolean | false |
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
 
 ### GRPC Gateway Service
@@ -375,6 +376,7 @@ Contains per RPC metadata, response information, environment information and etc
 | eventStatus | Ended or InProgress |
 
 - example
+
 ```shell script
 ------------------------------------------------------------------------
 endTime=2021-06-24T05:58:48.282193+08:00

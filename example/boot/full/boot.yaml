@@ -20,12 +20,12 @@ cert:                                                # Optional
     description: "Description of entry"              # Optional
     provider: "localFs"                              # Required, etcd, consul, localFs, remoteFs are supported options
     locale: "*::*::*::*"                             # Optional, default: *::*::*::*
-    serverCertPath: "example/boot/server.pem"        # Optional, default: "", path of certificate on local FS
-    serverKeyPath: "example/boot/server-key.pem"     # Optional, default: "", path of certificate on local FS
-    clientCertPath: "example/boot/server.pem"        # Optional, default: "", path of certificate on local FS
+    serverCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
+    serverKeyPath: "example/boot/full/server-key.pem"     # Optional, default: "", path of certificate on local FS
+    clientCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
 config:
   - name: rk-main                                    # Required
-    path: "example/boot/config.yaml"                 # Required
+    path: "example/boot/full/config.yaml"            # Required
     description: "Description of entry"              # Optional
     locale: "*::*::*::*"                             # Optional, default: *::*::*::*
 # Grpc entry
@@ -35,16 +35,16 @@ grpc:
     reflection: true                                 # Optional, defualt: false
     commonService:
       enabled: true                                  # Optional, default: false
-#    cert:
-#      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
+    cert:
+      ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
     gw:
       enabled: true                                  # Optional, default: false
       port: 8080                                     # Required
       rkServerOption: true                           # Optional, default: false
 #      gwMappingFilePaths:                           # Optional
 #        - ""
-#      cert:
-#        ref: "local-cert"                           # Optional, default: "", reference of cert entry declared above
+      cert:
+        ref: "local-cert"                           # Optional, default: "", reference of cert entry declared above
       tv:
         enabled: true                                # Optional, default: false
       sw:
@@ -54,7 +54,7 @@ grpc:
         headers: [ "sw:rk" ]                         # Optional, default: []
       prom:
         enabled: true                                # Optional, default: false
-        path: "metrics"                              # Optional, default: ""
+#        path: ""                                     # Optional, default: "metrics"
         pusher:
           enabled: false                             # Optional, default: false
           jobName: "greeter-pusher"                  # Required

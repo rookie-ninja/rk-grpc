@@ -88,7 +88,7 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 // TODO: Wait for opentelemetry update version of jeager exporter. Current exporter is not compatible with jaeger agent.
 func CreateJaegerExporter(endpoint, username, password string) sdktrace.SpanExporter {
 	if len(endpoint) < 1 {
-		endpoint = "http://localhost:14368"
+		endpoint = "http://localhost:14268"
 	}
 
 	if !strings.HasPrefix(endpoint, "http://") {

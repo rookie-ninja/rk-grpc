@@ -31,7 +31,7 @@ Get rk-grpc package from the remote repository.
 
 ### Code
 ```go
-import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+import     "github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 ```
 ```go
     // *************************************
@@ -115,7 +115,7 @@ In order to define prometheus style metrics, we need to define <namespace> and <
 | Name | Description | Default Values |
 | ---- | ---- | ---- |
 | rkgrpcmetrics.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple extension interceptors needs to be used. | grpc, grpc |
-| rkgrpcmetrics.WithPrefix(registerer prometheus.Registerer) | Provide prometheus registerer. | prometheus.DefaultRegisterer |
+| rkgrpcmetrics.WithRegisterer(registerer prometheus.Registerer) | Provide prometheus registerer. | prometheus.DefaultRegisterer |
 
 ![arch](img/arch.png)
 

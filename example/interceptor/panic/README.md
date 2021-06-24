@@ -7,6 +7,7 @@ Panic interceptor will add do the bellow actions.
 - Set resCode to codes.Internal
 - Print stacktrace
 - Set [panic:1] into event as counters
+- Add error into event
 
 **Please make sure panic interceptor to be added at last in chain of interceptors.**
 

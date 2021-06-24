@@ -43,12 +43,15 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 
 	// Override zap logger encoding and output path if provided by user
 	// Override encoding type
-	if set.zapLoggerEncoding == ENCODING_JSON {
-		set.zapLoggerEntry.LoggerConfig.Encoding = "json"
-	}
-	// Override output path
-	if len(set.zapLoggerOutputPath) > 0 {
-		set.zapLoggerEntry.LoggerConfig.OutputPaths = toAbsPath(set.zapLoggerOutputPath...)
+	if set.zapLoggerEncoding == ENCODING_JSON || len(set.zapLoggerOutputPath) > 0 {
+		if set.zapLoggerEncoding == ENCODING_JSON {
+			set.zapLoggerEntry.LoggerConfig.Encoding = "json"
+		}
+
+		if len(set.zapLoggerOutputPath) > 0 {
+			set.zapLoggerEntry.LoggerConfig.OutputPaths = toAbsPath(set.zapLoggerOutputPath...)
+		}
+
 		if set.zapLoggerEntry.LumberjackConfig == nil {
 			set.zapLoggerEntry.LumberjackConfig = rklogger.NewLumberjackConfigDefault()
 		}

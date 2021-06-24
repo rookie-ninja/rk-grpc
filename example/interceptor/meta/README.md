@@ -77,7 +77,7 @@ Meta interceptor is only available on server side. The interceptor will send bel
 
 | Name | Description | Default Values |
 | ---- | ---- | ---- |
-| rkgrpcmeta.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple meta interceptors needs to be used. | grpcEntry, grpc |
+| rkgrpcmeta.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple meta interceptors needs to be used. | grpc, grpc |
 | rkgrpcmeta.WithPrefix(prefix string) | Provide prefix of meta header | RK |
 
 ```go
@@ -102,7 +102,7 @@ Meta interceptor is only available on server side. The interceptor will send bel
 # Print out headers from server on client side.
 x-rk-app-unix-time: [2021-06-22T14:42:03.855569+08:00]
 x-request-id: [f562f124-abbc-4804-b8a4-40848910b744]
-x-rk-app-name: [rkApp]
+x-rk-app-name: [rk]
 x-rk-received-time: [2021-06-22T14:42:03.855569+08:00]
 content-type: [application/grpc]
 x-rk-app-version: [v0.0.0]
