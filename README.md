@@ -74,8 +74,6 @@ Please refer example at [example/boot/simple](example/boot/simple).
 
 ```yaml
 ---
-rk: # NOT required
-  appName: rk-example-entry           # Optional, default: "rkApp"
 grpc:
   - name: greeter
     port: 1949
@@ -149,6 +147,7 @@ rk.api.v1.RkCommonService.Logs
 rk.api.v1.RkCommonService.Readme
 rk.api.v1.RkCommonService.Req
 rk.api.v1.RkCommonService.Sys
+rk.api.v1.RkCommonService.Git
 
 # Send request to rk.api.v1.RkCommonService.Healthy
 $ grpcurl -plaintext localhost:1949 rk.api.v1.RkCommonService.Healthy
@@ -205,7 +204,7 @@ startTime=2021-06-24T05:25:20.621977+08:00
 elapsedNano=48142
 timezone=CST
 ids={"eventId":"5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a"}
-app={"appName":"rk-example-entry","appVersion":"","entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
+app={"appName":"rk-grpc","appVersion":"master-xxx","entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
 payloads={"entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
 error={}
@@ -224,7 +223,7 @@ startTime=2021-06-24T05:25:20.621944+08:00
 elapsedNano=2836634
 timezone=CST
 ids={"eventId":"5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a"}
-app={"appName":"rk-example-entry","appVersion":"","entryName":"greeter","entryType":"GrpcEntry"}
+app={"appName":"rk-grpc","appVersion":"master-xxx","entryName":"greeter","entryType":"GrpcEntry"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
 payloads={"commonServiceEnabled":true,"entryName":"greeter","entryType":"GrpcEntry","grpcPort":1949,"gwClientTlsEnabled":false,"gwEnabled":true,"gwServerTlsEnabled":false,"headers":{},"promEnabled":true,"reflectionEnabled":true,"swEnabled":true,"swPath":"/sw/","tlsEnabled":false,"tvEnabled":true,"tvPath":"/rk/v1/tv"}
 error={}
@@ -246,9 +245,9 @@ $ curl -vs localhost:8080/rk/v1/healthy
 < HTTP/1.1 200 OK
 < Content-Type: application/json
 < X-Request-Id: cb615712-74dc-4e62-afb9-2fc6599bf452
-< X-Rk-App-Name: rk-example-entry
+< X-Rk-App-Name: rk-grpc
 < X-Rk-App-Unix-Time: 2021-06-24T05:29:09.481073+08:00
-< X-Rk-App-Version: v0.0.0
+< X-Rk-App-Version: master-xxx
 < X-Rk-Received-Time: 2021-06-24T05:29:09.481073+08:00
 < Date: Wed, 23 Jun 2021 21:29:09 GMT
 ...
@@ -299,6 +298,8 @@ http:
       get: /rk/v1/license
     - selector: rk.api.v1.RkCommonService.Readme
       get: /rk/v1/readme
+    - selector: rk.api.v1.RkCommonService.Git
+      get: /rk/v1/git
     - selector: rk.api.v1.RkCommonService.GwErrorMapping
       get: /rk/v1/gwErrorMapping
 ```
@@ -384,7 +385,7 @@ startTime=2021-06-24T05:58:48.28204+08:00
 elapsedNano=153005
 timezone=CST
 ids={"eventId":"573ce6a8-308b-4fc0-9255-33608b9e41d4","requestId":"573ce6a8-308b-4fc0-9255-33608b9e41d4"}
-app={"appName":"rk-example-entry","appVersion":"v0.0.0","entryName":"greeter","entryType":"GrpcEntry"}
+app={"appName":"rk-grpc","appVersion":"master-xxx","entryName":"greeter","entryType":"GrpcEntry"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
 payloads={"grpcMethod":"Healthy","grpcService":"rk.api.v1.RkCommonService","grpcType":"unaryServer","gwMethod":"GET","gwPath":"/rk/v1/healthy","gwScheme":"http","gwUserAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36"}
 error={}

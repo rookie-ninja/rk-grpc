@@ -32,6 +32,8 @@ type RkCommonServiceClient interface {
 	Sys(ctx context.Context, in *SysRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
 	// List prometheus metrics of requests
 	Req(ctx context.Context, in *ReqRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
+	// Get git information
+	Git(ctx context.Context, in *GitRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
 	// List all Entry
 	Entries(ctx context.Context, in *EntriesRequest, opts ...grpc.CallOption) (*structpb.Struct, error)
 	// List CertEntry
@@ -119,6 +121,15 @@ func (c *rkCommonServiceClient) Req(ctx context.Context, in *ReqRequest, opts ..
 	return out, nil
 }
 
+func (c *rkCommonServiceClient) Git(ctx context.Context, in *GitRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/Git", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *rkCommonServiceClient) Entries(ctx context.Context, in *EntriesRequest, opts ...grpc.CallOption) (*structpb.Struct, error) {
 	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, "/rk.api.v1.RkCommonService/Entries", in, out, opts...)
@@ -200,6 +211,8 @@ type RkCommonServiceServer interface {
 	Sys(context.Context, *SysRequest) (*structpb.Struct, error)
 	// List prometheus metrics of requests
 	Req(context.Context, *ReqRequest) (*structpb.Struct, error)
+	// Get git information
+	Git(context.Context, *GitRequest) (*structpb.Struct, error)
 	// List all Entry
 	Entries(context.Context, *EntriesRequest) (*structpb.Struct, error)
 	// List CertEntry
@@ -240,6 +253,9 @@ func (UnimplementedRkCommonServiceServer) Sys(context.Context, *SysRequest) (*st
 }
 func (UnimplementedRkCommonServiceServer) Req(context.Context, *ReqRequest) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Req not implemented")
+}
+func (UnimplementedRkCommonServiceServer) Git(context.Context, *GitRequest) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Git not implemented")
 }
 func (UnimplementedRkCommonServiceServer) Entries(context.Context, *EntriesRequest) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Entries not implemented")
@@ -396,6 +412,24 @@ func _RkCommonService_Req_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RkCommonServiceServer).Req(ctx, req.(*ReqRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RkCommonService_Git_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RkCommonServiceServer).Git(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rk.api.v1.RkCommonService/Git",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RkCommonServiceServer).Git(ctx, req.(*GitRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -557,6 +591,10 @@ var _RkCommonService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Req",
 			Handler:    _RkCommonService_Req_Handler,
+		},
+		{
+			MethodName: "Git",
+			Handler:    _RkCommonService_Git_Handler,
 		},
 		{
 			MethodName: "Entries",

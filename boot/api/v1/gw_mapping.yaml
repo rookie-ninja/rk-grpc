@@ -30,5 +30,7 @@ http:
       get: /rk/v1/license
     - selector: rk.api.v1.RkCommonService.Readme
       get: /rk/v1/readme
+    - selector: rk.api.v1.RkCommonService.Git
+      get: /rk/v1/git
     - selector: rk.api.v1.RkCommonService.GwErrorMapping
       get: /rk/v1/gwErrorMapping

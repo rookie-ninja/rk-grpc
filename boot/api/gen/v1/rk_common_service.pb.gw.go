@@ -157,6 +157,24 @@ func local_request_RkCommonService_Req_0(ctx context.Context, marshaler runtime.
 
 }
 
+func request_RkCommonService_Git_0(ctx context.Context, marshaler runtime.Marshaler, client RkCommonServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GitRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := client.Git(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_RkCommonService_Git_0(ctx context.Context, marshaler runtime.Marshaler, server RkCommonServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GitRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.Git(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_RkCommonService_Entries_0(ctx context.Context, marshaler runtime.Marshaler, client RkCommonServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq EntriesRequest
 	var metadata runtime.ServerMetadata
@@ -295,7 +313,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Healthy")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Healthy", runtime.WithHTTPPathPattern("/rk/v1/healthy"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -318,7 +336,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Gc")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Gc", runtime.WithHTTPPathPattern("/rk/v1/gc"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -341,7 +359,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Info")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Info", runtime.WithHTTPPathPattern("/rk/v1/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -364,7 +382,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Configs")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Configs", runtime.WithHTTPPathPattern("/rk/v1/configs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -387,7 +405,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Apis")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Apis", runtime.WithHTTPPathPattern("/rk/v1/apis"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -410,7 +428,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Sys")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Sys", runtime.WithHTTPPathPattern("/rk/v1/sys"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -433,7 +451,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Req")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Req", runtime.WithHTTPPathPattern("/rk/v1/req"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -450,13 +468,36 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 
 	})
 
+	mux.Handle("GET", pattern_RkCommonService_Git_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Git", runtime.WithHTTPPathPattern("/rk/v1/git"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_RkCommonService_Git_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_RkCommonService_Git_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	mux.Handle("GET", pattern_RkCommonService_Entries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Entries")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Entries", runtime.WithHTTPPathPattern("/rk/v1/entries"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -479,7 +520,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Certs")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Certs", runtime.WithHTTPPathPattern("/rk/v1/certs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -502,7 +543,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Logs")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Logs", runtime.WithHTTPPathPattern("/rk/v1/logs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -525,7 +566,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Deps")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Deps", runtime.WithHTTPPathPattern("/rk/v1/deps"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -548,7 +589,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/License")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/License", runtime.WithHTTPPathPattern("/rk/v1/license"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -571,7 +612,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Readme")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Readme", runtime.WithHTTPPathPattern("/rk/v1/readme"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -594,7 +635,7 @@ func RegisterRkCommonServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/GwErrorMapping")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/rk.api.v1.RkCommonService/GwErrorMapping", runtime.WithHTTPPathPattern("/rk/v1/gwErrorMapping"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -656,7 +697,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Healthy")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Healthy", runtime.WithHTTPPathPattern("/rk/v1/healthy"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -676,7 +717,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Gc")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Gc", runtime.WithHTTPPathPattern("/rk/v1/gc"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -696,7 +737,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Info")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Info", runtime.WithHTTPPathPattern("/rk/v1/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -716,7 +757,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Configs")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Configs", runtime.WithHTTPPathPattern("/rk/v1/configs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -736,7 +777,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Apis")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Apis", runtime.WithHTTPPathPattern("/rk/v1/apis"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -756,7 +797,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Sys")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Sys", runtime.WithHTTPPathPattern("/rk/v1/sys"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -776,7 +817,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Req")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Req", runtime.WithHTTPPathPattern("/rk/v1/req"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -792,11 +833,31 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 
 	})
 
+	mux.Handle("GET", pattern_RkCommonService_Git_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Git", runtime.WithHTTPPathPattern("/rk/v1/git"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_RkCommonService_Git_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_RkCommonService_Git_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	mux.Handle("GET", pattern_RkCommonService_Entries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Entries")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Entries", runtime.WithHTTPPathPattern("/rk/v1/entries"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -816,7 +877,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Certs")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Certs", runtime.WithHTTPPathPattern("/rk/v1/certs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -836,7 +897,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Logs")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Logs", runtime.WithHTTPPathPattern("/rk/v1/logs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -856,7 +917,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Deps")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Deps", runtime.WithHTTPPathPattern("/rk/v1/deps"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -876,7 +937,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/License")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/License", runtime.WithHTTPPathPattern("/rk/v1/license"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -896,7 +957,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Readme")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/Readme", runtime.WithHTTPPathPattern("/rk/v1/readme"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -916,7 +977,7 @@ func RegisterRkCommonServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/GwErrorMapping")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/rk.api.v1.RkCommonService/GwErrorMapping", runtime.WithHTTPPathPattern("/rk/v1/gwErrorMapping"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -950,6 +1011,8 @@ var (
 
 	pattern_RkCommonService_Req_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"rk", "v1", "req"}, ""))
 
+	pattern_RkCommonService_Git_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"rk", "v1", "git"}, ""))
+
 	pattern_RkCommonService_Entries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"rk", "v1", "entries"}, ""))
 
 	pattern_RkCommonService_Certs_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"rk", "v1", "certs"}, ""))
@@ -979,6 +1042,8 @@ var (
 	forward_RkCommonService_Sys_0 = runtime.ForwardResponseMessage
 
 	forward_RkCommonService_Req_0 = runtime.ForwardResponseMessage
+
+	forward_RkCommonService_Git_0 = runtime.ForwardResponseMessage
 
 	forward_RkCommonService_Entries_0 = runtime.ForwardResponseMessage
 

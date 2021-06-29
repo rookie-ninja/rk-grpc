@@ -55,6 +55,7 @@ func init() {
 	Templates["info"] = readFileFromPkger("/assets/tv/info.tmpl")
 	Templates["logs"] = readFileFromPkger("/assets/tv/logs.tmpl")
 	Templates["gw-error-mapping"] = readFileFromPkger("/assets/tv/error-mapping.tmpl")
+	Templates["git"] = readFileFromPkger("/assets/tv/git.tmpl")
 }
 
 // Bootstrap config of tv.
@@ -301,6 +302,9 @@ func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 		w.Write(buf.Bytes())
 	case "rk/v1/tv/info":
 		buf := entry.doExecuteTemplate("info", doInfo(ctx))
+		w.Write(buf.Bytes())
+	case "rk/v1/tv/git":
+		buf := entry.doExecuteTemplate("git", doGit(ctx))
 		w.Write(buf.Bytes())
 	case "rk/v1/tv/gwErrorMapping":
 		buf := entry.doExecuteTemplate("gw-error-mapping", doGwErrorMapping(ctx))

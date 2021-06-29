@@ -1,6 +1,4 @@
 ---
-rk: # NOT required
-  appName: rk-example-entry           # Optional, default: "rkApp"
 grpc:
   - name: greeter
     port: 1949

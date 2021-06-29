@@ -29,6 +29,9 @@ service RkCommonService {
     // List prometheus metrics of requests
     rpc Req(ReqRequest) returns (google.protobuf.Struct) {};
 
+    // Get git information
+    rpc Git(GitRequest) returns (google.protobuf.Struct) {};
+
     // List all Entry
     rpc Entries(EntriesRequest) returns (google.protobuf.Struct) {};
 
@@ -76,5 +79,7 @@ message DepsRequest {}
 message LicenseRequest {}
 
 message ReadmeRequest {}
+
+message GitRequest {}
 
 message GwErrorMappingRequest {}

@@ -655,6 +655,37 @@ func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_comm
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
 }
 
+// Helper function of /git
+func doGit(ctx context.Context) *rkentry.GitResponse {
+	res := &rkentry.GitResponse{}
+
+	if ctx == nil {
+		return res
+	}
+
+	gitInfoEntry := rkentry.GlobalAppCtx.GetGitInfoEntry()
+	if gitInfoEntry == nil {
+		return res
+	}
+
+	res.Package = gitInfoEntry.Package
+	res.Branch = gitInfoEntry.Branch
+	res.Tag = gitInfoEntry.Tag
+	res.Url = gitInfoEntry.Url
+	res.CommitId = gitInfoEntry.CommitId
+	res.CommitIdAbbr = gitInfoEntry.CommitIdAbbr
+	res.CommitSub = gitInfoEntry.CommitSub
+	res.CommitterName = gitInfoEntry.CommitterName
+	res.CommitterEmail = gitInfoEntry.CommitterEmail
+	res.CommitDate = gitInfoEntry.CommitDate
+
+	return res
+}
+
+func (entry *CommonServiceEntry) Git(ctx context.Context, request *rk_grpc_common_v1.GitRequest) (*structpb.Struct, error) {
+	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGit(ctx)))
+}
+
 // Helper function /deps
 func doDeps(context.Context) *rkentry.DepResponse {
 	res := &rkentry.DepResponse{}

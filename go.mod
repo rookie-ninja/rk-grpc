@@ -5,11 +5,11 @@ go 1.14
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.5.2
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/markbates/pkger v0.17.1
 	github.com/prometheus/client_golang v1.10.0
-	github.com/rookie-ninja/rk-common v1.0.9-0.20210616200134-31f33f039a54
-	github.com/rookie-ninja/rk-entry v0.0.0-20210628001945-01128219774b
+	github.com/rookie-ninja/rk-common v1.0.9-0.20210629184244-e150f7bd8027
+	github.com/rookie-ninja/rk-entry v0.0.0-20210629191437-0d07ce6033bc
 	github.com/rookie-ninja/rk-logger v1.0.10-0.20210527055114-0f92ffe223bd
 	github.com/rookie-ninja/rk-prom v1.0.9-0.20210623102541-1f31500c9f12
 	github.com/rookie-ninja/rk-query v1.0.12-0.20210623102313-b61067b3abf5
@@ -23,8 +23,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
-	golang.org/x/tools v0.1.3 // indirect
-	google.golang.org/genproto v0.0.0-20210608205507-b6d2f5bf0d7d
+	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 )
