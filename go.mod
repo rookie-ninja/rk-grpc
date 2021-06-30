@@ -8,8 +8,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/markbates/pkger v0.17.1
 	github.com/prometheus/client_golang v1.10.0
-	github.com/rookie-ninja/rk-common v1.0.9-0.20210629184244-e150f7bd8027
-	github.com/rookie-ninja/rk-entry v0.0.0-20210629191437-0d07ce6033bc
+	github.com/rookie-ninja/rk-common v1.0.9-0.20210630170855-375fa7687790
+	github.com/rookie-ninja/rk-entry v0.0.0-20210630172113-abd870673153
 	github.com/rookie-ninja/rk-logger v1.0.10-0.20210527055114-0f92ffe223bd
 	github.com/rookie-ninja/rk-prom v1.0.9-0.20210623102541-1f31500c9f12
 	github.com/rookie-ninja/rk-query v1.0.12-0.20210623102313-b61067b3abf5

@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"net"
 	"net/http"
+	"path"
 	"runtime"
 )
 
@@ -663,21 +664,21 @@ func doGit(ctx context.Context) *rkentry.GitResponse {
 		return res
 	}
 
-	gitInfoEntry := rkentry.GlobalAppCtx.GetGitInfoEntry()
-	if gitInfoEntry == nil {
+	rkMetaEntry := rkentry.GlobalAppCtx.GetRkMetaEntry()
+	if rkMetaEntry == nil {
 		return res
 	}
 
-	res.Package = gitInfoEntry.Package
-	res.Branch = gitInfoEntry.Branch
-	res.Tag = gitInfoEntry.Tag
-	res.Url = gitInfoEntry.Url
-	res.CommitId = gitInfoEntry.CommitId
-	res.CommitIdAbbr = gitInfoEntry.CommitIdAbbr
-	res.CommitSub = gitInfoEntry.CommitSub
-	res.CommitterName = gitInfoEntry.CommitterName
-	res.CommitterEmail = gitInfoEntry.CommitterEmail
-	res.CommitDate = gitInfoEntry.CommitDate
+	res.Package = path.Base(rkMetaEntry.RkMeta.Git.Url)
+	res.Branch = rkMetaEntry.RkMeta.Git.Branch
+	res.Tag = rkMetaEntry.RkMeta.Git.Tag
+	res.Url = rkMetaEntry.RkMeta.Git.Url
+	res.CommitId = rkMetaEntry.RkMeta.Git.Commit.Id
+	res.CommitIdAbbr = rkMetaEntry.RkMeta.Git.Commit.IdAbbr
+	res.CommitSub = rkMetaEntry.RkMeta.Git.Commit.Sub
+	res.CommitterName = rkMetaEntry.RkMeta.Git.Commit.Committer.Name
+	res.CommitterEmail = rkMetaEntry.RkMeta.Git.Commit.Committer.Email
+	res.CommitDate = rkMetaEntry.RkMeta.Git.Commit.Date
 
 	return res
 }

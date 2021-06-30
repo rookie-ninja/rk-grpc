@@ -1,6 +1,6 @@
 ---
 # Bellow sections are RK common entries which is not necessary.
-rk:
+app:
   description: "this is description"                 # Optional, default: ""
   keywords: [ "rk", "golang" ]                       # Optional, default: []
   homeURL: "http://example.com"                      # Optional, default: ""
@@ -47,18 +47,18 @@ grpc:
         enabled: true                                # Optional, default: false
       sw:
         enabled: true                                # Optional, default: false
-        path: "sw"                                   # Optional, default: "sw"
+#        path: "sw"                                   # Optional, default: "sw"
 #        jsonPath: ""                                 # Optional
-        headers: [ "sw:rk" ]                         # Optional, default: []
+#        headers: [ "sw:rk" ]                         # Optional, default: []
       prom:
         enabled: true                                # Optional, default: false
 #        path: ""                                     # Optional, default: "metrics"
         pusher:
           enabled: false                             # Optional, default: false
-          jobName: "greeter-pusher"                  # Required
-          remoteAddress: "localhost:9091"            # Required
-          basicAuth: "user:pass"                     # Optional, default: ""
-          intervalMs: 1000                           # Optional, default: 1000
+#          jobName: "greeter-pusher"                  # Required
+#          remoteAddress: "localhost:9091"            # Required
+#          basicAuth: "user:pass"                     # Optional, default: ""
+#          intervalMs: 1000                           # Optional, default: 1000
 #          cert:
 #            ref: "local-cert"                        # Optional, default: "", reference of cert entry declared above
     logger:                                          # Optional
@@ -73,15 +73,15 @@ grpc:
         enabled: true                                # Optional, default: false
       auth:
         enabled: false                               # Optional, default: false
-        basic:
-          - "user:pass"                              # Optional, default: []
-        bearer:
-          - "tokens"                                 # Optional, default: []
-        api:
-          - "keys"                                   # Optional, default: []
+#        basic:
+#          - "user:pass"                              # Optional, default: []
+#        bearer:
+#          - "tokens"                                 # Optional, default: []
+#        api:
+#          - "keys"                                   # Optional, default: []
       meta:
         enabled: true                                # Optional, default: false
-        prefix: "rk"                                 # Optional, default: "rk"
+#        prefix: "rk"                                 # Optional, default: "rk"
       tracingTelemetry:
         enabled: false                                # Optional, default: false
         exporter:                                    # Optional, default will create a stdout exporter
