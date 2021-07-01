@@ -15,10 +15,10 @@ grpc:
         enabled: true
       prom:
         enabled: true
-    interceptors:
-      loggingZap:
-        enabled: true
-      metricsProm:
-        enabled: true
-      meta:
-        enabled: true
+#    interceptors:
+#      loggingZap:
+#        enabled: true
+#      metricsProm:
+#        enabled: true
+#      meta:
+#        enabled: true

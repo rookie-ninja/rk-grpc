@@ -6,6 +6,7 @@ package rkgrpcpanic
 
 import (
 	"fmt"
+	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -16,8 +17,12 @@ import (
 )
 
 // Create new unary client interceptor.
-func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
+	set := newOptionSet(rkgrpcinter.RpcTypeUnaryClient, opts...)
+
 	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+
 		defer func() {
 			if recv := recover(); recv != nil {
 				var sts *status.Status
@@ -39,8 +44,12 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 }
 
 // Create new stream client interceptor.
-func StreamClientInterceptor() grpc.StreamClientInterceptor {
+func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
+	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (stream grpc.ClientStream, err error) {
+		rkgrpcinter.AddToClientContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+
 		defer func() {
 			if recv := recover(); recv != nil {
 				var sts *status.Status
@@ -62,8 +71,15 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 }
 
 // Create new unary server interceptor.
-func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
+	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		ctx = rkgrpcinter.WrapContextForServer(ctx)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcMethodKey, info.FullMethod)
+
 		defer func() {
 			if recv := recover(); recv != nil {
 				var sts *status.Status
@@ -85,8 +101,18 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // Create new stream server interceptor.
-func StreamServerInterceptor() grpc.StreamServerInterceptor {
+func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
+	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+		// Before invoking
+		wrappedStream := rkgrpcctx.WrapServerStream(stream)
+		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
+
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcMethodKey, info.FullMethod)
+
 		defer func() {
 			if recv := recover(); recv != nil {
 				var sts *status.Status

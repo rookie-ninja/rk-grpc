@@ -540,8 +540,10 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	//    | panic |
 	//    +-------+
 	// Append panic interceptor at the end
-	entry.UnaryInterceptors = append(entry.UnaryInterceptors, rkgrpcpanic.UnaryServerInterceptor())
-	entry.StreamInterceptors = append(entry.StreamInterceptors, rkgrpcpanic.StreamServerInterceptor())
+	entry.UnaryInterceptors = append(entry.UnaryInterceptors, rkgrpcpanic.UnaryServerInterceptor(
+		rkgrpcpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
+	entry.StreamInterceptors = append(entry.StreamInterceptors, rkgrpcpanic.StreamServerInterceptor(
+		rkgrpcpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
 
 	if entry.ZapLoggerEntry == nil {
 		entry.ZapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
