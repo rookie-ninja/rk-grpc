@@ -215,16 +215,16 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 		// Did we enabled gateway?
 		var gw *GwEntry
 		var commonService *CommonServiceEntry
+		// Did we enable common service?
+		if element.CommonService.Enabled {
+			commonService = NewCommonServiceEntry(
+				WithNameCommonService(element.Name),
+				WithEventLoggerEntryCommonService(eventLoggerEntry),
+				WithZapLoggerEntryCommonService(zapLoggerEntry))
+		}
+
 		var promRegistry *prometheus.Registry
 		if element.GW.Enabled {
-			// Did we enable common service?
-			if element.CommonService.Enabled {
-				commonService = NewCommonServiceEntry(
-					WithNameCommonService(element.Name),
-					WithEventLoggerEntryCommonService(eventLoggerEntry),
-					WithZapLoggerEntryCommonService(zapLoggerEntry))
-			}
-
 			dialOptions := make([]grpc.DialOption, 0)
 			// Did we enabled swagger?
 			var sw *SwEntry
