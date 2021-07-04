@@ -27,7 +27,6 @@ func main() {
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpcauth.UnaryServerInterceptor(
 				rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-				rkgrpcauth.WithBearerAuth("rk-token"),
 				rkgrpcauth.WithApiKeyAuth("rk-api-key"),
 			),
 		),

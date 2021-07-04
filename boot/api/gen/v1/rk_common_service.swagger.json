@@ -1,13 +1,27 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "v1/rk_common_service.proto",
-    "version": "version not set"
+    "title": "RK Common Service",
+    "description": "This is builtin RK common service.",
+    "version": "1.0",
+    "contact": {
+      "name": "rk-dev",
+      "url": "https://github.com/rookie-ninja/rk-grpc",
+      "email": "dongxuny@gmail.com"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://github.com/rookie-ninja/rk-grpc/blob/master/LICENSE.txt"
+    }
   },
   "tags": [
     {
       "name": "RkCommonService"
     }
+  ],
+  "schemes": [
+    "http",
+    "https"
   ],
   "consumes": [
     "application/json"
@@ -404,5 +418,21 @@
         }
       }
     }
-  }
+  },
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "name": "X-API-Key",
+      "in": "header"
+    },
+    "BasicAuth": {
+      "type": "basic"
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": [],
+      "BasicAuth": []
+    }
+  ]
 }

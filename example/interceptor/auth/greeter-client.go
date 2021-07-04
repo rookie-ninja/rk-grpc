@@ -27,7 +27,6 @@ func main() {
 			rkgrpcauth.UnaryClientInterceptor(
 				// With invalid password
 				rkgrpcauth.WithBasicAuth("rk-user:rk-invalid-pass"),
-				//rkgrpcauth.WithBearerAuth("rk-token"),
 				//rkgrpcauth.WithApiKeyAuth("rk-api-key"),
 			),
 		),

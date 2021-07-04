@@ -98,10 +98,10 @@ type BootConfigGrpc struct {
 				Enabled bool `yaml:"enabled" json:"enabled"`
 			} `yaml:"metricsProm" json:"metricsProm"`
 			Auth struct {
-				Enabled bool     `yaml:"enabled" json:"enabled"`
-				Basic   []string `yaml:"basic" json:"basic"`
-				Bearer  []string `yaml:"bearer" json:"bearer"`
-				API     []string `yaml:"api" json:"api"`
+				Enabled      bool     `yaml:"enabled" json:"enabled"`
+				IgnorePrefix []string `yaml:"ignorePrefix" json:"ignorePrefix"`
+				Basic        []string `yaml:"basic" json:"basic"`
+				ApiKey       []string `yaml:"apiKey" json:"apiKey"`
 			} `yaml:"auth" json:"auth"`
 			Meta struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
@@ -393,8 +393,9 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			opts = append(opts,
 				rkgrpcauth.WithEntryNameAndType(element.Name, GrpcEntryType),
 				rkgrpcauth.WithBasicAuth(element.Interceptors.Auth.Basic...),
-				rkgrpcauth.WithBearerAuth(element.Interceptors.Auth.Bearer...),
-				rkgrpcauth.WithApiKeyAuth(element.Interceptors.Auth.API...))
+				rkgrpcauth.WithApiKeyAuth(element.Interceptors.Auth.ApiKey...))
+
+			opts = append(opts, rkgrpcauth.WithIgnorePrefix(element.Interceptors.Auth.IgnorePrefix...))
 
 			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(opts...))

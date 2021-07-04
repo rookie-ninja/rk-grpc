@@ -7,11 +7,12 @@ package rkgrpcauth
 import (
 	"encoding/base64"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
+	"path"
+	"strings"
 )
 
 const (
 	typeBasic  = "Basic"
-	typeBearer = "Bearer"
 	typeApiKey = "X-API-Key"
 )
 
@@ -21,11 +22,12 @@ var optionsMap = make(map[string]*optionSet)
 // Create new optionSet with rpc type nad options.
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName:   rkgrpcinter.RpcEntryNameValue,
-		EntryType:   rkgrpcinter.RpcEntryTypeValue,
-		BasicCred:   make(map[string]bool),
-		BearerToken: make(map[string]bool),
-		ApiKey:      make(map[string]bool),
+		EntryName:     rkgrpcinter.RpcEntryNameValue,
+		EntryType:     rkgrpcinter.RpcEntryTypeValue,
+		BasicRealm:    "",
+		BasicAccounts: make(map[string]bool),
+		ApiKey:        make(map[string]bool),
+		IgnorePrefix:  make([]string, 0),
 	}
 
 	for i := range opts {
@@ -42,21 +44,33 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 
 // Options which is used while initializing logging interceptor
 type optionSet struct {
-	EntryName   string
-	EntryType   string
-	BasicCred   map[string]bool
-	BearerToken map[string]bool
-	ApiKey      map[string]bool
+	EntryName     string
+	EntryType     string
+	BasicRealm    string
+	BasicAccounts map[string]bool
+	ApiKey        map[string]bool
+	IgnorePrefix  []string
+}
+
+func (set *optionSet) ShouldAuth(method string) bool {
+	if len(set.BasicAccounts) < 1 && len(set.ApiKey) < 1 {
+		return false
+	}
+
+	for i := range set.IgnorePrefix {
+		if strings.HasPrefix(method, set.IgnorePrefix[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Check permission with username and password.
 func (set *optionSet) Authorized(authType, cred string) bool {
 	switch authType {
 	case typeBasic:
-		_, ok := set.BasicCred[cred]
-		return ok
-	case typeBearer:
-		_, ok := set.BearerToken[cred]
+		_, ok := set.BasicAccounts[cred]
 		return ok
 	case typeApiKey:
 		_, ok := set.ApiKey[cred]
@@ -81,16 +95,7 @@ func WithEntryNameAndType(entryName, entryType string) Option {
 func WithBasicAuth(cred ...string) Option {
 	return func(set *optionSet) {
 		for i := range cred {
-			set.BasicCred[base64.StdEncoding.EncodeToString([]byte(cred[i]))] = true
-		}
-	}
-}
-
-// Provide bearer auth credentials.
-func WithBearerAuth(token ...string) Option {
-	return func(set *optionSet) {
-		for i := range token {
-			set.BearerToken[token[i]] = true
+			set.BasicAccounts[base64.StdEncoding.EncodeToString([]byte(cred[i]))] = true
 		}
 	}
 }
@@ -105,6 +110,16 @@ func WithApiKeyAuth(key ...string) Option {
 	return func(set *optionSet) {
 		for i := range key {
 			set.ApiKey[key[i]] = true
+		}
+	}
+}
+
+// Provide methods that will ignore.
+// Mainly used for swagger main page and RK TV entry.
+func WithIgnorePrefix(paths ...string) Option {
+	return func(set *optionSet) {
+		for i := range paths {
+			set.IgnorePrefix = append(set.IgnorePrefix, path.Join("/", paths[i]))
 		}
 	}
 }

@@ -72,12 +72,12 @@ grpc:
       metricsProm:
         enabled: true                                # Optional, default: false
       auth:
-        enabled: false                               # Optional, default: false
-#        basic:
-#          - "user:pass"                              # Optional, default: []
-#        bearer:
-#          - "tokens"                                 # Optional, default: []
-#        api:
+        enabled: true                                 # Optional, default: false
+        basic:
+          - "user:pass"                              # Optional, default: []
+#        ignorePrefix:
+#          - "/rk.api.v1.RkCommonService/Healthy"      # Optional, default: []
+#        apiKey:
 #          - "keys"                                   # Optional, default: []
       meta:
         enabled: true                                # Optional, default: false

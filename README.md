@@ -15,7 +15,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Trace interceptor | Collect RPC trace and export it to stdout, file or jaeger. |
 | Panic interceptor | Recover from panic for RPC requests and log it. |
 | Meta interceptor | Send application metadata as header to client and GRPC Gateway. |
-| Auth interceptor | Support [Basic Auth], [Bearer Token] and [API Key] authrization types. |
+| Auth interceptor | Support [Basic Auth] and [API Key] authrization types. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -411,8 +411,8 @@ Enable the server side auth. codes.Unauthenticated would be returned to client i
 | ------ | ------ | ------ | ------ |
 | grpc.interceptors.auth.enabled | Enable auth interceptor | boolean | false |
 | grpc.interceptors.auth.basic | Basic auth credentials as scheme of <user:pass> | []string | [] |
-| grpc.interceptors.auth.bearer | Bearer auth tokens | []string | [] |
-| grpc.interceptors.auth.api | API key | []string | [] |
+| grpc.interceptors.auth.apiKey | API key | []string | [] |
+| grpc.interceptors.auth.ignorePrefix | The paths of prefix that will be ignored by interceptor | []string | [] |
 
 #### Meta
 Send application metadata as header to client and GRPC Gateway.

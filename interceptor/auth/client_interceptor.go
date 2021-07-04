@@ -52,13 +52,8 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 
 // Handle logic before handle requests.
 func clientBefore(ctx context.Context, set *optionSet) {
-	for k := range set.BasicCred {
+	for k := range set.BasicAccounts {
 		val := fmt.Sprintf("%s %s", typeBasic, k)
-		rkgrpcctx.AddHeaderToServer(ctx, rkgrpcinter.RpcAuthorizationHeaderKey, val)
-	}
-
-	for k := range set.BearerToken {
-		val := fmt.Sprintf("%s %s", typeBearer, k)
 		rkgrpcctx.AddHeaderToServer(ctx, rkgrpcinter.RpcAuthorizationHeaderKey, val)
 	}
 
