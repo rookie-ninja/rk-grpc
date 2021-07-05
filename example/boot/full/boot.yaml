@@ -69,6 +69,10 @@ grpc:
     interceptors:
       loggingZap:
         enabled: true                                # Optional, default: false
+        zapLoggerEncoding: "json"
+        zapLoggerOutputPaths: ["logs/app.log"]
+        eventLoggerEncoding: "json"
+        eventLoggerOutputPaths: ["logs/event.log"]
       metricsProm:
         enabled: true                                # Optional, default: false
       auth:

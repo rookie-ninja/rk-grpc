@@ -92,7 +92,11 @@ type BootConfigGrpc struct {
 		CommonService BootConfigCommonService `yaml:"commonService" json:"commonService"`
 		Interceptors  struct {
 			LoggingZap struct {
-				Enabled bool `yaml:"enabled" json:"enabled"`
+				Enabled                bool     `yaml:"enabled" json:"enabled"`
+				ZapLoggerEncoding      string   `yaml:"zapLoggerEncoding" json:"zapLoggerEncoding"`
+				ZapLoggerOutputPaths   []string `yaml:"zapLoggerOutputPaths" json:"zapLoggerOutputPaths"`
+				EventLoggerEncoding    string   `yaml:"eventLoggerEncoding" json:"eventLoggerEncoding"`
+				EventLoggerOutputPaths []string `yaml:"eventLoggerOutputPaths" json:"eventLoggerOutputPaths"`
 			} `yaml:"loggingZap" json:"loggingZap"`
 			MetricsProm struct {
 				Enabled bool `yaml:"enabled" json:"enabled"`
@@ -334,6 +338,22 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				rkgrpclog.WithEventLoggerEntry(eventLoggerEntry),
 				rkgrpclog.WithZapLoggerEntry(zapLoggerEntry),
 				rkgrpclog.WithEntryNameAndType(element.Name, GrpcEntryType))
+
+			if strings.ToLower(element.Interceptors.LoggingZap.ZapLoggerEncoding) == "json" {
+				opts = append(opts, rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON))
+			}
+
+			if strings.ToLower(element.Interceptors.LoggingZap.EventLoggerEncoding) == "json" {
+				opts = append(opts, rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON))
+			}
+
+			if len(element.Interceptors.LoggingZap.ZapLoggerOutputPaths) > 0 {
+				opts = append(opts, rkgrpclog.WithZapLoggerOutputPaths(element.Interceptors.LoggingZap.ZapLoggerOutputPaths...))
+			}
+
+			if len(element.Interceptors.LoggingZap.EventLoggerOutputPaths) > 0 {
+				opts = append(opts, rkgrpclog.WithEventLoggerOutputPaths(element.Interceptors.LoggingZap.EventLoggerOutputPaths...))
+			}
 
 			entry.AddUnaryInterceptors(rkgrpclog.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpclog.StreamServerInterceptor(opts...))

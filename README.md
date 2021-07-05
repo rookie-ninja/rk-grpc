@@ -347,6 +347,10 @@ http:
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.interceptors.loggingZap.enabled | Enable log interceptor | boolean | false |
+| grpc.interceptors.loggingZap.zapLoggerEncoding | json or console | string | console |
+| grpc.interceptors.loggingZap.zapLoggerOutputPaths | Output paths | []string | stdout |
+| grpc.interceptors.loggingZap.eventLoggerEncoding | json or console | string | console |
+| grpc.interceptors.loggingZap.eventLoggerOutputPaths | Output paths | []string | false |
 
 We will log two types of log for every RPC call.
 - zapLogger

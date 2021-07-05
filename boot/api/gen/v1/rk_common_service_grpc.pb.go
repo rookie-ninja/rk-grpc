@@ -12,6 +12,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // RkCommonServiceClient is the client API for RkCommonService service.
@@ -286,8 +287,8 @@ type UnsafeRkCommonServiceServer interface {
 	mustEmbedUnimplementedRkCommonServiceServer()
 }
 
-func RegisterRkCommonServiceServer(s *grpc.Server, srv RkCommonServiceServer) {
-	s.RegisterService(&_RkCommonService_serviceDesc, srv)
+func RegisterRkCommonServiceServer(s grpc.ServiceRegistrar, srv RkCommonServiceServer) {
+	s.RegisterService(&RkCommonService_ServiceDesc, srv)
 }
 
 func _RkCommonService_Healthy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -560,7 +561,10 @@ func _RkCommonService_GwErrorMapping_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-var _RkCommonService_serviceDesc = grpc.ServiceDesc{
+// RkCommonService_ServiceDesc is the grpc.ServiceDesc for RkCommonService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var RkCommonService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "rk.api.v1.RkCommonService",
 	HandlerType: (*RkCommonServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
