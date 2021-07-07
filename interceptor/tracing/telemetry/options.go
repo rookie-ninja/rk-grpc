@@ -52,6 +52,19 @@ func (carrier *GrpcMetadataCarrier) Keys() []string {
 	return out
 }
 
+type NoopExporter struct{}
+
+// ExportSpans handles export of SpanSnapshots by dropping them.
+func (nsb *NoopExporter) ExportSpans(context.Context, []*sdktrace.SpanSnapshot) error { return nil }
+
+// Shutdown stops the exporter by doing nothing.
+func (nsb *NoopExporter) Shutdown(context.Context) error { return nil }
+
+// Create a noop exporter
+func CreateNoopExporter() sdktrace.SpanExporter {
+	return &NoopExporter{}
+}
+
 // Create a file exporter whose default output is stdout.
 func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanExporter {
 	if opts == nil {
@@ -124,9 +137,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	}
 
 	if set.Exporter == nil {
-		set.Exporter, _ = stdout.NewExporter(
-			stdout.WithPrettyPrint(),
-			stdout.WithoutMetricExport())
+		set.Exporter = CreateNoopExporter()
 	}
 
 	if set.Processor == nil {

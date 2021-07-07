@@ -24,7 +24,7 @@ func main() {
 	// ****************************************
 
 	// Export trace to stdout
-	// exporter := rkgrpctrace.CreateFileExporter("stdout")
+	exporter := rkgrpctrace.CreateFileExporter("stdout")
 
 	// Export trace to local file system
 	// exporter := rkgrpctrace.CreateFileExporter("logs/trace.log")
@@ -43,7 +43,7 @@ func main() {
 			// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
 			//
 			// Provide an exporter.
-			// rkgrpctrace.WithExporter(exporter),
+			rkgrpctrace.WithExporter(exporter),
 			//
 			// Provide propagation.TextMapPropagator
 			// rkgrpctrace.WithPropagator(<propagator>),
