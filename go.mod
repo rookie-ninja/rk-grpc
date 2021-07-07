@@ -9,10 +9,10 @@ require (
 	github.com/markbates/pkger v0.17.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/rookie-ninja/rk-common v1.0.9-0.20210707090853-df41fd8feab9
-	github.com/rookie-ninja/rk-entry v0.0.0-20210707090955-91f5b42b7d19
+	github.com/rookie-ninja/rk-entry v0.0.0-20210707093119-693a950d55d2
 	github.com/rookie-ninja/rk-logger v1.0.10-0.20210527055114-0f92ffe223bd
 	github.com/rookie-ninja/rk-prom v1.0.9-0.20210623102541-1f31500c9f12
-	github.com/rookie-ninja/rk-query v1.0.12-0.20210623102313-b61067b3abf5
+	github.com/rookie-ninja/rk-query v1.0.12-0.20210707092918-fda347faf939
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/contrib v0.20.0
 	go.opentelemetry.io/otel v0.20.0
