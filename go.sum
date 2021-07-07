@@ -490,6 +490,7 @@ github.com/rookie-ninja/rk-common v1.0.9-0.20210616200134-31f33f039a54/go.mod h1
 github.com/rookie-ninja/rk-common v1.0.9-0.20210630175957-602383c79681 h1:zQEXpwYd/D/+/IG/CKTFY8gXd4svA9k3PrG54p/vU0c=
 github.com/rookie-ninja/rk-common v1.0.9-0.20210630175957-602383c79681/go.mod h1:3gLO6A54hCH3t84JoaE530jUoUG9qhxe0L/s+Vfd6fk=
 github.com/rookie-ninja/rk-common v1.0.9-0.20210707090853-df41fd8feab9/go.mod h1:6l/j+PwaLI38wHoN49RQCve6BNoOjb2zLhU3PQA1uzA=
+github.com/rookie-ninja/rk-common v1.0.9-0.20210707164337-7a2637394810/go.mod h1:6l/j+PwaLI38wHoN49RQCve6BNoOjb2zLhU3PQA1uzA=
 github.com/rookie-ninja/rk-entry v0.0.0-20210623102446-024f9d85f1da h1:yo7Gk6zwm/UMWVQsnPVIEwzaaXFsCVnbxLlZZbGcklA=
 github.com/rookie-ninja/rk-entry v0.0.0-20210623102446-024f9d85f1da/go.mod h1:JTPrUOAtkcqO+dtJYkzFygnDmLTDm/RgkJY/UcdPd6k=
 github.com/rookie-ninja/rk-entry v0.0.0-20210630180059-341e0517e5a2 h1:H5J6XoB/hV2Gkph+Xj/u9D3WWukj9M8IEIZCy5Kt1xg=
@@ -498,6 +499,8 @@ github.com/rookie-ninja/rk-entry v0.0.0-20210707090955-91f5b42b7d19 h1:npciSRZp6
 github.com/rookie-ninja/rk-entry v0.0.0-20210707090955-91f5b42b7d19/go.mod h1:G0xvbC2EdkjFEkjkDIL9UFmPOi4NHYKUAtcyvLeLcns=
 github.com/rookie-ninja/rk-entry v0.0.0-20210707093119-693a950d55d2 h1:EQn2kk0rUwv3aac8hWix4pzJMXs3wOqZLwmr9rRsxc8=
 github.com/rookie-ninja/rk-entry v0.0.0-20210707093119-693a950d55d2/go.mod h1:qEcGfYS8FF9zEXG6VTHuQrm+QvHhKGNtwZU3Gg0YwXA=
+github.com/rookie-ninja/rk-entry v0.0.0-20210707164613-208d4c003dde h1:N8AO2uZAseAjCDqU26aHoSMAF7DjmDbHJ1y/4B+j9go=
+github.com/rookie-ninja/rk-entry v0.0.0-20210707164613-208d4c003dde/go.mod h1:ggUAEarCBofF4ZO9xPW97HC+jGj3sbmZM+TgSHtoCdE=
 github.com/rookie-ninja/rk-logger v1.0.10-0.20210527055114-0f92ffe223bd h1:7EAo8jPqrQ95d5f1v27PRd3shnEBkf6k+UlZw8E5cIU=
 github.com/rookie-ninja/rk-logger v1.0.10-0.20210527055114-0f92ffe223bd/go.mod h1:NDRMGnXMO/PBsFQc+N4LQgTmIxOKaFE1c7pDRmQUGjc=
 github.com/rookie-ninja/rk-prom v1.0.9-0.20210623102541-1f31500c9f12 h1:9pjXZ+ZqM6/xtraBA8FqH+IcKEkVivnhGeVPyxjXHoU=
