@@ -491,6 +491,8 @@ github.com/rookie-ninja/rk-common v1.0.9-0.20210630175957-602383c79681 h1:zQEXpw
 github.com/rookie-ninja/rk-common v1.0.9-0.20210630175957-602383c79681/go.mod h1:3gLO6A54hCH3t84JoaE530jUoUG9qhxe0L/s+Vfd6fk=
 github.com/rookie-ninja/rk-common v1.0.9-0.20210707090853-df41fd8feab9/go.mod h1:6l/j+PwaLI38wHoN49RQCve6BNoOjb2zLhU3PQA1uzA=
 github.com/rookie-ninja/rk-common v1.0.9-0.20210707164337-7a2637394810/go.mod h1:6l/j+PwaLI38wHoN49RQCve6BNoOjb2zLhU3PQA1uzA=
+github.com/rookie-ninja/rk-common v1.0.9-0.20210709140803-d61d06696416 h1:HgNw+GmDRaYcVyKdkdh6D6zhTOijrKuslGf5JHu569c=
+github.com/rookie-ninja/rk-common v1.0.9-0.20210709140803-d61d06696416/go.mod h1:6l/j+PwaLI38wHoN49RQCve6BNoOjb2zLhU3PQA1uzA=
 github.com/rookie-ninja/rk-entry v0.0.0-20210623102446-024f9d85f1da h1:yo7Gk6zwm/UMWVQsnPVIEwzaaXFsCVnbxLlZZbGcklA=
 github.com/rookie-ninja/rk-entry v0.0.0-20210623102446-024f9d85f1da/go.mod h1:JTPrUOAtkcqO+dtJYkzFygnDmLTDm/RgkJY/UcdPd6k=
 github.com/rookie-ninja/rk-entry v0.0.0-20210630180059-341e0517e5a2 h1:H5J6XoB/hV2Gkph+Xj/u9D3WWukj9M8IEIZCy5Kt1xg=
