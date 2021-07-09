@@ -222,6 +222,7 @@ func NewGwEntry(opts ...GwOption) *GwEntry {
 		ServerMuxOptions:   make([]runtime.ServeMuxOption, 0),
 		GwMappingFilePaths: make([]string, 0),
 		GwMapping:          make(map[string]*gwRule),
+		Mux:                http.NewServeMux(),
 	}
 
 	for i := range opts {
@@ -373,36 +374,33 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 		}
 	}
 
-	httpMux := http.NewServeMux()
-	httpMux.Handle("/", entry.GwMux)
+	entry.Mux.Handle("/", entry.GwMux)
 
 	// Is tv enabled?
 	if entry.IsTvEnabled() {
 		entry.TvEntry.Bootstrap(ctx)
-		httpMux.HandleFunc("/rk/v1/tv/", entry.TvEntry.TV)
-		httpMux.HandleFunc("/rk/v1/assets/tv/", entry.TvEntry.AssetsFileHandler)
+		entry.Mux.HandleFunc("/rk/v1/tv/", entry.TvEntry.TV)
+		entry.Mux.HandleFunc("/rk/v1/assets/tv/", entry.TvEntry.AssetsFileHandler)
 	}
 
 	// Is swagger enabled?
 	if entry.IsSwEnabled() {
 		entry.SwEntry.Bootstrap(ctx)
-		httpMux.HandleFunc(entry.SwEntry.Path, entry.SwEntry.ConfigFileHandler)
-		httpMux.HandleFunc("/rk/v1/assets/sw/", entry.SwEntry.AssetsFileHandler)
+		entry.Mux.HandleFunc(entry.SwEntry.Path, entry.SwEntry.ConfigFileHandler)
+		entry.Mux.HandleFunc("/rk/v1/assets/sw/", entry.SwEntry.AssetsFileHandler)
 	}
 
 	// Is prom enabled?
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Bootstrap(ctx)
 		// Register prom path into Router.
-		httpMux.Handle(entry.PromEntry.Path, promhttp.HandlerFor(entry.PromEntry.Gatherer, promhttp.HandlerOpts{}))
+		entry.Mux.Handle(entry.PromEntry.Path, promhttp.HandlerFor(entry.PromEntry.Gatherer, promhttp.HandlerOpts{}))
 	}
 
 	entry.Server = &http.Server{
 		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.HttpPort, 10),
-		Handler: headMethodHandler(httpMux),
+		Handler: headMethodHandler(entry.Mux),
 	}
-
-	entry.Mux = httpMux
 
 	logger.Info("Bootstrapping GwEntry.", event.ListPayloads()...)
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
