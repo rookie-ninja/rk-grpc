@@ -119,7 +119,7 @@ func serverBefore(ctx context.Context, set *optionSet, method, rpcType string) (
 	spanCtx := oteltrace.SpanContextFromContext(set.Propagator.Extract(ctx, &GrpcMetadataCarrier{md: &incomingMD}))
 
 	// create span name
-	spanName := method + "-server"
+	spanName := method
 	if len(spanName) < 1 {
 		spanName = "rk-span-default"
 	}

@@ -79,7 +79,7 @@ func clientBefore(ctx context.Context, set *optionSet, method, rpcType string) (
 	}
 
 	// create span name
-	spanName := method + "-client"
+	spanName := method
 	if len(spanName) < 1 {
 		spanName = "rk-span-default"
 	}
