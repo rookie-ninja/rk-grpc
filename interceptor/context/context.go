@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -28,6 +29,34 @@ var (
 	noopTracerProvider = trace.NewNoopTracerProvider()
 	noopEvent          = rkquery.NewEventFactory().CreateEventNoop()
 )
+
+// Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
+type GrpcMetadataCarrier struct {
+	Md *metadata.MD
+}
+
+// Get value with key from grpc metadata.
+func (carrier *GrpcMetadataCarrier) Get(key string) string {
+	values := carrier.Md.Get(key)
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+// Set value with key into grpc metadata.
+func (carrier *GrpcMetadataCarrier) Set(key string, value string) {
+	carrier.Md.Set(key, value)
+}
+
+// List keys in grpc metadata.
+func (carrier *GrpcMetadataCarrier) Keys() []string {
+	out := make([]string, 0, len(*carrier.Md))
+	for key := range *carrier.Md {
+		out = append(out, key)
+	}
+	return out
+}
 
 // We will add payload into context for further usage.
 func WrapContext(ctx context.Context) context.Context {
@@ -366,4 +395,24 @@ func EndTraceSpan(ctx context.Context, span trace.Span, success bool) {
 	}
 
 	span.End()
+}
+
+// Inject current trace information into context
+func InjectSpanToNewContext(ctx context.Context) context.Context {
+	newCtx := trace.ContextWithRemoteSpanContext(context.Background(), GetTraceSpan(ctx).SpanContext())
+	md := metadata.Pairs()
+	GetTracerPropagator(ctx).Inject(newCtx, &GrpcMetadataCarrier{Md: &md})
+	newCtx = metadata.NewOutgoingContext(newCtx, md)
+
+	return newCtx
+}
+
+// Inject current trace information into http request
+func InjectSpanToHttpRequest(ctx context.Context, req *http.Request) {
+	if req == nil {
+		return
+	}
+
+	newCtx := trace.ContextWithRemoteSpanContext(req.Context(), GetTraceSpan(ctx).SpanContext())
+	GetTracerPropagator(ctx).Inject(newCtx, propagation.HeaderCarrier(req.Header))
 }

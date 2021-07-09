@@ -313,6 +313,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithGwMappingFilePathsGw(element.GW.GwMappingFilePaths...),
 				WithHttpPortGw(element.GW.Port),
 				WithGrpcPortGw(element.Port),
+				WithGrpcCertEntryGw(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)),
 				WithCertEntryGw(rkentry.GlobalAppCtx.GetCertEntry(element.GW.Cert.Ref)),
 				WithSwEntryGw(sw),
 				WithTvEntryGw(tv),
@@ -824,7 +825,7 @@ func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
 			zap.Bool("swEnabled", entry.GwEntry.IsSwEnabled()),
 			zap.Bool("tvEnabled", entry.GwEntry.IsTvEnabled()),
 			zap.Bool("promEnabled", entry.GwEntry.IsPromEnabled()),
-			zap.Bool("gwClientTlsEnabled", entry.GwEntry.IsClientTlsEnabled()),
+			zap.Bool("gwGrpcTlsEnabled", entry.GwEntry.IsGrpcTlsEnabled()),
 			zap.Bool("gwServerTlsEnabled", entry.GwEntry.IsServerTlsEnabled()))
 
 		if entry.GwEntry.IsSwEnabled() {

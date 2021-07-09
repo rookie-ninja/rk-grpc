@@ -89,7 +89,7 @@ func clientBefore(ctx context.Context, set *optionSet, method, rpcType string) (
 
 	// inject into metadata
 	md := metadata.Pairs()
-	set.Propagator.Inject(ctx, &GrpcMetadataCarrier{md: &md})
+	set.Propagator.Inject(ctx, &rkgrpcctx.GrpcMetadataCarrier{Md: &md})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	// return new context with tracer and traceId

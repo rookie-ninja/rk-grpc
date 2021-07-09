@@ -116,7 +116,7 @@ func serverBefore(ctx context.Context, set *optionSet, method, rpcType string) (
 
 	// extract tracer from incoming metadata
 	incomingMD, _ := metadata.FromIncomingContext(ctx)
-	spanCtx := oteltrace.SpanContextFromContext(set.Propagator.Extract(ctx, &GrpcMetadataCarrier{md: &incomingMD}))
+	spanCtx := oteltrace.SpanContextFromContext(set.Propagator.Extract(ctx, &rkgrpcctx.GrpcMetadataCarrier{Md: &incomingMD}))
 
 	// create span name
 	spanName := method

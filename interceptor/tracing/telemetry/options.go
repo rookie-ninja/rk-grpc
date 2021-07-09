@@ -18,39 +18,10 @@ import (
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/metadata"
 	"os"
 	"path"
 	"strings"
 )
-
-// Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
-type GrpcMetadataCarrier struct {
-	md *metadata.MD
-}
-
-// Get value with key from grpc metadata.
-func (carrier *GrpcMetadataCarrier) Get(key string) string {
-	values := carrier.md.Get(key)
-	if len(values) == 0 {
-		return ""
-	}
-	return values[0]
-}
-
-// Set value with key into grpc metadata.
-func (carrier *GrpcMetadataCarrier) Set(key string, value string) {
-	carrier.md.Set(key, value)
-}
-
-// List keys in grpc metadata.
-func (carrier *GrpcMetadataCarrier) Keys() []string {
-	out := make([]string, 0, len(*carrier.md))
-	for key := range *carrier.md {
-		out = append(out, key)
-	}
-	return out
-}
 
 type NoopExporter struct{}
 

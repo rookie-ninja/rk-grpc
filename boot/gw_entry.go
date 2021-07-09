@@ -7,7 +7,6 @@ package rkgrpc
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"github.com/ghodss/yaml"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -93,6 +92,7 @@ type GwEntry struct {
 	ZapLoggerEntry     *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
 	EventLoggerEntry   *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
 	CertEntry          *rkentry.CertEntry        `json:"certEntry" yaml:"certEntry"`
+	GrpcCertEntry      *rkentry.CertEntry        `json:"grpcCertEntry" yaml:"grpcCertEntry"`
 	SwEntry            *SwEntry                  `json:"swEntry" yaml:"swEntry"`
 	TvEntry            *TvEntry                  `json:"tvEntry" yaml:"tvEntry"`
 	PromEntry          *PromEntry                `json:"promEntry" yaml:"promEntry"`
@@ -157,6 +157,13 @@ func WithGrpcPortGw(port uint64) GwOption {
 func WithCertEntryGw(certEntry *rkentry.CertEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.CertEntry = certEntry
+	}
+}
+
+// Provide rkentry.CertEntry.
+func WithGrpcCertEntryGw(grpcCertEntry *rkentry.CertEntry) GwOption {
+	return func(entry *GwEntry) {
+		entry.GrpcCertEntry = grpcCertEntry
 	}
 }
 
@@ -351,13 +358,18 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 	// Parse gateway mapping file paths.
 	entry.parseGwMapping()
 
-	// Add tls to grpc client call options
-	if entry.IsClientTlsEnabled() {
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(entry.CertEntry.Store.ClientCert)
-
-		cred := credentials.NewClientTLSFromCert(pool, "")
-		entry.addDialOptions(grpc.WithTransportCredentials(cred))
+	if entry.IsGrpcTlsEnabled() {
+		if cert, err := tls.X509KeyPair(entry.GrpcCertEntry.Store.ServerCert, entry.GrpcCertEntry.Store.ServerKey); err != nil {
+			rkcommon.ShutdownWithError(err)
+		} else {
+			tls := credentials.NewTLS(&tls.Config{
+				// This is not a good idea, however, grpc-gateway and grpc is running on the same process
+				// So it is safe to do this.
+				InsecureSkipVerify: true,
+				Certificates: []tls.Certificate{cert},
+			})
+			entry.addDialOptions(grpc.WithTransportCredentials(tls))
+		}
 	} else {
 		entry.addDialOptions(grpc.WithInsecure())
 	}
@@ -499,7 +511,7 @@ func (entry *GwEntry) MarshalJSON() ([]byte, error) {
 		"tvEnabled":            entry.IsTvEnabled(),
 		"promEnabled":          entry.IsPromEnabled(),
 		"commonServiceEnabled": entry.IsCommonServiceEnabled(),
-		"clientTlsEnabled":     entry.IsClientTlsEnabled(),
+		"grpcTlsEnabled":       entry.IsGrpcTlsEnabled(),
 		"serverTlsEnabled":     entry.IsServerTlsEnabled(),
 	}
 
@@ -537,8 +549,8 @@ func (entry *GwEntry) IsCommonServiceEnabled() bool {
 }
 
 // Is client TLS enabled?
-func (entry *GwEntry) IsClientTlsEnabled() bool {
-	return entry.CertEntry != nil && entry.CertEntry.Store != nil && len(entry.CertEntry.Store.ClientCert) > 0
+func (entry *GwEntry) IsGrpcTlsEnabled() bool {
+	return entry.GrpcCertEntry != nil && entry.GrpcCertEntry.Store != nil && len(entry.GrpcCertEntry.Store.ServerCert) > 0
 }
 
 // Is server TLS enabled?
@@ -557,7 +569,7 @@ func (entry *GwEntry) logBasicInfo(event rkquery.Event) {
 		zap.Bool("tvEnabled", entry.IsTvEnabled()),
 		zap.Bool("promEnabled", entry.IsPromEnabled()),
 		zap.Bool("commonServiceEnabled", entry.IsCommonServiceEnabled()),
-		zap.Bool("clientTlsEnabled", entry.IsClientTlsEnabled()),
+		zap.Bool("clientTlsEnabled", entry.IsGrpcTlsEnabled()),
 		zap.Bool("serverTlsEnabled", entry.IsServerTlsEnabled()))
 }
 
