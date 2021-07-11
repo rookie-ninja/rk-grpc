@@ -366,7 +366,7 @@ func (entry *GwEntry) Bootstrap(ctx context.Context) {
 				// This is not a good idea, however, grpc-gateway and grpc is running on the same process
 				// So it is safe to do this.
 				InsecureSkipVerify: true,
-				Certificates: []tls.Certificate{cert},
+				Certificates:       []tls.Certificate{cert},
 			})
 			entry.addDialOptions(grpc.WithTransportCredentials(tls))
 		}

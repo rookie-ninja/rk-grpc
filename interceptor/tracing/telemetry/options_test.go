@@ -5,6 +5,7 @@
 package rkgrpctrace
 
 import (
+	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/exporters/stdout"
 	"go.opentelemetry.io/otel/propagation"
@@ -16,8 +17,8 @@ import (
 func TestGrpcMetadataCarrier_Get_HappyCase(t *testing.T) {
 	key, value := "ut-key", "ut-value"
 	md := metadata.Pairs(key, value)
-	carrier := &GrpcMetadataCarrier{
-		md: &md,
+	carrier := &rkgrpcctx.GrpcMetadataCarrier{
+		Md: &md,
 	}
 
 	assert.Equal(t, value, carrier.Get(key))
@@ -26,8 +27,8 @@ func TestGrpcMetadataCarrier_Get_HappyCase(t *testing.T) {
 func TestGrpcMetadataCarrier_Set_HappyCase(t *testing.T) {
 	key, value := "ut-key", "ut-value"
 	md := metadata.Pairs()
-	carrier := &GrpcMetadataCarrier{
-		md: &md,
+	carrier := &rkgrpcctx.GrpcMetadataCarrier{
+		Md: &md,
 	}
 
 	carrier.Set(key, value)
@@ -39,8 +40,8 @@ func TestGrpcMetadataCarrier_Keys_HappyCase(t *testing.T) {
 	key2, value2 := "ut-key-2", "ut-value-2"
 
 	md := metadata.Pairs()
-	carrier := &GrpcMetadataCarrier{
-		md: &md,
+	carrier := &rkgrpcctx.GrpcMetadataCarrier{
+		Md: &md,
 	}
 
 	carrier.Set(key1, value1)

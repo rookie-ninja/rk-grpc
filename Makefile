@@ -1,5 +1,5 @@
 .PHONY: all
-all: test lint readme fmt buf pkger
+all: test lint readme fmt
 
 .PHONY: lint
 lint:

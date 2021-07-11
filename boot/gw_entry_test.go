@@ -101,6 +101,7 @@ func TestGwEntry_MarshalJSON_HappyCase(t *testing.T) {
 	assert.NotEmpty(t, bytes)
 
 	str := string(bytes)
+
 	assert.Contains(t, str, "entryName")
 	assert.Contains(t, str, "entryType")
 	assert.Contains(t, str, "grpcPort")
@@ -111,7 +112,7 @@ func TestGwEntry_MarshalJSON_HappyCase(t *testing.T) {
 	assert.Contains(t, str, "tvEnabled")
 	assert.Contains(t, str, "promEnabled")
 	assert.Contains(t, str, "commonServiceEnabled")
-	assert.Contains(t, str, "clientTlsEnabled")
+	assert.Contains(t, str, "grpcTlsEnabled")
 	assert.Contains(t, str, "serverTlsEnabled")
 }
 
@@ -128,7 +129,7 @@ func TestGwEntry_String_HappyCase(t *testing.T) {
 	assert.Contains(t, str, "tvEnabled")
 	assert.Contains(t, str, "promEnabled")
 	assert.Contains(t, str, "commonServiceEnabled")
-	assert.Contains(t, str, "clientTlsEnabled")
+	assert.Contains(t, str, "grpcTlsEnabled")
 	assert.Contains(t, str, "serverTlsEnabled")
 }
 
@@ -184,17 +185,6 @@ func TestGwEntry_IsCommonServiceEnabled_ExpectFalse(t *testing.T) {
 	assert.False(t, entry.IsCommonServiceEnabled())
 }
 
-func TestGwEntry_IsClientTlsEnabled_ExpectTrue(t *testing.T) {
-	certEntry := &rkentry.CertEntry{
-		Store: &rkentry.CertStore{
-			ClientCert: []byte("ut-client-cert"),
-		},
-	}
-
-	entry := NewGwEntry(WithCertEntryGw(certEntry))
-	assert.True(t, entry.IsClientTlsEnabled())
-}
-
 func TestGwEntry_IsClientTlsEnabled_ExpectFalse(t *testing.T) {
 	// Without client cert
 	certEntry := &rkentry.CertEntry{
@@ -202,17 +192,17 @@ func TestGwEntry_IsClientTlsEnabled_ExpectFalse(t *testing.T) {
 	}
 
 	entry := NewGwEntry(WithCertEntryGw(certEntry))
-	assert.False(t, entry.IsClientTlsEnabled())
+	assert.False(t, entry.IsGrpcTlsEnabled())
 
 	// Without Store
 	certEntry = &rkentry.CertEntry{}
 
 	entry = NewGwEntry(WithCertEntryGw(certEntry))
-	assert.False(t, entry.IsClientTlsEnabled())
+	assert.False(t, entry.IsGrpcTlsEnabled())
 
 	// Without cert entry
 	entry = NewGwEntry()
-	assert.False(t, entry.IsClientTlsEnabled())
+	assert.False(t, entry.IsGrpcTlsEnabled())
 }
 
 func TestGwEntry_IsServerTlsEnabled_ExpectTrue(t *testing.T) {

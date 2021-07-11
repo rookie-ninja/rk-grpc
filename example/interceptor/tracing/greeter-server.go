@@ -39,11 +39,11 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpctrace.UnaryServerInterceptor(
-			// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-			// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
-			//
-			// Provide an exporter.
-			rkgrpctrace.WithExporter(exporter),
+				// Entry name and entry type will be used for distinguishing interceptors. Recommended.
+				// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+				//
+				// Provide an exporter.
+				rkgrpctrace.WithExporter(exporter),
 			//
 			// Provide propagation.TextMapPropagator
 			// rkgrpctrace.WithPropagator(<propagator>),
