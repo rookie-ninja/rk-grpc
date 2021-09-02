@@ -1,6 +1,6 @@
 // Copyright (c) 2021 rookie-ninja
 //
-// Use of this source code is governed by an MIT-style
+// Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
 package rkgrpc
 
@@ -536,6 +536,7 @@ func doEntries(ctx context.Context) *rkentry.EntriesResponse {
 	doEntriesHelper(rkentry.GlobalAppCtx.ListZapLoggerEntriesRaw(), res)
 	doEntriesHelper(rkentry.GlobalAppCtx.ListConfigEntriesRaw(), res)
 	doEntriesHelper(rkentry.GlobalAppCtx.ListCertEntriesRaw(), res)
+	doEntriesHelper(rkentry.GlobalAppCtx.ListCredEntriesRaw(), res)
 
 	// App info entry
 	appInfoEntry := rkentry.GlobalAppCtx.GetAppInfoEntry()
@@ -578,10 +579,10 @@ func doCerts(context.Context) *rkentry.CertsResponse {
 			certEntry.Endpoint = entry.Retriever.GetEndpoint()
 			certEntry.Locale = entry.Retriever.GetLocale()
 			certEntry.Provider = entry.Retriever.GetProvider()
-			certEntry.ServerCertPath = entry.Retriever.GetServerCertPath()
-			certEntry.ServerKeyPath = entry.Retriever.GetServerKeyPath()
-			certEntry.ClientCertPath = entry.Retriever.GetClientCertPath()
-			certEntry.ClientKeyPath = entry.Retriever.GetClientKeyPath()
+			certEntry.ServerCertPath = entry.ServerCertPath
+			certEntry.ServerKeyPath = entry.ServerKeyPath
+			certEntry.ClientCertPath = entry.ClientCertPath
+			certEntry.ClientKeyPath = entry.ClientKeyPath
 		}
 
 		if entry.Store != nil {

@@ -13,6 +13,13 @@ zapLogger:                                           # Optional
 eventLogger:                                         # Optional
   - name: event-logger                               # Required
     description: "Description of entry"              # Optional
+cred:
+  - name: "local-cred"                        # Required
+    description: "Description of entry"       # Optional
+    provider: "localFs"                       # Required, etcd, consul, localFs, remoteFs are supported options
+    locale: "*::*::*::*"                      # Optional, default: *::*::*::*
+    paths:                                    # Optional
+      - "example/boot/full/cred.yaml"
 cert:                                                # Optional
   - name: "local-cert"                               # Required
     description: "Description of entry"              # Optional

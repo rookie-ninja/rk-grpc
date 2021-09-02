@@ -1,6 +1,6 @@
 // Copyright (c) 2021 rookie-ninja
 //
-// Use of this source code is governed by an MIT-style
+// Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
 package rkgrpc
 
@@ -432,13 +432,13 @@ func TestCommonServiceEntry_doCerts_HappyCase(t *testing.T) {
 		EntryName:        "fake-entry",
 		EntryType:        "fake-type",
 		EntryDescription: "fake-description",
-		Retriever: &rkentry.CertRetrieverLocalFs{
-			Locale:         "fake-locale",
-			Provider:       "fake-provider",
-			ServerCertPath: "fake-server-cert-path",
-			ServerKeyPath:  "fake-server-key-path",
-			ClientCertPath: "fake-client-cert-path",
-			ClientKeyPath:  "fake-client-key-path",
+		ServerCertPath:   "fake-server-cert-path",
+		ServerKeyPath:    "fake-server-key-path",
+		ClientCertPath:   "fake-client-cert-path",
+		ClientKeyPath:    "fake-client-key-path",
+		Retriever: &rkentry.CredRetrieverLocalFs{
+			Locale:   "fake-locale",
+			Provider: "fake-provider",
 		},
 		Store: &rkentry.CertStore{},
 	}

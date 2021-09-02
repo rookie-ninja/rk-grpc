@@ -1,6 +1,8 @@
+// +build !race
+
 // Copyright (c) 2021 rookie-ninja
 //
-// Use of this source code is governed by an MIT-style
+// Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
 package rkgrpc
 
@@ -85,8 +87,8 @@ cert:                                         # Optional
     description: "Description of entry"       # Optional
     provider: "localFs"                       # Required, etcd, consul, localFs, remoteFs are supported options
     locale: "*::*::*::*"                      # Optional, default: *::*::*::*
-    serverCertPath: "example/boot/server.pem"      # Optional, default: "", path of certificate on local FS
-    serverKeyPath: "example/boot/server-key.pem"   # Optional, default: "", path of certificate on local FS
+    serverCertPath: "example/boot/full/server.pem"      # Optional, default: "", path of certificate on local FS
+    serverKeyPath: "example/boot/full/server-key.pem"   # Optional, default: "", path of certificate on local FS
 grpc:
   - name: greeter
     port: 1949
