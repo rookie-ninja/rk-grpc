@@ -1,6 +1,7 @@
 # rk-grpc
 [![build](https://github.com/rookie-ninja/rk-grpc/actions/workflows/ci.yml/badge.svg)](https://github.com/rookie-ninja/rk-grpc/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/rookie-ninja/rk-grpc/branch/master/graph/badge.svg?token=08TCFIIVS0)](https://codecov.io/gh/rookie-ninja/rk-grpc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rookie-ninja/rk-grpc)](https://goreportcard.com/report/github.com/rookie-ninja/rk-grpc)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Interceptor & bootstrapper designed for grpc. Currently, supports bellow functionalities.
