@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkginpanic is a middleware of grpc framework for recovering from panic
 package rkgrpcpanic
 
 import (
@@ -38,7 +40,7 @@ type optionSet struct {
 
 type Option func(*optionSet)
 
-// Provide entry name and entry type.
+// WithEntryNameAndType Provide entry name and entry type.
 func WithEntryNameAndType(entryName, entryType string) Option {
 	return func(set *optionSet) {
 		set.EntryName = entryName

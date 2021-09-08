@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpcauth
 
 import (
@@ -12,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Create new unary client interceptor.
+// UnaryClientInterceptor create new unary client interceptor.
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryClient, opts...)
 
@@ -32,7 +33,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	}
 }
 
-// Create new stream client interceptor.
+// StreamClientInterceptor create new stream client interceptor.
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamClient, opts...)
 

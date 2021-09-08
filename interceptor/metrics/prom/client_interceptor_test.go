@@ -2,56 +2,55 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpcmetrics
 
 import (
+	"context"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"testing"
 )
 
 func TestUnaryClientInterceptor_WithoutOptions(t *testing.T) {
-	defer clearOptionsMap()
 	inter := UnaryClientInterceptor()
 
 	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeUnaryClient)]
-	assert.NotNil(t, set)
-
-	clearInterceptorMetrics(set.MetricsSet)
+	assert.NotNil(t, optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeUnaryClient)])
 }
 
-func TestUnaryClientInterceptor_HappyCase(t *testing.T) {
-	defer clearOptionsMap()
+func TestUnaryClientInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
+
+	reg := prometheus.NewRegistry()
 	inter := UnaryClientInterceptor(
-		WithEntryNameAndType("ut-entry-name", "ut-entry"))
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
 
-	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcinter.ToOptionsKey("ut-entry-name", rkgrpcinter.RpcTypeUnaryClient)]
-	assert.NotNil(t, set)
+	invoker := func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+		return nil
+	}
+	cc := &grpc.ClientConn{}
+	ctx := context.TODO()
 
-	clearInterceptorMetrics(set.MetricsSet)
+	inter(ctx, "ut-method", fakeRequest, fakeResponse, cc, invoker)
 }
 
-func TestStreamClientInterceptor_WithoutOptions(t *testing.T) {
-	defer clearOptionsMap()
-	inter := StreamClientInterceptor()
+func TestStreamClientInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
 
-	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeStreamClient)]
-	assert.NotNil(t, set)
-
-	clearInterceptorMetrics(set.MetricsSet)
-}
-
-func TestStreamClientInterceptor_HappyCase(t *testing.T) {
-	defer clearOptionsMap()
+	reg := prometheus.NewRegistry()
 	inter := StreamClientInterceptor(
-		WithEntryNameAndType("ut-entry-name", "ut-entry"))
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
 
-	assert.NotNil(t, inter)
-	set := optionsMap[rkgrpcinter.ToOptionsKey("ut-entry-name", rkgrpcinter.RpcTypeStreamClient)]
-	assert.NotNil(t, set)
+	streamer := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		return nil, nil
+	}
+	cc := &grpc.ClientConn{}
+	ctx := context.TODO()
 
-	clearInterceptorMetrics(set.MetricsSet)
+	inter(ctx, &grpc.StreamDesc{}, cc, "ut-method", streamer)
 }

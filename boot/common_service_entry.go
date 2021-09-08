@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
+	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-query"
@@ -19,10 +21,7 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/structpb"
-	"net"
 	"net/http"
 	"path"
 	"runtime"
@@ -35,13 +34,13 @@ const (
 	CommonServiceGwMappingFilePath = "api/v1/gw_mapping.yaml"
 )
 
-// Bootstrap config of common service.
+// BootConfigCommonService Bootstrap config of common service.
 // 1: Enabled: Enable common service.
 type BootConfigCommonService struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// RK common service which contains commonly used APIs
+// CommonServiceEntry RK common service which contains commonly used APIs
 // 1: Healthy GET Returns true if process is alive
 // 2: Gc GET Trigger gc()
 // 3: Info GET Returns entry basic information
@@ -63,31 +62,31 @@ type CommonServiceEntry struct {
 	GwMapping         map[string]string         `json:"gwMapping" yaml:"gwMapping"`
 }
 
-// Common service entry option function.
+// CommonServiceEntryOption Common service entry option function.
 type CommonServiceEntryOption func(*CommonServiceEntry)
 
-// Provide name.
+// WithNameCommonService Provide name.
 func WithNameCommonService(name string) CommonServiceEntryOption {
 	return func(entry *CommonServiceEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Provide rkentry.EventLoggerEntry.
+// WithNameCommonService Provide rkentry.EventLoggerEntry.
 func WithEventLoggerEntryCommonService(eventLoggerEntry *rkentry.EventLoggerEntry) CommonServiceEntryOption {
 	return func(entry *CommonServiceEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
-// Provide rkentry.ZapLoggerEntry.
+// WithZapLoggerEntryCommonService Provide rkentry.ZapLoggerEntry.
 func WithZapLoggerEntryCommonService(zapLoggerEntry *rkentry.ZapLoggerEntry) CommonServiceEntryOption {
 	return func(entry *CommonServiceEntry) {
 		entry.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
-// Create new common service entry with options.
+// NewCommonServiceEntry Create new common service entry with options.
 func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry {
 	entry := &CommonServiceEntry{
 		EntryName:         CommonServiceEntryNameDefault,
@@ -103,18 +102,6 @@ func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry
 
 	for i := range opts {
 		opts[i](entry)
-	}
-
-	if entry.ZapLoggerEntry == nil {
-		entry.ZapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
-	}
-
-	if entry.EventLoggerEntry == nil {
-		entry.EventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
-	}
-
-	if len(entry.EntryName) < 1 {
-		entry.EntryName = CommonServiceEntryNameDefault
 	}
 
 	return entry
@@ -163,23 +150,23 @@ func (entry *CommonServiceEntry) Interrupt(ctx context.Context) {
 	logger.Info("Interrupting CommonServiceEntry.", event.ListPayloads()...)
 }
 
-// Get name of entry.
+// GetName Get name of entry.
 func (entry *CommonServiceEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Get entry type.
+// GetType Get entry type.
 func (entry *CommonServiceEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy entry.
+// String Stringfy entry.
 func (entry *CommonServiceEntry) String() string {
 	bytes, _ := json.Marshal(entry)
 	return string(bytes)
 }
 
-// Marshal entry.
+// MarshalJSON Marshal entry.
 func (entry *CommonServiceEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":        entry.EntryName,
@@ -192,12 +179,12 @@ func (entry *CommonServiceEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Not supported.
+// UnmarshalJSON Not supported.
 func (entry *CommonServiceEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
 
-// Get description of entry.
+// GetDescription Get description of entry.
 func (entry *CommonServiceEntry) GetDescription() string {
 	return entry.EntryDescription
 }
@@ -286,7 +273,7 @@ func getSwUrl(entry *GwEntry, ctx context.Context) string {
 			scheme = "https"
 		}
 
-		remoteIp, _, _ := getRemoteAddressSet(ctx)
+		remoteIp, _, _ := rkgrpcinter.GetRemoteAddressSet(ctx)
 
 		return fmt.Sprintf("%s://%s:%d%s",
 			scheme,
@@ -296,73 +283,6 @@ func getSwUrl(entry *GwEntry, ctx context.Context) string {
 	}
 
 	return ""
-}
-
-// Read remote Ip and port from metadata first.
-func getRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	ip, port = getRemoteAddressSetFromMeta(md)
-	// no ip and port were passed through gateway
-	if len(ip) < 1 {
-		ip, port, netType = "0.0.0.0", "0", ""
-		if peer, ok := peer.FromContext(ctx); ok {
-			netType = peer.Addr.Network()
-
-			// Here is the tricky part
-			// We only try to parse IPV4 style Address
-			// Rest of peer.Addr implementations are not well formatted string
-			// and in this case, we leave port as zero and IP as the returned
-			// String from Addr.String() function
-			//
-			// BTW, just skip the error since it would not impact anything
-			// Operators could observe this error from monitor dashboards by
-			// validating existence of IP & PORT fields
-			ip, port, _ = net.SplitHostPort(peer.Addr.String())
-		}
-
-		headers, ok := metadata.FromIncomingContext(ctx)
-
-		if ok {
-			forwardedRemoteIPList := headers["x-forwarded-for"]
-
-			// Deal with forwarded remote ip
-			if len(forwardedRemoteIPList) > 0 {
-				forwardedRemoteIP := forwardedRemoteIPList[0]
-
-				if forwardedRemoteIP == "::1" {
-					forwardedRemoteIP = "localhost"
-				}
-
-				ip = forwardedRemoteIP
-			}
-		}
-
-		if ip == "::1" {
-			ip = "localhost"
-		}
-	}
-
-	return ip, port, netType
-}
-
-// Read remote Ip and port from metadata.
-// If user enabled RK style gateway server mux option, then there would be bellow headers forwarded
-// to grpc metadata
-// 1: x-forwarded-method
-// 2: x-forwarded-path
-// 3: x-forwarded-scheme
-// 4: x-forwarded-user-agent
-// 5: x-forwarded-remote-addr
-func getRemoteAddressSetFromMeta(md metadata.MD) (ip, port string) {
-	if v := md.Get("x-forwarded-remote-addr"); len(v) > 0 {
-		ip, port, _ = net.SplitHostPort(v[0])
-	}
-
-	if ip == "::1" {
-		ip = "localhost"
-	}
-
-	return ip, port
 }
 
 // Compose gateway related elements based on GwEntry and SwEntry.
@@ -696,7 +616,6 @@ func doDeps(context.Context) *rkentry.DepResponse {
 	if appInfoEntry == nil {
 		return res
 	}
-
 	res.GoMod = appInfoEntry.GoMod
 
 	return res

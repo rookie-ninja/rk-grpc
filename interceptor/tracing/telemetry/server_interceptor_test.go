@@ -5,94 +5,103 @@
 package rkgrpctrace
 
 import (
-	"github.com/rookie-ninja/rk-grpc/interceptor"
+	"context"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/exporters/stdout"
-	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"testing"
 )
 
-func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
-	processor := sdktrace.NewSimpleSpanProcessor(exporter)
-	provider := sdktrace.NewTracerProvider()
-	propagator := propagation.NewCompositeTextMapPropagator()
-	entryName, entryType := "ut-entry-name", "ut-entry"
+var (
+	fakeRequest  = &FakeRequest{}
+	fakeResponse = &FakeResponse{}
+	fakeServer   = &FakeServer{}
+)
 
-	UnaryServerInterceptor(
-		WithEntryNameAndType(entryName, entryType),
-		WithExporter(exporter),
-		WithSpanProcessor(processor),
-		WithTracerProvider(provider),
-		WithPropagator(propagator))
+type FakeRequest struct{}
 
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryServer)]
-	assert.NotNil(t, set)
-	assert.Equal(t, exporter, set.Exporter)
-	assert.Equal(t, processor, set.Processor)
-	assert.Equal(t, provider, set.Provider)
-	assert.Equal(t, propagator, set.Propagator)
+type FakeResponse struct{}
 
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+type FakeServer struct{}
+
+type FakeServerStream struct {
+	ctx context.Context
 }
 
-func TestUnaryServerInterceptor_WithoutOptions(t *testing.T) {
-	entryName, entryType := "ut-entry-name", "ut-entry"
-
-	UnaryServerInterceptor(
-		WithEntryNameAndType(entryName, entryType))
-
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryServer)]
-	assert.NotNil(t, set)
-	assert.NotNil(t, set.Exporter)
-	assert.NotNil(t, set.Processor)
-	assert.NotNil(t, set.Provider)
-	assert.NotNil(t, set.Propagator)
-
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+func (f FakeServerStream) SetHeader(md metadata.MD) error {
+	return nil
 }
 
-func TestStreamServerInterceptor_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
-	processor := sdktrace.NewSimpleSpanProcessor(exporter)
-	provider := sdktrace.NewTracerProvider()
-	propagator := propagation.NewCompositeTextMapPropagator()
-	entryName, entryType := "ut-entry-name", "ut-entry"
-
-	StreamServerInterceptor(
-		WithEntryNameAndType(entryName, entryType),
-		WithExporter(exporter),
-		WithSpanProcessor(processor),
-		WithTracerProvider(provider),
-		WithPropagator(propagator))
-
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamServer)]
-	assert.NotNil(t, set)
-	assert.Equal(t, exporter, set.Exporter)
-	assert.Equal(t, processor, set.Processor)
-	assert.Equal(t, provider, set.Provider)
-	assert.Equal(t, propagator, set.Propagator)
-
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+func (f FakeServerStream) SendHeader(md metadata.MD) error {
+	return nil
 }
 
-func TestStreamServerInterceptor_WithoutOptions(t *testing.T) {
-	entryName, entryType := "ut-entry-name", "ut-entry"
+func (f FakeServerStream) SetTrailer(md metadata.MD) {
+	return
+}
 
-	StreamServerInterceptor(
-		WithEntryNameAndType(entryName, entryType))
+func (f FakeServerStream) Context() context.Context {
+	return f.ctx
+}
 
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamServer)]
-	assert.NotNil(t, set)
-	assert.NotNil(t, set.Exporter)
-	assert.NotNil(t, set.Processor)
-	assert.NotNil(t, set.Provider)
-	assert.NotNil(t, set.Propagator)
+func (f FakeServerStream) SendMsg(m interface{}) error {
+	return nil
+}
 
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+func (f FakeServerStream) RecvMsg(m interface{}) error {
+	return nil
+}
+
+func TestUnaryServerInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
+
+	inter := UnaryServerInterceptor(
+		WithEntryNameAndType("ut-entry", "ut-type"))
+
+	info := &grpc.UnaryServerInfo{
+		FullMethod: "ut-method",
+	}
+
+	resp := FakeResponse{}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return resp, nil
+	}
+
+	ctx := metadata.NewIncomingContext(context.TODO(), metadata.New(map[string]string{}))
+
+	res, err := inter(ctx, fakeRequest, info, handler)
+
+	assert.Equal(t, resp, res)
+	assert.Nil(t, err)
+}
+
+func TestStreamServerInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
+
+	inter := StreamServerInterceptor(
+		WithEntryNameAndType("ut-entry", "ut-type"))
+
+	info := &grpc.StreamServerInfo{
+		FullMethod: "ut-method",
+	}
+
+	handler := func(srv interface{}, stream grpc.ServerStream) error {
+		return nil
+	}
+
+	err := inter(fakeServer, &FakeServerStream{
+		ctx: metadata.NewIncomingContext(context.TODO(), metadata.New(map[string]string{})),
+	}, info, handler)
+
+	assert.Nil(t, err)
+}
+
+func assertNotPanic(t *testing.T) {
+	if r := recover(); r != nil {
+		// Expect panic to be called with non nil error
+		assert.True(t, false)
+	} else {
+		// This should never be called in case of a bug
+		assert.True(t, true)
+	}
 }

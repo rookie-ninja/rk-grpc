@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
@@ -38,7 +39,7 @@ type gwRule struct {
 	Pattern string `json:"pattern" yaml:"pattern"`
 }
 
-// Bootstrap config of tv.
+// BootConfigGw Bootstrap config of tv.
 // 1: Enabled: Enable gateway.
 // 2: Port: Http port exposed.
 // 3: Enable RK sytle server option?
@@ -105,118 +106,118 @@ type GwEntry struct {
 	Mux                *http.ServeMux            `json:"-" yaml:"-"`
 }
 
-// Registration function grpc gateway.
+// GwRegFunc Registration function grpc gateway.
 type GwRegFunc func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 
 // GwEntry option.
 type GwOption func(*GwEntry)
 
-// Provide name for gateway.
+// WithNameGw Provide name for gateway.
 func WithNameGw(name string) GwOption {
 	return func(entry *GwEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Provide gateway mapping configuration file paths.
+// WithGwMappingFilePathsGw Provide gateway mapping configuration file paths.
 func WithGwMappingFilePathsGw(paths ...string) GwOption {
 	return func(entry *GwEntry) {
 		entry.GwMappingFilePaths = append(entry.GwMappingFilePaths, paths...)
 	}
 }
 
-// Provide rkentry.ZapLoggerEntry.
+// WithZapLoggerEntryGw Provide rkentry.ZapLoggerEntry.
 func WithZapLoggerEntryGw(zapLoggerEntry *rkentry.ZapLoggerEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
-// Provide rkentry.EventLoggerEntry.
+// WithEventLoggerEntryGw Provide rkentry.EventLoggerEntry.
 func WithEventLoggerEntryGw(eventLoggerEntry *rkentry.EventLoggerEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
-// Provide http port.
+// WithHttpPortGw Provide http port.
 func WithHttpPortGw(port uint64) GwOption {
 	return func(entry *GwEntry) {
 		entry.HttpPort = port
 	}
 }
 
-// Provide grpc port.
+// WithGrpcPortGw Provide grpc port.
 func WithGrpcPortGw(port uint64) GwOption {
 	return func(entry *GwEntry) {
 		entry.GrpcPort = port
 	}
 }
 
-// Provide rkentry.CertEntry.
+// WithCertEntryGw Provide rkentry.CertEntry.
 func WithCertEntryGw(certEntry *rkentry.CertEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.CertEntry = certEntry
 	}
 }
 
-// Provide rkentry.CertEntry.
+// WithGrpcCertEntryGw Provide rkentry.CertEntry.
 func WithGrpcCertEntryGw(grpcCertEntry *rkentry.CertEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.GrpcCertEntry = grpcCertEntry
 	}
 }
 
-// Provide SwEntry.
+// WithSwEntryGw Provide SwEntry.
 func WithSwEntryGw(sw *SwEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.SwEntry = sw
 	}
 }
 
-// Provide TvEntry.
+// WithTvEntryGw Provide TvEntry.
 func WithTvEntryGw(tv *TvEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.TvEntry = tv
 	}
 }
 
-// Provide PromEntry.
+// WithPromEntryGw Provide PromEntry.
 func WithPromEntryGw(prom *PromEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.PromEntry = prom
 	}
 }
 
-// Provide CommonServiceEntry.
+// WithCommonServiceEntryGw Provide CommonServiceEntry.
 func WithCommonServiceEntryGw(commonService *CommonServiceEntry) GwOption {
 	return func(entry *GwEntry) {
 		entry.CommonServiceEntry = commonService
 	}
 }
 
-// Provide registration function.
+// WithRegFuncsGw Provide registration function.
 func WithRegFuncsGw(funcs ...GwRegFunc) GwOption {
 	return func(entry *GwEntry) {
 		entry.RegFuncsGw = append(entry.RegFuncsGw, funcs...)
 	}
 }
 
-// Provide grpc dial options.
+// WithGrpcDialOptionsGw Provide grpc dial options.
 func WithGrpcDialOptionsGw(opts ...grpc.DialOption) GwOption {
 	return func(entry *GwEntry) {
 		entry.GrpcDialOptions = append(entry.GrpcDialOptions, opts...)
 	}
 }
 
-// Provide gateway server mux options.
+// WithServerMuxOptionsGw Provide gateway server mux options.
 func WithServerMuxOptionsGw(opts ...runtime.ServeMuxOption) GwOption {
 	return func(entry *GwEntry) {
 		entry.ServerMuxOptions = append(entry.ServerMuxOptions, opts...)
 	}
 }
 
-// Create new gateway entry with options.
+// NewGwEntry Create new gateway entry with options.
 func NewGwEntry(opts ...GwOption) *GwEntry {
 	entry := &GwEntry{
 		EntryName:          GwEntryNameDefault,
@@ -257,6 +258,7 @@ func (entry *GwEntry) addRegFuncsGw(funcs ...GwRegFunc) {
 	entry.RegFuncsGw = append(entry.RegFuncsGw, funcs...)
 }
 
+// Parse gw mapping file
 func (entry *GwEntry) parseGwMapping() {
 	// Parse common service if common service is enabled and GwMappingFilePath is not empty.
 	if entry.IsCommonServiceEnabled() && len(entry.CommonServiceEntry.GwMappingFilePath) > 0 {
@@ -292,6 +294,7 @@ func (entry *GwEntry) parseGwMapping() {
 	}
 }
 
+// Helper function of parseGwMapping
 func (entry *GwEntry) parseGwMappingHelper(bytes []byte) {
 	if len(bytes) < 1 {
 		return
@@ -482,23 +485,23 @@ func (entry *GwEntry) Interrupt(ctx context.Context) {
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 }
 
-// Get name of entry.
+// GetName Get name of entry.
 func (entry *GwEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Get type of entry.
+// GetType Get type of entry.
 func (entry *GwEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy entry.
+// String Stringfy entry.
 func (entry *GwEntry) String() string {
 	bytes, _ := json.Marshal(entry)
 	return string(bytes)
 }
 
-// Marshal entry.
+// MarshalJSON Marshal entry.
 func (entry *GwEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":            entry.EntryName,
@@ -518,37 +521,37 @@ func (entry *GwEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Not supported.
+// UnmarshalJSON Not supported.
 func (entry *GwEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
 
-// Get description of entry.
+// GetDescription Get description of entry.
 func (entry *GwEntry) GetDescription() string {
 	return entry.EntryDescription
 }
 
-// Is swagger enabled?
+// IsSwEnabled Is swagger enabled?
 func (entry *GwEntry) IsSwEnabled() bool {
 	return entry.SwEntry != nil
 }
 
-// Is tv enabled?
+// IsTvEnabled Is tv enabled?
 func (entry *GwEntry) IsTvEnabled() bool {
 	return entry.TvEntry != nil
 }
 
-// Is prometheus client enabled?
+// IsPromEnabled Is prometheus client enabled?
 func (entry *GwEntry) IsPromEnabled() bool {
 	return entry.PromEntry != nil
 }
 
-// Is common service enabled?
+// IsCommonServiceEnabled Is common service enabled?
 func (entry *GwEntry) IsCommonServiceEnabled() bool {
 	return entry.CommonServiceEntry != nil
 }
 
-// Is client TLS enabled?
+// IsGrpcTlsEnabled Is client TLS enabled?
 func (entry *GwEntry) IsGrpcTlsEnabled() bool {
 	return entry.GrpcCertEntry != nil && entry.GrpcCertEntry.Store != nil && len(entry.GrpcCertEntry.Store.ServerCert) > 0
 }

@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpcctx provides utility functions deal with metadata in RPC context
 package rkgrpcctx
 
 import (
@@ -30,7 +32,7 @@ var (
 	noopEvent          = rkquery.NewEventFactory().CreateEventNoop()
 )
 
-// Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
+// GrpcMetadataCarrier Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
 type GrpcMetadataCarrier struct {
 	Md *metadata.MD
 }
@@ -49,7 +51,7 @@ func (carrier *GrpcMetadataCarrier) Set(key string, value string) {
 	carrier.Md.Set(key, value)
 }
 
-// List keys in grpc metadata.
+// Keys List keys in grpc metadata.
 func (carrier *GrpcMetadataCarrier) Keys() []string {
 	out := make([]string, 0, len(*carrier.Md))
 	for key := range *carrier.Md {
@@ -58,7 +60,8 @@ func (carrier *GrpcMetadataCarrier) Keys() []string {
 	return out
 }
 
-// We will add payload into context for further usage.
+// WrapContext We will add payload into context for further usage.
+// Used for client side only.
 func WrapContext(ctx context.Context) context.Context {
 	if rkgrpcinter.ContainsClientPayload(ctx) {
 		return ctx
@@ -67,7 +70,7 @@ func WrapContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, rkgrpcinter.GetClientPayloadKey(), rkgrpcinter.NewClientPayload())
 }
 
-// This function is mainly used for client stream.
+// FinishClientStream This function is mainly used for client stream.
 //
 // Streaming client is a little bit tricky.
 // It is not an easy work to get headers sent from server while receiving message
@@ -103,7 +106,7 @@ func FinishClientStream(ctx context.Context, stream grpc.ClientStream) {
 	}
 }
 
-// Extract call-scoped incoming headers
+// GetIncomingHeaders Extract call-scoped incoming headers
 func GetIncomingHeaders(ctx context.Context) metadata.MD {
 	// called from client
 	if rkgrpcinter.ContainsClientPayload(ctx) {
@@ -118,7 +121,7 @@ func GetIncomingHeaders(ctx context.Context) metadata.MD {
 	return metadata.Pairs()
 }
 
-// Headers that would be sent to client.
+// AddHeaderToClient Headers that would be sent to client.
 func AddHeaderToClient(ctx context.Context, key, value string) {
 	// set to grpc header
 	if err := grpc.SetHeader(ctx, metadata.Pairs(key, value)); err != nil {
@@ -128,7 +131,7 @@ func AddHeaderToClient(ctx context.Context, key, value string) {
 	rkgrpcinter.AddToServerContextPayload(ctx, key, value)
 }
 
-// Headers that would be sent to server.
+// AddHeaderToServer Headers that would be sent to server.
 func AddHeaderToServer(ctx context.Context, key, value string) {
 	// Make sure called from client
 	if rkgrpcinter.ContainsClientPayload(ctx) {
@@ -138,7 +141,7 @@ func AddHeaderToServer(ctx context.Context, key, value string) {
 	}
 }
 
-// Extract the call-scoped EventData from context.
+// GetEvent Extract the call-scoped EventData from context.
 func GetEvent(ctx context.Context) rkquery.Event {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -155,7 +158,7 @@ func GetEvent(ctx context.Context) rkquery.Event {
 	return noopEvent
 }
 
-// Extract the call-scoped zap logger from context.
+// GetLogger Extract the call-scoped zap logger from context.
 func GetLogger(ctx context.Context) *zap.Logger {
 	logger := rklogger.NoopLogger
 
@@ -192,7 +195,7 @@ func GetLogger(ctx context.Context) *zap.Logger {
 	return logger
 }
 
-// Get request id in outgoing metadata.
+// GetRequestId Get request id in outgoing metadata.
 func GetRequestId(ctx context.Context) string {
 	// case 1: called from server side context which wrapped with WrapContextForServer()'
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -209,7 +212,7 @@ func GetRequestId(ctx context.Context) string {
 	return ""
 }
 
-// Get trace id in context.
+// GetTraceId Get trace id in context.
 func GetTraceId(ctx context.Context) string {
 	// case 1: called from server side context which wrapped with WrapContextForServer()
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -226,7 +229,7 @@ func GetTraceId(ctx context.Context) string {
 	return ""
 }
 
-// Extract the call-scoped entry name.
+// GetEntryName Extract the call-scoped entry name.
 func GetEntryName(ctx context.Context) string {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -243,7 +246,7 @@ func GetEntryName(ctx context.Context) string {
 	return ""
 }
 
-// Extract the call-scoped rpc type.
+// GetRpcType Extract the call-scoped rpc type.
 func GetRpcType(ctx context.Context) string {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -260,7 +263,7 @@ func GetRpcType(ctx context.Context) string {
 	return ""
 }
 
-// Extract the call-scoped method name.
+// GetMethodName Extract the call-scoped method name.
 func GetMethodName(ctx context.Context) string {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -277,7 +280,7 @@ func GetMethodName(ctx context.Context) string {
 	return ""
 }
 
-// Extract the call-scoped error.
+// GetError Extract the call-scoped error.
 func GetError(ctx context.Context) error {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -294,13 +297,9 @@ func GetError(ctx context.Context) error {
 	return nil
 }
 
-// Extract the call-scoped span from context.
+// GetTraceSpan Extract the call-scoped span from context.
 func GetTraceSpan(ctx context.Context) trace.Span {
 	_, span := noopTracerProvider.Tracer("rk-trace-noop").Start(ctx, "noop-span")
-
-	if ctx == nil {
-		return span
-	}
 
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
@@ -317,12 +316,8 @@ func GetTraceSpan(ctx context.Context) trace.Span {
 	return span
 }
 
-// Extract the call-scoped tracer from context.
+// GetTracer Extract the call-scoped tracer from context.
 func GetTracer(ctx context.Context) trace.Tracer {
-	if ctx == nil {
-		return noopTracerProvider.Tracer("rk-trace-noop")
-	}
-
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
 	if v1, ok := m[rkgrpcinter.RpcTracerKey]; ok {
@@ -338,12 +333,8 @@ func GetTracer(ctx context.Context) trace.Tracer {
 	return noopTracerProvider.Tracer("rk-trace-noop")
 }
 
-// Extract the call-scoped tracer provider from context.
+// GetTracerProvider Extract the call-scoped tracer provider from context.
 func GetTracerProvider(ctx context.Context) trace.TracerProvider {
-	if ctx == nil {
-		return noopTracerProvider
-	}
-
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
 	if v1, ok := m[rkgrpcinter.RpcTracerProviderKey]; ok {
@@ -359,12 +350,8 @@ func GetTracerProvider(ctx context.Context) trace.TracerProvider {
 	return noopTracerProvider
 }
 
-// Extract the call-scoped span processor from middleware.
+// GetTracerPropagator Extract the call-scoped span processor from middleware.
 func GetTracerPropagator(ctx context.Context) propagation.TextMapPropagator {
-	if ctx == nil {
-		return nil
-	}
-
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
 	if v1, ok := m[rkgrpcinter.RpcPropagatorKey]; ok {
@@ -380,7 +367,7 @@ func GetTracerPropagator(ctx context.Context) propagation.TextMapPropagator {
 	return nil
 }
 
-// Start a new span
+// NewTraceSpan Start a new span
 func NewTraceSpan(ctx context.Context, name string) trace.Span {
 	tracer := GetTracer(ctx)
 	_, span := tracer.Start(ctx, name)
@@ -388,7 +375,7 @@ func NewTraceSpan(ctx context.Context, name string) trace.Span {
 	return span
 }
 
-// End span
+// EndTraceSpan End span
 func EndTraceSpan(ctx context.Context, span trace.Span, success bool) {
 	if success {
 		span.SetStatus(otelcodes.Ok, otelcodes.Ok.String())
@@ -397,7 +384,7 @@ func EndTraceSpan(ctx context.Context, span trace.Span, success bool) {
 	span.End()
 }
 
-// Inject current trace information into context
+// InjectSpanToNewContext Inject current trace information into context
 func InjectSpanToNewContext(ctx context.Context) context.Context {
 	newCtx := trace.ContextWithRemoteSpanContext(context.Background(), GetTraceSpan(ctx).SpanContext())
 	md := metadata.Pairs()
@@ -407,7 +394,7 @@ func InjectSpanToNewContext(ctx context.Context) context.Context {
 	return newCtx
 }
 
-// Inject current trace information into http request
+// InjectSpanToHttpRequest Inject current trace information into http request
 func InjectSpanToHttpRequest(ctx context.Context, req *http.Request) {
 	if req == nil {
 		return

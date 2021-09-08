@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-// Create new unary client interceptor.
+// UnaryClientInterceptor Create new unary client interceptor.
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryClient, opts...)
 
@@ -42,7 +42,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	}
 }
 
-// Create new stream client interceptor.
+// StreamClientInterceptor Create new stream client interceptor.
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamClient, opts...)
 

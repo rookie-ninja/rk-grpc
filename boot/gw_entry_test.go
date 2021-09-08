@@ -5,6 +5,8 @@
 package rkgrpc
 
 import (
+	"context"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -54,6 +56,9 @@ func TestNewGwEntry_HappyCase(t *testing.T) {
 		WithPromEntryGw(promEntry),
 		WithCommonServiceEntryGw(commonServiceEntry),
 		WithGrpcDialOptionsGw(grpcDialOption),
+		WithRegFuncsGw(func(ctx context.Context, mux *runtime.ServeMux, s string, options []grpc.DialOption) error {
+			return nil
+		}),
 	)
 	assert.NotNil(t, entry)
 
@@ -80,17 +85,22 @@ func TestGwEntry_GetName_HappyCase(t *testing.T) {
 	entry := NewGwEntry(WithNameGw(entryName))
 	assert.NotNil(t, entry)
 
-	assert.Equal(t, entryName, entry.EntryName)
+	assert.Equal(t, entryName, entry.GetName())
 }
 
 func TestGwEntry_GetType_HappyCase(t *testing.T) {
 	entry := NewGwEntry()
-	assert.Equal(t, GwEntryType, entry.EntryType)
+	assert.Equal(t, GwEntryType, entry.GetType())
 }
 
 func TestGwEntry_GetDescription_HappyCase(t *testing.T) {
 	entry := NewGwEntry()
-	assert.Equal(t, GwEntryDescription, entry.EntryDescription)
+	assert.Equal(t, GwEntryDescription, entry.GetDescription())
+}
+
+func TestGwEntry_UnmarshalJSON(t *testing.T) {
+	entry := NewGwEntry()
+	assert.Nil(t, entry.UnmarshalJSON(nil))
 }
 
 func TestGwEntry_MarshalJSON_HappyCase(t *testing.T) {

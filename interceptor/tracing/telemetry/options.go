@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpctrace is aa middleware of grpc framework for recording trace info of RPC
 package rkgrpctrace
 
 import (
@@ -31,12 +33,12 @@ func (nsb *NoopExporter) ExportSpans(context.Context, []*sdktrace.SpanSnapshot) 
 // Shutdown stops the exporter by doing nothing.
 func (nsb *NoopExporter) Shutdown(context.Context) error { return nil }
 
-// Create a noop exporter
+// CreateNoopExporter Create a noop exporter
 func CreateNoopExporter() sdktrace.SpanExporter {
 	return &NoopExporter{}
 }
 
-// Create a file exporter whose default output is stdout.
+// CreateFileExporter Create a file exporter whose default output is stdout.
 func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanExporter {
 	if opts == nil {
 		opts = make([]stdout.Option, 0)
@@ -68,7 +70,7 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 	return exporter
 }
 
-// Beta stage
+// CreateJaegerExporter Beta stage
 // TODO: Wait for opentelemetry update version of jeager exporter. Current exporter is not compatible with jaeger agent.
 func CreateJaegerExporter(endpoint, username, password string) sdktrace.SpanExporter {
 	if len(endpoint) < 1 {
@@ -158,7 +160,7 @@ type optionSet struct {
 
 type Option func(*optionSet)
 
-// Provide sdktrace.SpanExporter.
+// WithExporter Provide sdktrace.SpanExporter.
 func WithExporter(exporter sdktrace.SpanExporter) Option {
 	return func(opt *optionSet) {
 		if exporter != nil {
@@ -167,7 +169,7 @@ func WithExporter(exporter sdktrace.SpanExporter) Option {
 	}
 }
 
-// Provide sdktrace.SpanProcessor.
+// WithSpanProcessor Provide sdktrace.SpanProcessor.
 func WithSpanProcessor(processor sdktrace.SpanProcessor) Option {
 	return func(opt *optionSet) {
 		if processor != nil {
@@ -176,7 +178,7 @@ func WithSpanProcessor(processor sdktrace.SpanProcessor) Option {
 	}
 }
 
-// Provide *sdktrace.TracerProvider.
+// WithTracerProvider Provide *sdktrace.TracerProvider.
 func WithTracerProvider(provider *sdktrace.TracerProvider) Option {
 	return func(opt *optionSet) {
 		if provider != nil {
@@ -185,7 +187,7 @@ func WithTracerProvider(provider *sdktrace.TracerProvider) Option {
 	}
 }
 
-// Provide propagation.TextMapPropagator.
+// WithPropagator Provide propagation.TextMapPropagator.
 func WithPropagator(propagator propagation.TextMapPropagator) Option {
 	return func(opt *optionSet) {
 		if propagator != nil {
@@ -194,7 +196,7 @@ func WithPropagator(propagator propagation.TextMapPropagator) Option {
 	}
 }
 
-// Provide entry name and entry type.
+// WithEntryNameAndType Provide entry name and entry type.
 func WithEntryNameAndType(entryName, entryType string) Option {
 	return func(opt *optionSet) {
 		opt.EntryName = entryName
@@ -202,7 +204,7 @@ func WithEntryNameAndType(entryName, entryType string) Option {
 	}
 }
 
-// Shutdown all exporters.
+// ShutdownExporters Shutdown all exporters.
 func ShutdownExporters() {
 	for _, v := range optionsMap {
 		v.Exporter.Shutdown(context.Background())

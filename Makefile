@@ -9,7 +9,7 @@ lint:
 .PHONY: test
 test:
 	@echo "running go test..."
-	@go test ./... 2>&1
+	@go test ./... -coverprofile coverage.txt  -covermode=atomic 2>&1
 
 .PHONY: fmt
 fmt:

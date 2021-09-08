@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpcmetrics is a middleware for grpc framework which record prometheus metrics for RPC
 package rkgrpcmetrics
 
 import (
@@ -16,6 +18,7 @@ import (
 )
 
 var (
+	// DefaultLabelKeys are default labels for prometheus metrics
 	DefaultLabelKeys = []string{
 		"entryName",
 		"entryType",
@@ -95,7 +98,7 @@ type optionSet struct {
 
 type Option func(*optionSet)
 
-// Provide entry name and type.
+// WithEntryNameAndType Provide entry name and type.
 func WithEntryNameAndType(entryName, entryType string) Option {
 	return func(set *optionSet) {
 		set.EntryName = entryName
@@ -103,7 +106,7 @@ func WithEntryNameAndType(entryName, entryType string) Option {
 	}
 }
 
-// Provide prometheus registerer.
+// WithRegisterer Provide prometheus registerer.
 func WithRegisterer(registerer prometheus.Registerer) Option {
 	return func(set *optionSet) {
 		if registerer != nil {
@@ -119,7 +122,7 @@ func getOptionSet(ctx context.Context) *optionSet {
 	return optionsMap[rkgrpcinter.ToOptionsKey(entryName, rpcType)]
 }
 
-// Get duration metrics.
+// GetDurationMetrics Get duration metrics.
 func GetDurationMetrics(ctx context.Context) prometheus.Observer {
 	if ctx == nil {
 		return nil
@@ -132,7 +135,7 @@ func GetDurationMetrics(ctx context.Context) prometheus.Observer {
 	return nil
 }
 
-// Get error metrics.
+// GetErrorMetrics Get error metrics.
 func GetErrorMetrics(ctx context.Context) prometheus.Counter {
 	if ctx == nil {
 		return nil
@@ -145,7 +148,7 @@ func GetErrorMetrics(ctx context.Context) prometheus.Counter {
 	return nil
 }
 
-// Get res code metrics.
+// GetResCodeMetrics Get res code metrics.
 func GetResCodeMetrics(ctx context.Context) prometheus.Counter {
 	if ctx == nil {
 		return nil
@@ -158,7 +161,7 @@ func GetResCodeMetrics(ctx context.Context) prometheus.Counter {
 	return nil
 }
 
-// Get metrics set.
+// GetMetricsSet Get metrics set.
 func GetMetricsSet(ctx context.Context) *rkprom.MetricsSet {
 	if val := getOptionSet(ctx); val != nil {
 		return val.MetricsSet
@@ -202,4 +205,15 @@ func getValues(ctx context.Context) []string {
 	}
 
 	return values
+}
+
+// Internal use only.
+func clearAllMetrics() {
+	for _, v := range optionsMap {
+		v.MetricsSet.UnRegisterSummary(ElapsedNano)
+		v.MetricsSet.UnRegisterCounter(Errors)
+		v.MetricsSet.UnRegisterCounter(ResCode)
+	}
+
+	optionsMap = make(map[string]*optionSet)
 }

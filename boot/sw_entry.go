@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
@@ -46,7 +47,7 @@ type swUrl struct {
 	Url  string `json:"url" yaml:"url"`
 }
 
-// Bootstrap config of swagger.
+// BootConfigSw Bootstrap config of swagger.
 // 1: Enabled: Enable swagger.
 // 2: Path: Swagger path accessible from restful API.
 // 3: JsonPath: The path of where swagger JSON file was located.
@@ -58,7 +59,7 @@ type BootConfigSw struct {
 	Headers  []string `yaml:"headers" json:"headers"`
 }
 
-// SWEntry implements rkentry.Entry interface.
+// SwEntry implements rkentry.Entry interface.
 // 1: Path: Swagger path accessible from restful API.
 // 2: JsonPath: The path of where swagger JSON file was located.
 // 3: Headers: The headers that would added into each API response.
@@ -76,24 +77,24 @@ type SwEntry struct {
 	EnableCommonService bool                      `json:"enableCommonService" yaml:"enableCommonService"`
 }
 
-// Swagger entry option.
+// SwOption Swagger entry option.
 type SwOption func(*SwEntry)
 
-// Provide name.
+// WithNameSw Provide name.
 func WithNameSw(name string) SwOption {
 	return func(entry *SwEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Provide port.
+// WithPortSw Provide port.
 func WithPortSw(port uint64) SwOption {
 	return func(entry *SwEntry) {
 		entry.Port = port
 	}
 }
 
-// Provide path.
+// WithPathSw Provide path.
 func WithPathSw(path string) SwOption {
 	return func(entry *SwEntry) {
 		if len(path) < 1 {
@@ -112,42 +113,42 @@ func WithPathSw(path string) SwOption {
 	}
 }
 
-// Provide JsonPath.
+// WithJsonPathSw Provide JsonPath.
 func WithJsonPathSw(path string) SwOption {
 	return func(entry *SwEntry) {
 		entry.JsonPath = path
 	}
 }
 
-// Provide headers.
+// WithHeadersSw Provide headers.
 func WithHeadersSw(headers map[string]string) SwOption {
 	return func(entry *SwEntry) {
 		entry.Headers = headers
 	}
 }
 
-// Provide rkentry.ZapLoggerEntry.
+// WithZapLoggerEntrySw Provide rkentry.ZapLoggerEntry.
 func WithZapLoggerEntrySw(zapLoggerEntry *rkentry.ZapLoggerEntry) SwOption {
 	return func(entry *SwEntry) {
 		entry.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
-// Provide rkentry.EventLoggerEntry.
+// WithEventLoggerEntrySw Provide rkentry.EventLoggerEntry.
 func WithEventLoggerEntrySw(eventLoggerEntry *rkentry.EventLoggerEntry) SwOption {
 	return func(entry *SwEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
-// Provide rkentry.EventLoggerEntry.
+// WithEnableCommonServiceSw Provide rkentry.EventLoggerEntry.
 func WithEnableCommonServiceSw(enabled bool) SwOption {
 	return func(entry *SwEntry) {
 		entry.EnableCommonService = enabled
 	}
 }
 
-// Create new swagger entry with options.
+// NewSwEntry Create new swagger entry with options.
 func NewSwEntry(opts ...SwOption) *SwEntry {
 	entry := &SwEntry{
 		EntryName:        SwEntryNameDefault,
@@ -224,28 +225,28 @@ func (entry *SwEntry) Interrupt(ctx context.Context) {
 	logger.Info("Interrupting SwEntry.", event.ListPayloads()...)
 }
 
-// Get name of entry.
+// GetName Get name of entry.
 func (entry *SwEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Get type of entry.
+// GetType Get type of entry.
 func (entry *SwEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy swagger entry
+// String Stringfy swagger entry
 func (entry *SwEntry) String() string {
 	bytes, _ := json.Marshal(entry)
 	return string(bytes)
 }
 
-// Get description of entry.
+// GetDescription Get description of entry.
 func (entry *SwEntry) GetDescription() string {
 	return entry.EntryDescription
 }
 
-// Marshal entry
+// MarshalJSON Marshal entry
 func (entry *SwEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":        entry.EntryName,
@@ -262,7 +263,7 @@ func (entry *SwEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Unmarshal entry
+// UnmarshalJSON Unmarshal entry
 func (entry *SwEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
@@ -359,7 +360,7 @@ func (entry *SwEntry) listFilesWithSuffix(urlConfig *swUrlConfig) {
 	}
 }
 
-// Http handler which handles assets files of swagger web UI with path prefix of /rk/v1/*
+// AssetsFileHandler Http handler which handles assets files of swagger web UI with path prefix of /rk/v1/*
 func (entry *SwEntry) AssetsFileHandler(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/rk/v1"), "/")
 
@@ -370,7 +371,7 @@ func (entry *SwEntry) AssetsFileHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// Http handler which handles swagger.json files with prefix of SwEntry.Path/*
+// ConfigFileHandler Http handler which handles swagger.json files with prefix of SwEntry.Path/*
 func (entry *SwEntry) ConfigFileHandler(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimSuffix(r.URL.Path, "/")
 

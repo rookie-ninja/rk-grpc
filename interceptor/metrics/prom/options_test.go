@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpcmetrics
 
 import (
@@ -12,57 +13,118 @@ import (
 	"testing"
 )
 
-func TestWithEntryNameAndType_HappyCase(t *testing.T) {
-	defer clearOptionsMap()
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer,
-		WithEntryNameAndType("ut-entry-name", "ut-entry"))
+func TestWithEntryNameAndType(t *testing.T) {
+	set := newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"))
 
-	assert.Equal(t, "ut-entry-name", set.EntryName)
-	assert.Equal(t, "ut-entry", set.EntryType)
-	assert.Equal(t, set,
-		optionsMap[rkgrpcinter.ToOptionsKey("ut-entry-name", rkgrpcinter.RpcTypeUnaryServer)])
+	assert.Equal(t, "ut-entry", set.EntryName)
+	assert.Equal(t, "ut-type", set.EntryType)
 
-	clearInterceptorMetrics(set.MetricsSet)
+	defer clearAllMetrics()
 }
 
-func TestWithRegisterer_HappyCase(t *testing.T) {
-	defer clearOptionsMap()
-	registerer := prometheus.DefaultRegisterer
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer,
-		WithRegisterer(registerer))
+func TestWithRegisterer(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	set := newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithRegisterer(reg))
 
-	assert.Equal(t, set.registerer, registerer)
-	clearInterceptorMetrics(set.MetricsSet)
+	assert.Equal(t, reg, set.registerer)
+
+	defer clearAllMetrics()
 }
 
-func TestGetOptionSet_WithNilContext(t *testing.T) {
-	defer clearOptionsMap()
-	set := getOptionSet(nil)
-	assert.Nil(t, set)
+func TestGetOptionSet(t *testing.T) {
+	// With nil context
+	assert.Nil(t, getOptionSet(nil))
+
+	// Happy case
+	set := newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"))
+
+	ctx := rkgrpcinter.WrapContextForServer(context.TODO())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, "ut-entry")
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+
+	assert.Equal(t, set, getOptionSet(ctx))
+
+	defer clearAllMetrics()
 }
 
-func TestGetOptionSet_WithoutRkContext(t *testing.T) {
-	defer clearOptionsMap()
-	set := getOptionSet(context.TODO())
-	assert.Nil(t, set)
+func TestGetMetricsSet(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	set := newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
+
+	ctx := rkgrpcinter.WrapContextForServer(context.TODO())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, "ut-entry")
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+
+	assert.Equal(t, set.MetricsSet, GetMetricsSet(ctx))
+
+	defer clearAllMetrics()
 }
 
-func TestGetDurationMetrics_WithNilContext(t *testing.T) {
-	defer clearOptionsMap()
-	assert.Nil(t, GetDurationMetrics(nil))
-}
-
-func TestGetErrorMetrics_WithNilContext(t *testing.T) {
-	defer clearOptionsMap()
-	assert.Nil(t, GetErrorMetrics(nil))
-}
-
-func TestGetResCodeMetrics_WithNilContext(t *testing.T) {
-	defer clearOptionsMap()
+func TestGetServerResCodeMetrics(t *testing.T) {
+	// With nil context
 	assert.Nil(t, GetResCodeMetrics(nil))
+
+	// Happy case
+	reg := prometheus.NewRegistry()
+	newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
+
+	ctx := rkgrpcinter.WrapContextForServer(context.TODO())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, "ut-entry")
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+
+	assert.NotNil(t, GetResCodeMetrics(ctx))
+
+	defer clearAllMetrics()
 }
 
-func TestGetMetricsSet_WithNilContext(t *testing.T) {
-	defer clearOptionsMap()
-	assert.Nil(t, GetMetricsSet(nil))
+func TestGetErrorMetrics(t *testing.T) {
+	// With nil context
+	assert.Nil(t, GetErrorMetrics(nil))
+
+	// Happy case
+	reg := prometheus.NewRegistry()
+	newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
+
+	ctx := rkgrpcinter.WrapContextForServer(context.TODO())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, "ut-entry")
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+
+	assert.NotNil(t, GetErrorMetrics(ctx))
+
+	defer clearAllMetrics()
+}
+
+func TestGetDurationMetrics(t *testing.T) {
+	// With nil context
+	assert.Nil(t, GetDurationMetrics(nil))
+
+	// Happy case
+	reg := prometheus.NewRegistry()
+	newOptionSet(
+		rkgrpcinter.RpcTypeUnaryServer,
+		WithEntryNameAndType("ut-entry", "ut-type"),
+		WithRegisterer(reg))
+
+	ctx := rkgrpcinter.WrapContextForServer(context.TODO())
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, "ut-entry")
+	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+
+	assert.NotNil(t, GetDurationMetrics(ctx))
+
+	defer clearAllMetrics()
 }

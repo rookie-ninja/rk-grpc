@@ -2,12 +2,16 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
 	"context"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/stretchr/testify/assert"
+	httptest "github.com/stretchr/testify/http"
+	"net/http"
+	"net/url"
 	"testing"
 )
 
@@ -217,4 +221,32 @@ func TestSwEntry_initSwaggerConfig_HappyCase(t *testing.T) {
 
 	assert.NotEmpty(t, commonServiceJson)
 	assert.NotEmpty(t, swaggerIndexHTML)
+}
+
+func TestSwEntry_AssetsFileHandler(t *testing.T) {
+	defer assertNotPanic(t)
+	entry := NewSwEntry()
+
+	writer := &httptest.TestResponseWriter{}
+	request := &http.Request{
+		URL: &url.URL{
+			Path: "/rk/v1/assets",
+		},
+	}
+
+	entry.AssetsFileHandler(writer, request)
+}
+
+func TestSwEntry_ConfigFileHandler(t *testing.T) {
+	defer assertNotPanic(t)
+	entry := NewSwEntry()
+
+	writer := &httptest.TestResponseWriter{}
+	request := &http.Request{
+		URL: &url.URL{
+			Path: "/rk/v1/assets",
+		},
+	}
+
+	entry.ConfigFileHandler(writer, request)
 }

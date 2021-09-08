@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
@@ -58,13 +59,13 @@ func init() {
 	Templates["git"] = readFileFromPkger("/assets/tv/git.tmpl")
 }
 
-// Bootstrap config of tv.
+// BootConfigTv Bootstrap config of tv.
 // 1: Enabled: Enable tv service.
 type BootConfigTv struct {
 	Enabled bool `yaml:"enabled" json:"enabled"`
 }
 
-// RK TV entry supports web UI for application & process information.
+// TvEntryTvEntry RK TV entry supports web UI for application & process information.
 // 1: EntryName: Name of entry.
 // 2: EntryType: Type of entry.
 // 2: EntryDescription: Description of entry.
@@ -80,31 +81,31 @@ type TvEntry struct {
 	Template         *template.Template        `json:"-" yaml:"-"`
 }
 
-// TV entry option.
+// TvEntryOption TV entry option.
 type TvEntryOption func(entry *TvEntry)
 
-// Provide name.
+// WithNameTv Provide name.
 func WithNameTv(name string) TvEntryOption {
 	return func(entry *TvEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Provide rkentry.EventLoggerEntry.
+// WithEventLoggerEntryTv Provide rkentry.EventLoggerEntry.
 func WithEventLoggerEntryTv(eventLoggerEntry *rkentry.EventLoggerEntry) TvEntryOption {
 	return func(entry *TvEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
-// Provide rkentry.ZapLoggerEntry.
+// WithZapLoggerEntryTv Provide rkentry.ZapLoggerEntry.
 func WithZapLoggerEntryTv(zapLoggerEntry *rkentry.ZapLoggerEntry) TvEntryOption {
 	return func(entry *TvEntry) {
 		entry.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
-// Create new TV entry with options.
+// NewTvEntry Create new TV entry with options.
 func NewTvEntry(opts ...TvEntryOption) *TvEntry {
 	entry := &TvEntry{
 		EntryName:        TvEntryNameDefault,
@@ -125,7 +126,7 @@ func NewTvEntry(opts ...TvEntryOption) *TvEntry {
 	return entry
 }
 
-// Handler which returns js, css, images and html files for TV web UI.
+// AssetsFileHandler Handler which returns js, css, images and html files for TV web UI.
 func (entry *TvEntry) AssetsFileHandler(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/rk/v1"), "/")
 
@@ -216,28 +217,28 @@ func (entry *TvEntry) logBasicInfo(event rkquery.Event) {
 		zap.String("entryType", entry.EntryType))
 }
 
-// Get name of entry.
+// GetName Get name of entry.
 func (entry *TvEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Get type of entry.
+// GetType Get type of entry.
 func (entry *TvEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy entry.
+// String Stringfy entry.
 func (entry *TvEntry) String() string {
 	bytesStr, _ := json.Marshal(entry)
 	return string(bytesStr)
 }
 
-// Get description of entry.
+// GetDescription Get description of entry.
 func (entry *TvEntry) GetDescription() string {
 	return entry.EntryDescription
 }
 
-// Marshal entry
+// MarshalJSON Marshal entry
 func (entry *TvEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":        entry.EntryName,
@@ -250,12 +251,12 @@ func (entry *TvEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Not supported.
+// UnmarshalJSON Not supported.
 func (entry *TvEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
 
-// Http handler of /rk/v1/tv/*.
+// TV Http handler of /rk/v1/tv/*.
 func (entry *TvEntry) TV(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 
