@@ -2,9 +2,11 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
+	"context"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-prom"
@@ -44,6 +46,8 @@ func TestWithPusherProm_HappyCase(t *testing.T) {
 	pusher, _ := rkprom.NewPushGatewayPusher()
 
 	entry := NewPromEntry(WithPusherProm(pusher))
+
+	entry.Bootstrap(context.TODO())
 
 	assert.Equal(t, pusher, entry.Pusher)
 }
@@ -100,4 +104,16 @@ func TestPromEntry_String_HappyCase(t *testing.T) {
 	assert.Contains(t, str, "entryDescription")
 	assert.Contains(t, str, "path")
 	assert.Contains(t, str, "port")
+}
+
+func TestPromEntry_UnmarshalJSON(t *testing.T) {
+	entry := NewPromEntry()
+	assert.Nil(t, entry.UnmarshalJSON(nil))
+}
+
+func TestPromEntry_RegisterCollectors(t *testing.T) {
+	entry := NewPromEntry(WithPromRegistryProm(prometheus.NewRegistry()))
+
+	assert.Nil(t, entry.RegisterCollectors(prometheus.NewGoCollector()))
+	assert.NotNil(t, entry.RegisterCollectors(prometheus.NewGoCollector()))
 }

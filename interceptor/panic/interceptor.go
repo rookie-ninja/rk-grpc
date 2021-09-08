@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpcpanic
 
 import (
@@ -16,7 +17,7 @@ import (
 	"runtime/debug"
 )
 
-// Create new unary client interceptor.
+// UnaryClientInterceptor Create new unary client interceptor.
 func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryClient, opts...)
 
@@ -43,7 +44,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	}
 }
 
-// Create new stream client interceptor.
+// StreamClientInterceptor Create new stream client interceptor.
 func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
 
@@ -70,7 +71,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	}
 }
 
-// Create new unary server interceptor.
+// UnaryServerInterceptor Create new unary server interceptor.
 func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
 
@@ -100,7 +101,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	}
 }
 
-// Create new stream server interceptor.
+// StreamServerInterceptor Create new stream server interceptor.
 func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
 

@@ -172,13 +172,13 @@ type GrpcEntry struct {
 	EnableReflection   bool                           `json:"enableReflection" yaml:"enableRefelction"`
 }
 
-// Grpc registration func.
+// GrpcRegFunc Grpc registration func.
 type GrpcRegFunc func(server *grpc.Server)
 
-// GrpcEntry option.
+// GrpcEntryOption GrpcEntry option.
 type GrpcEntryOption func(*GrpcEntry)
 
-// Register grpc entries with provided config file (Must YAML file).
+// RegisterGrpcEntriesWithConfig Register grpc entries with provided config file (Must YAML file).
 //
 // Currently, support two ways to provide config file path.
 // 1: With function parameters
@@ -427,14 +427,14 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 	return res
 }
 
-// Provide name.
+// WithNameGrpc Provide name.
 func WithNameGrpc(name string) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Provide description.
+// WithDescriptionGrpc Provide description.
 func WithDescriptionGrpc(description string) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.EntryDescription = description
@@ -448,21 +448,21 @@ func WithZapLoggerEntryGrpc(logger *rkentry.ZapLoggerEntry) GrpcEntryOption {
 	}
 }
 
-// Provide rkentry.EventLoggerEntry
+// WithEventLoggerEntryGrpc Provide rkentry.EventLoggerEntry
 func WithEventLoggerEntryGrpc(logger *rkentry.EventLoggerEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.EventLoggerEntry = logger
 	}
 }
 
-// Provide port.
+// WithPortGrpc Provide port.
 func WithPortGrpc(port uint64) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.Port = port
 	}
 }
 
-// Provide grpc.ServerOption.
+// WithServerOptionsGrpc Provide grpc.ServerOption.
 func WithServerOptionsGrpc(opts ...grpc.ServerOption) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.ServerOpts = append(entry.ServerOpts, opts...)
@@ -476,49 +476,49 @@ func WithUnaryInterceptorsGrpc(opts ...grpc.UnaryServerInterceptor) GrpcEntryOpt
 	}
 }
 
-// Provide grpc.StreamServerInterceptor.
+// WithStreamInterceptorsGrpc Provide grpc.StreamServerInterceptor.
 func WithStreamInterceptorsGrpc(opts ...grpc.StreamServerInterceptor) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.StreamInterceptors = append(entry.StreamInterceptors, opts...)
 	}
 }
 
-// Provide GrpcRegFunc.
+// WithGrpcRegFuncsGrpc Provide GrpcRegFunc.
 func WithGrpcRegFuncsGrpc(funcs ...GrpcRegFunc) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.RegFuncs = append(entry.RegFuncs, funcs...)
 	}
 }
 
-// Provide GwEntry.
+// WithGwEntryGrpc Provide GwEntry.
 func WithGwEntryGrpc(gw *GwEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.GwEntry = gw
 	}
 }
 
-// Provide rkentry.CertEntry.
+// WithCertEntryGrpc Provide rkentry.CertEntry.
 func WithCertEntryGrpc(certEntry *rkentry.CertEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.CertEntry = certEntry
 	}
 }
 
-// Provide CommonServiceEntry.
+// WithCommonServiceEntryGrpc Provide CommonServiceEntry.
 func WithCommonServiceEntryGrpc(commonService *CommonServiceEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.CommonServiceEntry = commonService
 	}
 }
 
-// Provice EnableReflection.
+// WithEnableReflectionGrpc Provice EnableReflection.
 func WithEnableReflectionGrpc(enabled bool) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.EnableReflection = enabled
 	}
 }
 
-// Register GrpcEntry with options.
+// RegisterGrpcEntry Register GrpcEntry with options.
 func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	entry := &GrpcEntry{
 		EntryType:          GrpcEntryType,
@@ -588,50 +588,50 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	return entry
 }
 
-// Add grpc server options.
+// AddServerOptions Add grpc server options.
 func (entry *GrpcEntry) AddServerOptions(opts ...grpc.ServerOption) {
 	entry.ServerOpts = append(entry.ServerOpts, opts...)
 }
 
-// Add unary interceptor.
+// AddUnaryInterceptors Add unary interceptor.
 func (entry *GrpcEntry) AddUnaryInterceptors(inter ...grpc.UnaryServerInterceptor) {
 	entry.UnaryInterceptors = append(entry.UnaryInterceptors, inter...)
 }
 
-// Add stream interceptor.
+// AddStreamInterceptors Add stream interceptor.
 func (entry *GrpcEntry) AddStreamInterceptors(inter ...grpc.StreamServerInterceptor) {
 	entry.StreamInterceptors = append(entry.StreamInterceptors, inter...)
 }
 
-// Add grpc registration func.
+// AddGrpcRegFuncs Add grpc registration func.
 func (entry *GrpcEntry) AddGrpcRegFuncs(funcs ...GrpcRegFunc) {
 	entry.RegFuncs = append(entry.RegFuncs, funcs...)
 }
 
-// Add gateway registration func.
+// AddGwRegFuncs Add gateway registration func.
 func (entry *GrpcEntry) AddGwRegFuncs(funcs ...GwRegFunc) {
 	if entry.GwEntry != nil {
 		entry.GwEntry.addRegFuncsGw(funcs...)
 	}
 }
 
-// Get entry name.
+// GetName Get entry name.
 func (entry *GrpcEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Get entry type.
+// GetType Get entry type.
 func (entry *GrpcEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy entry.
+// String Stringfy entry.
 func (entry *GrpcEntry) String() string {
 	bytes, _ := json.Marshal(entry)
 	return string(bytes)
 }
 
-// Get description of entry.
+// GetDescription Get description of entry.
 func (entry *GrpcEntry) GetDescription() string {
 	return entry.EntryDescription
 }
@@ -734,7 +734,7 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
 }
 
-// Marshal entry.
+// MarshalJSON Marshal entry.
 func (entry *GrpcEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":          entry.EntryName,
@@ -789,22 +789,22 @@ func (entry *GrpcEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Not supported.
+// UnmarshalJSON Not supported.
 func (entry *GrpcEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
 
-// Is TLS enabled?
+// IsTlsEnabled Is TLS enabled?
 func (entry *GrpcEntry) IsTlsEnabled() bool {
 	return entry.CertEntry != nil && entry.CertEntry.Store != nil
 }
 
-// Is grpc gateway enabled?
+// IsGwEnabled Is grpc gateway enabled?
 func (entry *GrpcEntry) IsGwEnabled() bool {
 	return entry.GwEntry != nil
 }
 
-// Is common service enabled?
+// IsCommonServiceEnabled Is common service enabled?
 func (entry *GrpcEntry) IsCommonServiceEnabled() bool {
 	return entry.CommonServiceEntry != nil
 }
@@ -841,7 +841,7 @@ func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
 	}
 }
 
-// Get GinEntry from rkentry.GlobalAppCtx.
+// GetGrpcEntry Get GinEntry from rkentry.GlobalAppCtx.
 func GetGrpcEntry(name string) *GrpcEntry {
 	entryRaw := rkentry.GlobalAppCtx.GetEntry(name)
 	if entryRaw == nil {

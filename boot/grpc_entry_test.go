@@ -7,15 +7,19 @@
 package rkgrpc
 
 import (
+	"context"
+	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"io/ioutil"
+	"net"
 	"os"
 	"path"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestRegisterGrpcEntry_WithoutOptions(t *testing.T) {
@@ -82,13 +86,6 @@ zapLogger:
   - name: zap-logger
 eventLogger:
   - name: event-logger
-cert:                                         # Optional
-  - name: "local-cert"                        # Required
-    description: "Description of entry"       # Optional
-    provider: "localFs"                       # Required, etcd, consul, localFs, remoteFs are supported options
-    locale: "*::*::*::*"                      # Optional, default: *::*::*::*
-    serverCertPath: "example/boot/full/server.pem"      # Optional, default: "", path of certificate on local FS
-    serverKeyPath: "example/boot/full/server-key.pem"   # Optional, default: "", path of certificate on local FS
 grpc:
   - name: greeter
     port: 1949
@@ -133,6 +130,13 @@ grpc:
         enabled: true                                # Optional, default: false
         basic:
           - "user:pass"                              # Optional, default: ""
+      meta:
+        enabled: true                                # Optional, default: false
+      tracingTelemetry:
+        enabled: true                                # Optional, default: false
+        exporter:                                    # Optional, default will create a stdout exporter
+          file:
+            enabled: true                            # Optional, default: false
 `
 
 	// Create bootstrap config file at ut temp dir
@@ -148,14 +152,73 @@ grpc:
 
 	assert.Equal(t, "zap-logger", entry.ZapLoggerEntry.GetName())
 	assert.Equal(t, "event-logger", entry.EventLoggerEntry.GetName())
-	assert.Equal(t, "local-cert", entry.CertEntry.GetName())
 	assert.Equal(t, "greeter", entry.GetName())
 	assert.Equal(t, uint64(1949), entry.Port)
 	assert.NotNil(t, entry.CommonServiceEntry)
 	assert.NotNil(t, entry.GwEntry)
 
-	assert.Len(t, entry.UnaryInterceptors, 4)
-	assert.Len(t, entry.StreamInterceptors, 4)
+	assert.True(t, len(entry.UnaryInterceptors) > 0)
+	assert.True(t, len(entry.StreamInterceptors) > 0)
+
+	// Bootstrap
+	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
+	entry.Bootstrap(ctx)
+
+	bytes, err := entry.MarshalJSON()
+	assert.NotEmpty(t, bytes)
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+	// endpoint should be accessible with 8080 port
+	validateServerIsUp(t, entry.Port)
+
+	entry.Interrupt(context.Background())
+}
+
+func TestGrpcEntry_UnmarshalJSON(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	assert.Nil(t, entry.UnmarshalJSON(nil))
+}
+
+func TestGrpcEntry_GetDescription(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	assert.NotEmpty(t, entry.GetDescription())
+}
+
+func TestGrpcEntry_AddGrpcRegFuncs(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	entry.AddGrpcRegFuncs(func(server *grpc.Server) {})
+	assert.Len(t, entry.RegFuncs, 1)
+}
+
+func TestGrpcEntry_AddGwRegFuncs(t *testing.T) {
+	gwEntry := NewGwEntry()
+	grpcEntry := RegisterGrpcEntry(
+		WithGwEntryGrpc(gwEntry))
+	grpcEntry.AddGwRegFuncs(func(ctx context.Context, mux *gwruntime.ServeMux, s string, options []grpc.DialOption) error {
+		return nil
+	})
+	assert.Len(t, gwEntry.RegFuncsGw, 1)
+}
+
+func TestGrpcEntry_AddServerOptions(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	entry.AddServerOptions(grpc.EmptyServerOption{})
+	assert.Len(t, entry.ServerOpts, 1)
+}
+
+func TestGrpcEntry_String(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	assert.NotEmpty(t, entry.String())
+}
+
+func validateServerIsUp(t *testing.T, port uint64) {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort("0.0.0.0", strconv.FormatUint(port, 10)), time.Second)
+	assert.Nil(t, err)
+	assert.NotNil(t, conn)
+	if conn != nil {
+		assert.Nil(t, conn.Close())
+	}
 }
 
 func createFileAtTestTempDir(t *testing.T, content string) string {

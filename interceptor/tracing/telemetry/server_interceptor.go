@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpctrace
 
 import (
@@ -16,7 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Create new unary server interceptor.
+// UnaryServerInterceptor Create new unary server interceptor.
 func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
 
@@ -42,7 +43,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	}
 }
 
-// Create new stream server interceptor.
+// StreamServerInterceptor Create new stream server interceptor.
 func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
 

@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpc
 
 import (
@@ -21,6 +22,7 @@ import (
 )
 
 var (
+	// RkGwServerMuxOptions RK style server mux
 	RkGwServerMuxOptions = []runtime.ServeMuxOption{
 		runtime.WithErrorHandler(HttpErrorHandler),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
@@ -50,7 +52,7 @@ var (
 	}
 )
 
-// Mainly copies from runtime.DefaultHTTPErrorHandler.
+// HttpErrorHandler Mainly copies from runtime.DefaultHTTPErrorHandler.
 // We reformat error response with rkerror.ErrorResp.
 func HttpErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
 	logger := rkentry.GlobalAppCtx.GetZapLoggerEntryDefault().GetLogger()
@@ -122,12 +124,12 @@ func HttpErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runt
 	}
 }
 
-// Pass out all metadata in grpc to http header.
+// OutgoingHeaderMatcher Pass out all metadata in grpc to http header.
 func OutgoingHeaderMatcher(key string) (string, bool) {
 	return key, true
 }
 
-// Pass out all metadata in http header to grpc metadata.
+// IncomingHeaderMatcher Pass out all metadata in http header to grpc metadata.
 func IncomingHeaderMatcher(key string) (string, bool) {
 	return key, true
 }

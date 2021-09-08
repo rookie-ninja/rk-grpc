@@ -2,96 +2,50 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkgrpctrace
 
 import (
+	"context"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/exporters/stdout"
-	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
 	"testing"
 )
 
-func TestUnaryClientInterceptor_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
-	processor := sdktrace.NewSimpleSpanProcessor(exporter)
-	provider := sdktrace.NewTracerProvider()
-	propagator := propagation.NewCompositeTextMapPropagator()
-	entryName, entryType := "ut-entry-name", "ut-entry"
-
-	UnaryClientInterceptor(
-		WithEntryNameAndType(entryName, entryType),
-		WithExporter(exporter),
-		WithSpanProcessor(processor),
-		WithTracerProvider(provider),
-		WithPropagator(propagator))
-
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryClient)]
-	assert.NotNil(t, set)
-	assert.Equal(t, exporter, set.Exporter)
-	assert.Equal(t, processor, set.Processor)
-	assert.Equal(t, provider, set.Provider)
-	assert.Equal(t, propagator, set.Propagator)
-
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
-}
-
 func TestUnaryClientInterceptor_WithoutOptions(t *testing.T) {
-	entryName, entryType := "ut-entry-name", "ut-entry"
+	inter := UnaryClientInterceptor()
 
-	UnaryClientInterceptor(
-		WithEntryNameAndType(entryName, entryType))
-
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeUnaryClient)]
-	assert.NotNil(t, set)
-	assert.NotNil(t, set.Exporter)
-	assert.NotNil(t, set.Processor)
-	assert.NotNil(t, set.Provider)
-
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+	assert.NotNil(t, inter)
+	assert.NotNil(t, optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeUnaryClient)])
 }
 
-func TestStreamClientInterceptor_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
-	processor := sdktrace.NewSimpleSpanProcessor(exporter)
-	provider := sdktrace.NewTracerProvider()
-	propagator := propagation.NewCompositeTextMapPropagator()
-	entryName, entryType := "ut-entry-name", "ut-entry"
+func TestUnaryClientInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
 
-	StreamClientInterceptor(
-		WithEntryNameAndType(entryName, entryType),
-		WithExporter(exporter),
-		WithSpanProcessor(processor),
-		WithTracerProvider(provider),
-		WithPropagator(propagator))
+	inter := UnaryClientInterceptor(
+		WithEntryNameAndType("ut-entry", "ut-type"))
 
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamClient)]
-	assert.NotNil(t, set)
-	assert.Equal(t, exporter, set.Exporter)
-	assert.Equal(t, processor, set.Processor)
-	assert.Equal(t, provider, set.Provider)
-	assert.Equal(t, propagator, set.Propagator)
+	invoker := func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+		return nil
+	}
+	cc := &grpc.ClientConn{}
+	ctx := context.TODO()
 
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+	inter(ctx, "ut-method", fakeRequest, fakeResponse, cc, invoker)
 }
 
-func TestStreamClientInterceptor_WithoutOptions(t *testing.T) {
-	entryName, entryType := "ut-entry-name", "ut-entry"
+func TestStreamClientInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
 
-	StreamClientInterceptor(
-		WithEntryNameAndType(entryName, entryType))
+	inter := StreamClientInterceptor(
+		WithEntryNameAndType("ut-entry", "ut-type"))
 
-	set := optionsMap[rkgrpcinter.ToOptionsKey(entryName, rkgrpcinter.RpcTypeStreamClient)]
-	assert.NotNil(t, set)
-	assert.NotNil(t, set.Exporter)
-	assert.NotNil(t, set.Processor)
-	assert.NotNil(t, set.Provider)
-	assert.NotNil(t, set.Propagator)
+	streamer := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		return nil, nil
+	}
+	cc := &grpc.ClientConn{}
+	ctx := context.TODO()
 
-	// clear optionsMap
-	optionsMap = make(map[string]*optionSet)
+	inter(ctx, &grpc.StreamDesc{}, cc, "ut-method", streamer)
 }

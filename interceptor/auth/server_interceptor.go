@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrcpauth is auth interceptor for grpc framework
 package rkgrpcauth
 
 import (
@@ -14,7 +16,7 @@ import (
 	"strings"
 )
 
-// Create new unary server interceptor.
+// UnaryServerInterceptor create new unary server interceptor.
 func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
 
@@ -34,7 +36,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	}
 }
 
-// Create new stream server interceptor.
+// StreamServerInterceptor create new stream server interceptor.
 func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
 

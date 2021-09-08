@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpcinter provides common utility functions for middleware of grpc framework
 package rkgrpcinter
 
 import (
@@ -64,7 +66,7 @@ type serverPayload struct {
 	m map[string]interface{}
 }
 
-// Extract gateway related information from metadata.
+// GetGwInfo Extract gateway related information from metadata.
 func GetGwInfo(md metadata.MD) (gwMethod, gwPath, gwScheme, gwUserAgent string) {
 	gwMethod, gwPath, gwScheme, gwUserAgent = "", "", "", ""
 
@@ -87,7 +89,7 @@ func GetGwInfo(md metadata.MD) (gwMethod, gwPath, gwScheme, gwUserAgent string) 
 	return gwMethod, gwPath, gwScheme, gwUserAgent
 }
 
-// Extract grpc related information from fullMethod.
+// GetGrpcInfo Extract grpc related information from fullMethod.
 func GetGrpcInfo(fullMethod string) (grpcService, grpcMethod string) {
 	// Parse rpc path info including gateway
 	grpcService, grpcMethod = "", ""
@@ -103,12 +105,12 @@ func GetGrpcInfo(fullMethod string) (grpcService, grpcMethod string) {
 	return grpcService, grpcMethod
 }
 
-// Convert to optionsMap key with entry name and rpcType.
+// ToOptionsKey Convert to optionsMap key with entry name and rpcType.
 func ToOptionsKey(entryName, rpcType string) string {
 	return strings.Join([]string{entryName, rpcType}, "-")
 }
 
-// Read remote Ip and port from metadata.
+// GetRemoteAddressSetFromMeta Read remote Ip and port from metadata.
 // If user enabled RK style gateway server mux option, then there would be bellow headers forwarded
 // to grpc metadata
 // 1: x-forwarded-method
@@ -128,7 +130,7 @@ func GetRemoteAddressSetFromMeta(md metadata.MD) (ip, port string) {
 	return ip, port
 }
 
-// Read remote Ip and port from metadata first.
+// GetRemoteAddressSet Read remote Ip and port from metadata first.
 func GetRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
 	md, _ := metadata.FromIncomingContext(ctx)
 	ip, port = GetRemoteAddressSetFromMeta(md)
@@ -138,7 +140,6 @@ func GetRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
 		ip, port, netType = "0.0.0.0", "0", ""
 		if peer, ok := peer.FromContext(ctx); ok {
 			netType = peer.Addr.Network()
-
 			// Here is the tricky part
 			// We only try to parse IPV4 style Address
 			// Rest of peer.Addr implementations are not well formatted string
@@ -159,7 +160,6 @@ func GetRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
 			// Deal with forwarded remote ip
 			if len(forwardedRemoteIPList) > 0 {
 				forwardedRemoteIP := forwardedRemoteIPList[0]
-
 				if forwardedRemoteIP == "::1" {
 					forwardedRemoteIP = "localhost"
 				}
@@ -176,7 +176,7 @@ func GetRemoteAddressSet(ctx context.Context) (ip, port, netType string) {
 	return ip, port, netType
 }
 
-// Merge md to context outgoing metadata.
+// MergeToOutgoingMD Merge md to context outgoing metadata.
 func MergeToOutgoingMD(ctx context.Context, md metadata.MD) context.Context {
 	if appended := ctx.Value(RpcPayloadAppended); appended == nil {
 		if _, ok := metadata.FromOutgoingContext(ctx); ok {
@@ -199,7 +199,7 @@ func MergeToOutgoingMD(ctx context.Context, md metadata.MD) context.Context {
 	return ctx
 }
 
-// Merge src and targets and deduplicate
+// MergeAndDeduplicateSlice Merge src and targets and deduplicate
 func MergeAndDeduplicateSlice(src []string, target []string) []string {
 	m := make(map[string]bool)
 	for i := range src {
@@ -219,7 +219,7 @@ func MergeAndDeduplicateSlice(src []string, target []string) []string {
 // ********** Internal usage for context *************
 // ***************************************************
 
-// Wrap server context.
+// WrapContextForServer Wrap server context.
 func WrapContextForServer(ctx context.Context) context.Context {
 	if v := ctx.Value(serverPayloadKey); v != nil {
 		return ctx
@@ -230,6 +230,7 @@ func WrapContextForServer(ctx context.Context) context.Context {
 	})
 }
 
+// GetIncomingHeadersOfClient get incoming header from client
 func GetIncomingHeadersOfClient(ctx context.Context) *metadata.MD {
 	if v := ctx.Value(clientPayloadKey); v != nil {
 		// called from client side
@@ -240,6 +241,7 @@ func GetIncomingHeadersOfClient(ctx context.Context) *metadata.MD {
 	return &md
 }
 
+// GetOutgoingHeadersOfClient get outgoing header from client
 func GetOutgoingHeadersOfClient(ctx context.Context) *metadata.MD {
 	if v := ctx.Value(clientPayloadKey); v != nil {
 		// called from client side
@@ -250,6 +252,7 @@ func GetOutgoingHeadersOfClient(ctx context.Context) *metadata.MD {
 	return &md
 }
 
+// GetServerContextPayload get context payload injected into server side context
 func GetServerContextPayload(ctx context.Context) map[string]interface{} {
 	if ctx == nil {
 		return make(map[string]interface{})
@@ -262,12 +265,14 @@ func GetServerContextPayload(ctx context.Context) map[string]interface{} {
 	return make(map[string]interface{})
 }
 
+// AddToServerContextPayload add k/v into payload injected into server side context
 func AddToServerContextPayload(ctx context.Context, key string, value interface{}) {
 	if value != nil {
 		GetServerContextPayload(ctx)[key] = value
 	}
 }
 
+// GetClientContextPayload get payload injected into client side context
 func GetClientContextPayload(ctx context.Context) map[string]interface{} {
 	if ctx == nil {
 		return make(map[string]interface{})
@@ -280,12 +285,14 @@ func GetClientContextPayload(ctx context.Context) map[string]interface{} {
 	return make(map[string]interface{})
 }
 
+// AddToClientContextPayload add k/v into payload injected into client side context
 func AddToClientContextPayload(ctx context.Context, key string, value interface{}) {
 	if value != nil {
 		GetClientContextPayload(ctx)[key] = value
 	}
 }
 
+// ContainsClientPayload is payload injected into client side context?
 func ContainsClientPayload(ctx context.Context) bool {
 	if v := ctx.Value(clientPayloadKey); v != nil {
 		return true
@@ -294,6 +301,7 @@ func ContainsClientPayload(ctx context.Context) bool {
 	return false
 }
 
+// ContainsServerPayload is payload injected into server side context?
 func ContainsServerPayload(ctx context.Context) bool {
 	if v := ctx.Value(serverPayloadKey); v != nil {
 		return true
@@ -302,6 +310,7 @@ func ContainsServerPayload(ctx context.Context) bool {
 	return false
 }
 
+// NewClientPayload create new client side payload
 func NewClientPayload() clientPayload {
 	incomingMD := metadata.Pairs()
 	outgoingMD := metadata.Pairs()
@@ -313,6 +322,12 @@ func NewClientPayload() clientPayload {
 	}
 }
 
+// GetClientPayloadKey get client payload key used in context.Context
 func GetClientPayloadKey() interface{} {
 	return clientPayloadKey
+}
+
+// GetServerPayloadKey get server payload key used in context.Context
+func GetServerPayloadKey() interface{} {
+	return serverPayloadKey
 }
