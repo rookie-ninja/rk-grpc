@@ -40,10 +40,10 @@ func main() {
 	rkentry.GlobalAppCtx.WaitForShutdownSig()
 }
 
-// Implementation of GreeterServer.
+// GreeterServer Implementation of GreeterServer.
 type GreeterServer struct{}
 
-// Handle SayHello method.
+// SayHello Handle SayHello method.
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
 	return &proto.HelloResponse{
 		Message: fmt.Sprintf("Hello %s!", request.GetName()),

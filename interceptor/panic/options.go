@@ -3,7 +3,7 @@
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
 
-// Package rkginpanic is a middleware of grpc framework for recovering from panic
+// Package rkgrpcpanic is a middleware of grpc framework for recovering from panic
 package rkgrpcpanic
 
 import (
@@ -38,6 +38,7 @@ type optionSet struct {
 	EntryType string
 }
 
+// Option options for optionSet
 type Option func(*optionSet)
 
 // WithEntryNameAndType Provide entry name and entry type.

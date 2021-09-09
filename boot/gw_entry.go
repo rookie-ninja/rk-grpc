@@ -29,8 +29,11 @@ import (
 )
 
 const (
-	GwEntryType        = "GwEntry"
+	// GwEntryType default entry type
+	GwEntryType = "GwEntry"
+	// GwEntryNameDefault default entry name
 	GwEntryNameDefault = "GwDefault"
+	// GwEntryDescription default entry description
 	GwEntryDescription = "Internal RK entry which implements grpc gateway on top of grpc framework."
 )
 
@@ -109,7 +112,7 @@ type GwEntry struct {
 // GwRegFunc Registration function grpc gateway.
 type GwRegFunc func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 
-// GwEntry option.
+// GwOption option.
 type GwOption func(*GwEntry)
 
 // WithNameGw Provide name for gateway.
@@ -556,7 +559,7 @@ func (entry *GwEntry) IsGrpcTlsEnabled() bool {
 	return entry.GrpcCertEntry != nil && entry.GrpcCertEntry.Store != nil && len(entry.GrpcCertEntry.Store.ServerCert) > 0
 }
 
-// Is server TLS enabled?
+// IsServerTlsEnabled Is server TLS enabled?
 func (entry *GwEntry) IsServerTlsEnabled() bool {
 	return entry.CertEntry != nil && entry.CertEntry.Store != nil && len(entry.CertEntry.Store.ServerCert) > 0
 }

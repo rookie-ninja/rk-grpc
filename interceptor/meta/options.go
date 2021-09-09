@@ -55,6 +55,7 @@ type optionSet struct {
 	ReceivedTimeKey string
 }
 
+// Option option for optionSet
 type Option func(*optionSet)
 
 // WithEntryNameAndType Provide entry name and entry type.

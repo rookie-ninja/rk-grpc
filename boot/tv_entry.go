@@ -25,12 +25,16 @@ import (
 )
 
 var (
+	// Templates stores RK TV template as bytes
 	Templates = map[string][]byte{}
 )
 
 const (
-	TvEntryType        = "GrpcTvEntry"
+	// TvEntryType default entry type
+	TvEntryType = "GrpcTvEntry"
+	// TvEntryNameDefault default entry name
 	TvEntryNameDefault = "GrpcTvDefault"
+	// TvEntryDescription default entry description
 	TvEntryDescription = "Internal RK entry which implements tv web with grpc framework."
 )
 
@@ -65,7 +69,7 @@ type BootConfigTv struct {
 	Enabled bool `yaml:"enabled" json:"enabled"`
 }
 
-// TvEntryTvEntry RK TV entry supports web UI for application & process information.
+// TvEntry RK TV entry supports web UI for application & process information.
 // 1: EntryName: Name of entry.
 // 2: EntryType: Type of entry.
 // 2: EntryDescription: Description of entry.

@@ -42,10 +42,10 @@ func main() {
 	rkentry.GlobalAppCtx.WaitForShutdownSig()
 }
 
-// Implementation of GreeterServer.
+// GreeterServer Implementation of GreeterServer.
 type GreeterServer struct{}
 
-// Handle SayHello method.
+// SayHello Handle SayHello method.
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
 	// Client will receive the same error as we defined.
 	panic(status.Error(codes.Internal, "Panic manually!"))

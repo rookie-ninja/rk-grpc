@@ -23,8 +23,11 @@ var (
 )
 
 const (
-	PromEntryType        = "GrpcPromEntry"
+	// PromEntryType default entry type
+	PromEntryType = "GrpcPromEntry"
+	// PromEntryNameDefault default entry name
 	PromEntryNameDefault = "GrpcPromDefault"
+	// PromEntryDescription default entry description
 	PromEntryDescription = "Internal RK entry which implements prometheus client with Grpc framework."
 )
 

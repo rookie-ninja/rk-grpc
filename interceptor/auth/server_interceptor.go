@@ -3,7 +3,7 @@
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
 
-// Package rkgrcpauth is auth interceptor for grpc framework
+// Package rkgrpcauth is auth interceptor for grpc framework
 package rkgrpcauth
 
 import (
@@ -83,15 +83,11 @@ func serverBefore(ctx context.Context, set *optionSet, method string) error {
 			}
 
 			return rkerror.Unauthenticated("Invalid credential").Err()
-		} else {
-			return nil
 		}
 	} else if len(apiKeyHeader) > 0 {
 		// API key auth type
 		if !set.Authorized(typeApiKey, apiKeyHeader[0]) {
 			return rkerror.Unauthenticated("Invalid X-API-Key").Err()
-		} else {
-			return nil
 		}
 	} else {
 		authHeaders := []string{}
@@ -107,4 +103,6 @@ func serverBefore(ctx context.Context, set *optionSet, method string) error {
 
 		return rkerror.Unauthenticated(errMsg).Err()
 	}
+
+	return nil
 }

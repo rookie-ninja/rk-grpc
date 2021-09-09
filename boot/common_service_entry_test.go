@@ -293,7 +293,7 @@ func TestCommonServiceEntry_getSwUrl_WithoutSw(t *testing.T) {
 func TestCommonServiceEntry_getGwMapping_WithoutGw(t *testing.T) {
 	grpcEntry := &GrpcEntry{}
 
-	res := getGwMapping(grpcEntry, context.TODO(), "fake-grpc-method")
+	res := getGwMapping(context.TODO(), grpcEntry, "fake-grpc-method")
 	assert.NotNil(t, res)
 }
 
@@ -302,7 +302,7 @@ func TestCommonServiceEntry_getGwMapping_WithoutGwMapping(t *testing.T) {
 		GwEntry: NewGwEntry(),
 	}
 
-	res := getGwMapping(grpcEntry, context.TODO(), "fake-grpc-method")
+	res := getGwMapping(context.TODO(), grpcEntry, "fake-grpc-method")
 	assert.NotNil(t, res)
 }
 
@@ -330,7 +330,7 @@ func TestCommonServiceEntry_getGwMapping_HappyCase(t *testing.T) {
 		},
 	}
 
-	res := getGwMapping(grpcEntry, context.TODO(), grpcMethod)
+	res := getGwMapping(context.TODO(), grpcEntry, grpcMethod)
 	assert.NotNil(t, res)
 	assert.Equal(t, 8080, int(res.Port))
 	assert.Equal(t, gwMethod, res.Method)

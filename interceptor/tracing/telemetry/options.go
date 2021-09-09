@@ -25,6 +25,7 @@ import (
 	"strings"
 )
 
+// NoopExporter exporter which do nothing
 type NoopExporter struct{}
 
 // ExportSpans handles export of SpanSnapshots by dropping them.
@@ -158,6 +159,7 @@ type optionSet struct {
 	Tracer     oteltrace.Tracer
 }
 
+// Option parameters for newOptionSet
 type Option func(*optionSet)
 
 // WithExporter Provide sdktrace.SpanExporter.

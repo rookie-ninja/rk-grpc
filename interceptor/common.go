@@ -30,29 +30,50 @@ var (
 )
 
 const (
+	// RpcPayloadAppended a flag used in inner middleware
 	RpcPayloadAppended = "grpcPayloadAppended"
 
-	RpcEntryNameKey   = "grpcEntryName"
+	// RpcEntryNameKey default entry name key of grpc
+	RpcEntryNameKey = "grpcEntryName"
+	// RpcEntryNameValue default entry name value of grpc
 	RpcEntryNameValue = "grpc"
-	RpcEntryTypeKey   = "grpcEntryType"
+	// RpcEntryTypeKey default entry type key of grpc
+	RpcEntryTypeKey = "grpcEntryType"
+	// RpcEntryTypeValue default entry type value of grpc
 	RpcEntryTypeValue = "grpc"
 
-	RpcEventKey          = "grpcEvent"
-	RpcLoggerKey         = "grpcLogger"
-	RpcMethodKey         = "grpcMethod"
-	RpcErrorKey          = "grpcError"
-	RpcTypeKey           = "grpcType"
-	RpcTracerKey         = "grpcTracer"
-	RpcSpanKey           = "grpcSpan"
+	// RpcEventKey event key in grpc context
+	RpcEventKey = "grpcEvent"
+	// RpcLoggerKey logger key in grpc context
+	RpcLoggerKey = "grpcLogger"
+	// RpcMethodKey RPC method key in grpc context
+	RpcMethodKey = "grpcMethod"
+	// RpcErrorKey RPC error key in grpc context
+	RpcErrorKey = "grpcError"
+
+	// RpcTypeKey RPC type key in grpc context
+	RpcTypeKey = "grpcType"
+	// RpcTracerKey tracer key in grpc context
+	RpcTracerKey = "grpcTracer"
+	// RpcSpanKey Span key in grpc context
+	RpcSpanKey = "grpcSpan"
+	// RpcTracerProviderKey tracer provider key in grpc context
 	RpcTracerProviderKey = "grpcTracerProvider"
-	RpcPropagatorKey     = "grpcPropagator"
+	// RpcPropagatorKey propagator key in grpc context
+	RpcPropagatorKey = "grpcPropagator"
 
+	// RpcAuthorizationHeaderKey basic auth header key in request
 	RpcAuthorizationHeaderKey = "authorization"
-	RpcApiKeyHeaderKey        = "X-API-Key"
+	// RpcApiKeyHeaderKey api key header in request
+	RpcApiKeyHeaderKey = "X-API-Key"
 
-	RpcTypeUnaryServer  = "unaryServer"
+	// RpcTypeUnaryServer unary RPC server type key in context
+	RpcTypeUnaryServer = "unaryServer"
+	// RpcTypeStreamServer stream RPC server type key in context
 	RpcTypeStreamServer = "streamServer"
-	RpcTypeUnaryClient  = "unaryClient"
+	// RpcTypeUnaryClient unary RPC client type key in context
+	RpcTypeUnaryClient = "unaryClient"
+	// RpcTypeStreamClient stream RPC client type in context
 	RpcTypeStreamClient = "streamClient"
 )
 
