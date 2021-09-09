@@ -18,11 +18,17 @@ import (
 )
 
 var (
-	Realm         = zap.String("realm", rkcommon.GetEnvValueOrDefault("REALM", "*"))
-	Region        = zap.String("region", rkcommon.GetEnvValueOrDefault("REGION", "*"))
-	AZ            = zap.String("az", rkcommon.GetEnvValueOrDefault("AZ", "*"))
-	Domain        = zap.String("domain", rkcommon.GetEnvValueOrDefault("DOMAIN", "*"))
-	LocalIp       = zap.String("localIp", rkcommon.GetLocalIP())
+	// Realm environment variable
+	Realm = zap.String("realm", rkcommon.GetEnvValueOrDefault("REALM", "*"))
+	// Region environment variable
+	Region = zap.String("region", rkcommon.GetEnvValueOrDefault("REGION", "*"))
+	// AZ environment variable
+	AZ = zap.String("az", rkcommon.GetEnvValueOrDefault("AZ", "*"))
+	// Domain environment variable
+	Domain = zap.String("domain", rkcommon.GetEnvValueOrDefault("DOMAIN", "*"))
+	// LocalIp read local IP from localhost
+	LocalIp = zap.String("localIp", rkcommon.GetLocalIP())
+	// LocalHostname read hostname from localhost
 	LocalHostname = zap.String("localHostname", rkcommon.GetLocalHostname())
 
 	clientPayloadKey = &clientPayload{}
@@ -30,9 +36,6 @@ var (
 )
 
 const (
-	// RpcPayloadAppended a flag used in inner middleware
-	RpcPayloadAppended = "grpcPayloadAppended"
-
 	// RpcEntryNameKey default entry name key of grpc
 	RpcEntryNameKey = "grpcEntryName"
 	// RpcEntryNameValue default entry name value of grpc
@@ -76,6 +79,11 @@ const (
 	// RpcTypeStreamClient stream RPC client type in context
 	RpcTypeStreamClient = "streamClient"
 )
+
+// RpcPayloadAppended a flag used in inner middleware
+var RpcPayloadAppended = rpcPayloadAppended{}
+
+type rpcPayloadAppended struct{}
 
 type clientPayload struct {
 	incomingHeaders *metadata.MD

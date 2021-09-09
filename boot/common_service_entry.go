@@ -270,7 +270,7 @@ func (entry *CommonServiceEntry) Configs(ctx context.Context, request *api.Confi
 }
 
 // Compose swagger URL based on SwEntry.
-func getSwUrl(entry *GwEntry, ctx context.Context) string {
+func getSwUrl(ctx context.Context, entry *GwEntry) string {
 	if entry.IsSwEnabled() {
 		scheme := "http"
 		if entry.IsServerTlsEnabled() {
@@ -306,7 +306,7 @@ func getGwMapping(ctx context.Context, entry *GrpcEntry, grpcMethod string) *rke
 	res.Port = entry.GwEntry.HttpPort
 	res.Method = value.Method
 	res.Pattern = value.Pattern
-	res.SwUrl = getSwUrl(entry.GwEntry, ctx)
+	res.SwUrl = getSwUrl(ctx, entry.GwEntry)
 
 	return res
 }
