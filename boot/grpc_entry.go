@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpc an implementation of rkentry.Entry which could be used start restful server with grpc framework
 package rkgrpc
 
 import (
@@ -35,7 +37,9 @@ import (
 )
 
 const (
-	GrpcEntryType        = "GrpcEntry"
+	// GrpcEntryType default entry type
+	GrpcEntryType = "GrpcEntry"
+	// GrpcEntryDescription default entry description
 	GrpcEntryDescription = "Internal RK entry which helps to bootstrap with Grpc framework."
 	bootstrapEventIdKey  = "bootstrapEventId"
 )
@@ -46,7 +50,7 @@ func init() {
 	rkentry.RegisterEntryRegFunc(RegisterGrpcEntriesWithConfig)
 }
 
-// Boot config which is for grpc entry.
+// BootConfigGrpc Boot config which is for grpc entry.
 //
 // 1: Grpc.Name: Name of entry, should be unique globally.
 // 2: Grpc.Description: Description of entry.
@@ -441,7 +445,7 @@ func WithDescriptionGrpc(description string) GrpcEntryOption {
 	}
 }
 
-// Provide rkentry.ZapLoggerEntry
+// WithZapLoggerEntryGrpc Provide rkentry.ZapLoggerEntry
 func WithZapLoggerEntryGrpc(logger *rkentry.ZapLoggerEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.ZapLoggerEntry = logger
@@ -469,7 +473,7 @@ func WithServerOptionsGrpc(opts ...grpc.ServerOption) GrpcEntryOption {
 	}
 }
 
-// Provide grpc.UnaryServerInterceptor.
+// WithUnaryInterceptorsGrpc Provide grpc.UnaryServerInterceptor.
 func WithUnaryInterceptorsGrpc(opts ...grpc.UnaryServerInterceptor) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.UnaryInterceptors = append(entry.UnaryInterceptors, opts...)

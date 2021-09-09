@@ -23,8 +23,10 @@ import (
 )
 
 const (
+	// RequestIdKey request id key in response header
 	RequestIdKey = "X-Request-Id"
-	TraceIdKey   = "X-Trace-Id"
+	// TraceIdKey trace id key in response header
+	TraceIdKey = "X-Trace-Id"
 )
 
 var (

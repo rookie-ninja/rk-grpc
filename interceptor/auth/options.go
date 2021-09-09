@@ -82,6 +82,7 @@ func (set *optionSet) Authorized(authType, cred string) bool {
 	return false
 }
 
+// Option option for optionSet
 type Option func(*optionSet)
 
 // WithEntryNameAndType provide entry name and entry type.

@@ -28,9 +28,13 @@ import (
 )
 
 const (
-	CommonServiceEntryType         = "GrpcCommonServiceEntry"
-	CommonServiceEntryNameDefault  = "GrpcCommonServiceDefault"
-	CommonServiceEntryDescription  = "Internal RK entry which implements commonly used API with grpc framework."
+	// CommonServiceEntryType default entry type
+	CommonServiceEntryType = "GrpcCommonServiceEntry"
+	// CommonServiceEntryNameDefault default entry name
+	CommonServiceEntryNameDefault = "GrpcCommonServiceDefault"
+	// CommonServiceEntryDescription default entry description
+	CommonServiceEntryDescription = "Internal RK entry which implements commonly used API with grpc framework."
+	// CommonServiceGwMappingFilePath default path for gw_mapping.yaml file
 	CommonServiceGwMappingFilePath = "api/v1/gw_mapping.yaml"
 )
 
@@ -72,7 +76,7 @@ func WithNameCommonService(name string) CommonServiceEntryOption {
 	}
 }
 
-// WithNameCommonService Provide rkentry.EventLoggerEntry.
+// WithEventLoggerEntryCommonService Provide rkentry.EventLoggerEntry.
 func WithEventLoggerEntryCommonService(eventLoggerEntry *rkentry.EventLoggerEntry) CommonServiceEntryOption {
 	return func(entry *CommonServiceEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
@@ -286,21 +290,23 @@ func getSwUrl(entry *GwEntry, ctx context.Context) string {
 }
 
 // Compose gateway related elements based on GwEntry and SwEntry.
-func getGwMapping(entry *GrpcEntry, ctx context.Context, grpcMethod string) *rkentry.ApisResponse_Rest {
+func getGwMapping(ctx context.Context, entry *GrpcEntry, grpcMethod string) *rkentry.ApisResponse_Rest {
 	res := &rkentry.ApisResponse_Rest{}
 
 	if !entry.IsGwEnabled() {
 		return res
 	}
 
-	if v, ok := entry.GwEntry.GwMapping[grpcMethod]; !ok {
+	var value *gwRule
+	var ok bool
+	if value, ok = entry.GwEntry.GwMapping[grpcMethod]; !ok {
 		return res
-	} else {
-		res.Port = entry.GwEntry.HttpPort
-		res.Method = v.Method
-		res.Pattern = v.Pattern
-		res.SwUrl = getSwUrl(entry.GwEntry, ctx)
 	}
+
+	res.Port = entry.GwEntry.HttpPort
+	res.Method = value.Method
+	res.Pattern = value.Pattern
+	res.SwUrl = getSwUrl(entry.GwEntry, ctx)
 
 	return res
 }
@@ -331,7 +337,7 @@ func doApis(ctx context.Context) *rkentry.ApisResponse {
 					Method:  method.Name,
 					Port:    grpcEntry.Port,
 					Type:    apiType,
-					Gw:      getGwMapping(grpcEntry, ctx, serviceName+"."+method.Name),
+					Gw:      getGwMapping(ctx, grpcEntry, serviceName+"."+method.Name),
 				},
 			}
 
@@ -516,6 +522,7 @@ func doCerts(context.Context) *rkentry.CertsResponse {
 	return res
 }
 
+// Certs Stub
 func (entry *CommonServiceEntry) Certs(ctx context.Context, request *rk_grpc_common_v1.CertsRequest) (*structpb.Struct, error) {
 	res, err := structpb.NewStruct(rkcommon.ConvertStructToMap(doCerts(ctx)))
 	return res, err
@@ -573,6 +580,7 @@ func doLogs(context.Context) *rkentry.LogsResponse {
 	return res
 }
 
+// Logs Stub
 func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_common_v1.LogsRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
 }
@@ -604,6 +612,7 @@ func doGit(ctx context.Context) *rkentry.GitResponse {
 	return res
 }
 
+// Git Stub
 func (entry *CommonServiceEntry) Git(ctx context.Context, request *rk_grpc_common_v1.GitRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGit(ctx)))
 }
@@ -621,6 +630,7 @@ func doDeps(context.Context) *rkentry.DepResponse {
 	return res
 }
 
+// Deps Stub
 func (entry *CommonServiceEntry) Deps(ctx context.Context, request *rk_grpc_common_v1.DepsRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doDeps(ctx)))
 }
@@ -639,6 +649,7 @@ func doLicense(context.Context) *rkentry.LicenseResponse {
 	return res
 }
 
+// License Stub
 func (entry *CommonServiceEntry) License(ctx context.Context, request *rk_grpc_common_v1.LicenseRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLicense(ctx)))
 }
@@ -657,12 +668,12 @@ func doReadme(context.Context) *rkentry.ReadmeResponse {
 	return res
 }
 
-// Get README file contents.
+// Readme Get README file contents.
 func (entry *CommonServiceEntry) Readme(ctx context.Context, request *rk_grpc_common_v1.ReadmeRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReadme(ctx)))
 }
 
-// Get error mapping file contents.
+// GwErrorMapping Get error mapping file contents.
 func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *rk_grpc_common_v1.GwErrorMappingRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGwErrorMapping(ctx)))
 }

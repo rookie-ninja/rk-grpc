@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkgrpc is for includes assets and api files into pkger
 package rkgrpc
 
 import "github.com/markbates/pkger"

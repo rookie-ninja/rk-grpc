@@ -51,7 +51,7 @@ func main() {
 	rkentry.GlobalAppCtx.WaitForShutdownSig()
 }
 
-// Implementation of ChatServer.
+// ChatServer Implementation of ChatServer.
 //
 // The bidirectional communication between client and server.
 //
@@ -72,7 +72,7 @@ func main() {
 //         |<<<--------------------------|
 type ChatServer struct{}
 
-// Implementation of Say().
+// Say Implementation of Say().
 func (server *ChatServer) Say(stream proto.Chat_SayServer) error {
 	for {
 		in, err := stream.Recv()

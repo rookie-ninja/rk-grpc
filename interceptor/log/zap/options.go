@@ -18,8 +18,10 @@ import (
 )
 
 const (
+	// ENCODING_CONSOLE encoding type as console for EventLoggerEntry
 	ENCODING_CONSOLE int = 0
-	ENCODING_JSON    int = 1
+	// ENCODING_JSON encoding type as json for EventLoggerEntry
+	ENCODING_JSON int = 1
 )
 
 // Interceptor would distinguish logs set based on.

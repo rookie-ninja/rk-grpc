@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/markbates/pkger"
+	"github.com/markbates/pkger/pkging"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-query"
@@ -30,9 +31,13 @@ var (
 )
 
 const (
-	SwEntryType                        = "GrpcSwEntry"
-	SwEntryNameDefault                 = "GrpcSwDefault"
-	SwEntryDescription                 = "Internal RK entry which implements swagger with Grpc framework."
+	// SwEntryType default entry type
+	SwEntryType = "GrpcSwEntry"
+	// SwEntryNameDefault default entry name
+	SwEntryNameDefault = "GrpcSwDefault"
+	// SwEntryDescription default entry description
+	SwEntryDescription = "Internal RK entry which implements swagger with Grpc framework."
+	// SwEntryCommonServiceJsonFileSuffix default swagger json file suffix
 	SwEntryCommonServiceJsonFileSuffix = "-rk-common.swagger.json"
 )
 
@@ -404,13 +409,17 @@ func (entry *SwEntry) ConfigFileHandler(w http.ResponseWriter, r *http.Request) 
 
 // Read go template files with Pkger.
 func readFileFromPkger(filePath string) []byte {
-	if file, err := pkger.Open(path.Join("/boot", filePath)); err != nil {
+	var file pkging.File
+	var err error
+
+	if file, err = pkger.Open(path.Join("/boot", filePath)); err != nil {
 		return []byte{}
-	} else {
-		if bytes, err := ioutil.ReadAll(file); err != nil {
-			return []byte{}
-		} else {
-			return bytes
-		}
 	}
+
+	var bytes []byte
+	if bytes, err = ioutil.ReadAll(file); err != nil {
+		return []byte{}
+	}
+
+	return bytes
 }

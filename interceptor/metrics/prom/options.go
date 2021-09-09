@@ -39,9 +39,12 @@ var (
 )
 
 const (
+	// ElapsedNano records RPC duration in nano
 	ElapsedNano = "elapsedNano"
-	Errors      = "errors"
-	ResCode     = "resCode"
+	// Errors records RPC error count
+	Errors = "errors"
+	// ResCode record RPC resCode
+	ResCode = "resCode"
 )
 
 // Register bellow metrics into metrics set.
@@ -96,6 +99,7 @@ type optionSet struct {
 	MetricsSet *rkprom.MetricsSet
 }
 
+// Option options while creating optionSet
 type Option func(*optionSet)
 
 // WithEntryNameAndType Provide entry name and type.
