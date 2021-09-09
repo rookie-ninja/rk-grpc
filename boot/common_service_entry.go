@@ -12,8 +12,8 @@ import (
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
-	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
+	api "github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-query"
@@ -99,7 +99,7 @@ func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry
 		ZapLoggerEntry:    rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
 		EventLoggerEntry:  rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
 		RegFuncGrpc:       registerRkCommonService,
-		RegFuncGw:         rk_grpc_common_v1.RegisterRkCommonServiceHandlerFromEndpoint,
+		RegFuncGw:         api.RegisterRkCommonServiceHandlerFromEndpoint,
 		GwMappingFilePath: CommonServiceGwMappingFilePath,
 		GwMapping:         make(map[string]string),
 	}
@@ -208,7 +208,7 @@ func doHealthy(context.Context) *rkentry.HealthyResponse {
 }
 
 // Healthy Stub.
-func (entry *CommonServiceEntry) Healthy(ctx context.Context, request *rk_grpc_common_v1.HealthyRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Healthy(ctx context.Context, request *api.HealthyRequest) (*structpb.Struct, error) {
 	event := rkgrpcctx.GetEvent(ctx)
 
 	event.AddPair("healthy", "true")
@@ -229,7 +229,7 @@ func doGc(context.Context) *rkentry.GcResponse {
 }
 
 // Gc Stub.
-func (entry *CommonServiceEntry) Gc(ctx context.Context, request *rk_grpc_common_v1.GcRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Gc(ctx context.Context, request *api.GcRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGc(ctx)))
 }
 
@@ -239,7 +239,7 @@ func doInfo(context.Context) *rkentry.ProcessInfo {
 }
 
 // Info Stub.
-func (entry *CommonServiceEntry) Info(ctx context.Context, request *rk_grpc_common_v1.InfoRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Info(ctx context.Context, request *api.InfoRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doInfo(ctx)))
 }
 
@@ -265,7 +265,7 @@ func doConfigs(context.Context) *rkentry.ConfigsResponse {
 }
 
 // Configs Stub.
-func (entry *CommonServiceEntry) Configs(ctx context.Context, request *rk_grpc_common_v1.ConfigsRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Configs(ctx context.Context, request *api.ConfigsRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doConfigs(ctx)))
 }
 
@@ -349,7 +349,7 @@ func doApis(ctx context.Context) *rkentry.ApisResponse {
 }
 
 // Apis Stub
-func (entry *CommonServiceEntry) Apis(ctx context.Context, request *rk_grpc_common_v1.ApisRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Apis(ctx context.Context, request *api.ApisRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doApis(ctx)))
 }
 
@@ -365,7 +365,7 @@ func doSys(context.Context) *rkentry.SysResponse {
 }
 
 // Sys Stub
-func (entry *CommonServiceEntry) Sys(ctx context.Context, request *rk_grpc_common_v1.SysRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Sys(ctx context.Context, request *api.SysRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doSys(ctx)))
 }
 
@@ -422,7 +422,7 @@ func doReq(ctx context.Context) *rkentry.ReqResponse {
 }
 
 // Req Stub
-func (entry *CommonServiceEntry) Req(ctx context.Context, request *rk_grpc_common_v1.ReqRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Req(ctx context.Context, request *api.ReqRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReq(ctx)))
 }
 
@@ -479,7 +479,7 @@ func doEntries(ctx context.Context) *rkentry.EntriesResponse {
 }
 
 // Entries Stub
-func (entry *CommonServiceEntry) Entries(ctx context.Context, request *rk_grpc_common_v1.EntriesRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Entries(ctx context.Context, request *api.EntriesRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doEntries(ctx)))
 }
 
@@ -523,7 +523,7 @@ func doCerts(context.Context) *rkentry.CertsResponse {
 }
 
 // Certs Stub
-func (entry *CommonServiceEntry) Certs(ctx context.Context, request *rk_grpc_common_v1.CertsRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Certs(ctx context.Context, request *api.CertsRequest) (*structpb.Struct, error) {
 	res, err := structpb.NewStruct(rkcommon.ConvertStructToMap(doCerts(ctx)))
 	return res, err
 }
@@ -581,7 +581,7 @@ func doLogs(context.Context) *rkentry.LogsResponse {
 }
 
 // Logs Stub
-func (entry *CommonServiceEntry) Logs(ctx context.Context, request *rk_grpc_common_v1.LogsRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Logs(ctx context.Context, request *api.LogsRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLogs(ctx)))
 }
 
@@ -613,7 +613,7 @@ func doGit(ctx context.Context) *rkentry.GitResponse {
 }
 
 // Git Stub
-func (entry *CommonServiceEntry) Git(ctx context.Context, request *rk_grpc_common_v1.GitRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Git(ctx context.Context, request *api.GitRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGit(ctx)))
 }
 
@@ -631,7 +631,7 @@ func doDeps(context.Context) *rkentry.DepResponse {
 }
 
 // Deps Stub
-func (entry *CommonServiceEntry) Deps(ctx context.Context, request *rk_grpc_common_v1.DepsRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Deps(ctx context.Context, request *api.DepsRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doDeps(ctx)))
 }
 
@@ -650,7 +650,7 @@ func doLicense(context.Context) *rkentry.LicenseResponse {
 }
 
 // License Stub
-func (entry *CommonServiceEntry) License(ctx context.Context, request *rk_grpc_common_v1.LicenseRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) License(ctx context.Context, request *api.LicenseRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doLicense(ctx)))
 }
 
@@ -669,12 +669,12 @@ func doReadme(context.Context) *rkentry.ReadmeResponse {
 }
 
 // Readme Get README file contents.
-func (entry *CommonServiceEntry) Readme(ctx context.Context, request *rk_grpc_common_v1.ReadmeRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) Readme(ctx context.Context, request *api.ReadmeRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doReadme(ctx)))
 }
 
 // GwErrorMapping Get error mapping file contents.
-func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *rk_grpc_common_v1.GwErrorMappingRequest) (*structpb.Struct, error) {
+func (entry *CommonServiceEntry) GwErrorMapping(ctx context.Context, request *api.GwErrorMappingRequest) (*structpb.Struct, error) {
 	return structpb.NewStruct(rkcommon.ConvertStructToMap(doGwErrorMapping(ctx)))
 }
 
@@ -705,7 +705,7 @@ func doGwErrorMapping(context.Context) *rkentry.GwErrorMappingResponse {
 
 // Register common service
 func registerRkCommonService(server *grpc.Server) {
-	rk_grpc_common_v1.RegisterRkCommonServiceServer(server, NewCommonServiceEntry())
+	api.RegisterRkCommonServiceServer(server, NewCommonServiceEntry())
 }
 
 // Extract grpc entry from grpc_zap middleware

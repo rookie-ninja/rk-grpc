@@ -41,8 +41,11 @@ const (
 	GrpcEntryType = "GrpcEntry"
 	// GrpcEntryDescription default entry description
 	GrpcEntryDescription = "Internal RK entry which helps to bootstrap with Grpc framework."
-	bootstrapEventIdKey  = "bootstrapEventId"
 )
+
+var bootstrapEventIdKey = eventIdKey{}
+
+type eventIdKey struct{}
 
 // This must be declared in order to register registration function into rk context
 // otherwise, rk-boot won't able to bootstrap grpc entry automatically from boot config file
