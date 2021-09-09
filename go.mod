@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/ghodss/yaml v1.0.0
-	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/markbates/pkger v0.17.1
 	github.com/prometheus/client_golang v1.10.0
