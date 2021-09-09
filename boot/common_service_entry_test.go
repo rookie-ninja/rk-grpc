@@ -7,11 +7,11 @@ package rkgrpc
 import (
 	"context"
 	"fmt"
-	rkcommon "github.com/rookie-ninja/rk-common/common"
+	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
-	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
-	rkgrpcmetrics "github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
+	api "github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
+	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-logger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -87,7 +87,7 @@ func TestNewCommonServiceEntry_WithoutOptions(t *testing.T) {
 	assert.NotNil(t, entry.EventLoggerEntry)
 	assert.NotNil(t, entry.ZapLoggerEntry)
 	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.RegFuncGrpc).Pointer())
-	assert.Equal(t, reflect.ValueOf(rk_grpc_common_v1.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
+	assert.Equal(t, reflect.ValueOf(api.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
 		reflect.ValueOf(entry.RegFuncGw).Pointer())
 	assert.Equal(t, CommonServiceGwMappingFilePath, entry.GwMappingFilePath)
 	assert.NotNil(t, entry.GwMapping)
@@ -110,7 +110,7 @@ func TestNewCommonServiceEntry_WithOptions(t *testing.T) {
 	assert.Equal(t, eventLoggerEntry, entry.EventLoggerEntry)
 	assert.Equal(t, zapLoggerEntry, entry.ZapLoggerEntry)
 	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.RegFuncGrpc).Pointer())
-	assert.Equal(t, reflect.ValueOf(rk_grpc_common_v1.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
+	assert.Equal(t, reflect.ValueOf(api.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
 		reflect.ValueOf(entry.RegFuncGw).Pointer())
 	assert.Equal(t, CommonServiceGwMappingFilePath, entry.GwMappingFilePath)
 	assert.NotNil(t, entry.GwMapping)
@@ -203,7 +203,7 @@ func TestCommonServiceEntry_doHealthy_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_Healthy_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Healthy(context.TODO(), &rk_grpc_common_v1.HealthyRequest{})
+	resp, err := entry.Healthy(context.TODO(), &api.HealthyRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 	assert.True(t, resp.AsMap()["healthy"].(bool))
@@ -220,7 +220,7 @@ func TestCommonServiceEntry_doGc_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_Gc_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Gc(context.TODO(), &rk_grpc_common_v1.GcRequest{})
+	resp, err := entry.Gc(context.TODO(), &api.GcRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 	assert.Contains(t, resp.AsMap(), "memStatBeforeGc")
@@ -237,7 +237,7 @@ func TestCommonServiceEntry_doInfo_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_Info_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Info(context.TODO(), &rk_grpc_common_v1.InfoRequest{})
+	resp, err := entry.Info(context.TODO(), &api.InfoRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -257,7 +257,7 @@ func TestCommonServiceEntry_doConfigs_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_Configs_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Configs(context.TODO(), &rk_grpc_common_v1.ConfigsRequest{})
+	resp, err := entry.Configs(context.TODO(), &api.ConfigsRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -349,7 +349,7 @@ func TestCommonServiceEntry_doApis_WithoutGrpcEntry(t *testing.T) {
 func TestCommonServiceEntry_Apis_WithoutGrpcMethods(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Apis(context.TODO(), &rk_grpc_common_v1.ApisRequest{})
+	resp, err := entry.Apis(context.TODO(), &api.ApisRequest{})
 
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -369,7 +369,7 @@ func TestCommonServiceEntry_Apis_HappyCase(t *testing.T) {
 	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, grpcEntry.GetName())
 
 	// 4: call function, now we can find common service methods from grpc server
-	resp, err := entry.Apis(ctx, &rk_grpc_common_v1.ApisRequest{})
+	resp, err := entry.Apis(ctx, &api.ApisRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 
@@ -395,7 +395,7 @@ func TestCommonServiceEntry_Req_HappyCase(t *testing.T) {
 		rkgrpcmetrics.WithEntryNameAndType(grpcEntry.GetName(), grpcEntry.GetType()))
 
 	// 5: call function, now we can find common service methods from grpc server
-	resp, err := entry.Req(ctx, &rk_grpc_common_v1.ReqRequest{})
+	resp, err := entry.Req(ctx, &api.ReqRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 	fmt.Println(resp)
@@ -417,7 +417,7 @@ func TestCommonServiceEntry_doSys_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_Sys_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
-	res, err := entry.Sys(context.TODO(), &rk_grpc_common_v1.SysRequest{})
+	res, err := entry.Sys(context.TODO(), &api.SysRequest{})
 
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
@@ -479,7 +479,7 @@ func TestCommonServiceEntry_Entries_HappyCase(t *testing.T) {
 
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Entries(context.TODO(), &rk_grpc_common_v1.EntriesRequest{})
+	resp, err := entry.Entries(context.TODO(), &api.EntriesRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -528,7 +528,7 @@ func TestCommonServiceEntry_Certs_HappyCase(t *testing.T) {
 
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Certs(context.TODO(), &rk_grpc_common_v1.CertsRequest{})
+	resp, err := entry.Certs(context.TODO(), &api.CertsRequest{})
 
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -612,7 +612,7 @@ func TestCommonServiceEntry_Logs_HappyCase(t *testing.T) {
 
 	entry := NewCommonServiceEntry()
 
-	resp, err := entry.Logs(context.TODO(), &rk_grpc_common_v1.LogsRequest{})
+	resp, err := entry.Logs(context.TODO(), &api.LogsRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -632,7 +632,7 @@ func TestCommonServiceEntry_Git_HappyCase(t *testing.T) {
 	})
 
 	// 2: call function, now we can find common service methods from grpc server
-	resp, err := entry.Git(context.TODO(), &rk_grpc_common_v1.GitRequest{})
+	resp, err := entry.Git(context.TODO(), &api.GitRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -641,7 +641,7 @@ func TestCommonServiceEntry_Dep_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
 	// 1: call function, now we can find common service methods from grpc server
-	resp, err := entry.Deps(context.TODO(), &rk_grpc_common_v1.DepsRequest{})
+	resp, err := entry.Deps(context.TODO(), &api.DepsRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -650,7 +650,7 @@ func TestCommonServiceEntry_Readme_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
 	// 1: call function, now we can find common service methods from grpc server
-	resp, err := entry.Readme(context.TODO(), &rk_grpc_common_v1.ReadmeRequest{})
+	resp, err := entry.Readme(context.TODO(), &api.ReadmeRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -659,7 +659,7 @@ func TestCommonServiceEntry_License_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
 	// 1: call function, now we can find common service methods from grpc server
-	resp, err := entry.License(context.TODO(), &rk_grpc_common_v1.LicenseRequest{})
+	resp, err := entry.License(context.TODO(), &api.LicenseRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }
@@ -668,7 +668,7 @@ func TestCommonServiceEntry_GwErrorMapping_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 
 	// 1: call function, now we can find common service methods from grpc server
-	resp, err := entry.GwErrorMapping(context.TODO(), &rk_grpc_common_v1.GwErrorMappingRequest{})
+	resp, err := entry.GwErrorMapping(context.TODO(), &api.GwErrorMappingRequest{})
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 }

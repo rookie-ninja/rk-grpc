@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
+	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"

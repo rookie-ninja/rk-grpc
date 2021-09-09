@@ -45,7 +45,7 @@ type gwRule struct {
 // BootConfigGw Bootstrap config of tv.
 // 1: Enabled: Enable gateway.
 // 2: Port: Http port exposed.
-// 3: Enable RK sytle server option?
+// 3: Enable RK style server option?
 // 4: Cert.Ref: Reference of rkentry.CertEntry.
 // 5: Logger.ZapLogger.Ref: Reference of rkentry.ZapLoggerEntry.
 // 6: Logger.EventLogger.Ref: Reference of rkentry.EventLoggerEntry.
