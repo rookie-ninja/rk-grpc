@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot/api/gen/v1"
+	"github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

@@ -25,7 +25,7 @@ import (
 
 var (
 	swaggerIndexHTML     = readFileFromPkger("/assets/sw/index.html")
-	commonServiceJson    = readFileFromPkger("/api/gen/v1/rk_common_service.swagger.json")
+	commonServiceJson    = readFileFromPkger("/api/third_party/gen/v1/rk_common_service.swagger.json")
 	swConfigFileContents = ``
 	swaggerJsonFiles     = make(map[string]string, 0)
 )

@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // ChatClient is the client API for Chat service.
@@ -29,7 +30,7 @@ func NewChatClient(cc grpc.ClientConnInterface) ChatClient {
 }
 
 func (c *chatClient) Say(ctx context.Context, opts ...grpc.CallOption) (Chat_SayClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Chat_serviceDesc.Streams[0], "/Chat/Say", opts...)
+	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[0], "/Chat/Say", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +82,8 @@ type UnsafeChatServer interface {
 	mustEmbedUnimplementedChatServer()
 }
 
-func RegisterChatServer(s *grpc.Server, srv ChatServer) {
-	s.RegisterService(&_Chat_serviceDesc, srv)
+func RegisterChatServer(s grpc.ServiceRegistrar, srv ChatServer) {
+	s.RegisterService(&Chat_ServiceDesc, srv)
 }
 
 func _Chat_Say_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -111,7 +112,10 @@ func (x *chatSayServer) Recv() (*ServerMessage, error) {
 	return m, nil
 }
 
-var _Chat_serviceDesc = grpc.ServiceDesc{
+// Chat_ServiceDesc is the grpc.ServiceDesc for Chat service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Chat_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Chat",
 	HandlerType: (*ChatServer)(nil),
 	Methods:     []grpc.MethodDesc{},

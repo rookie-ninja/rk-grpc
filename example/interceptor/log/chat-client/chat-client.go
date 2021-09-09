@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	api "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
+	api "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"go.uber.org/zap"

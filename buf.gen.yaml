@@ -1,23 +1,23 @@
 version: v1beta1
 plugins:
   - name: go
-    out: boot/api/gen
+    out: boot/api/third_party/gen
     opt:
      - paths=source_relative
   - name: go-grpc
-    out: boot/api/gen
+    out: boot/api/third_party/gen
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
   - name: grpc-gateway
-    out: boot/api/gen
+    out: boot/api/third_party/gen
     opt:
       - paths=source_relative
       - grpc_api_configuration=boot/api/v1/gw_mapping.yaml
       - allow_repeated_fields_in_body=true
       - generate_unbound_methods=true
   - name: openapiv2
-    out: boot/api/gen
+    out: boot/api/third_party/gen
     opt:
       - grpc_api_configuration=boot/api/v1/gw_mapping.yaml
       - allow_repeated_fields_in_body=true
