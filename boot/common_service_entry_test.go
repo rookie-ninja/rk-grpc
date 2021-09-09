@@ -276,7 +276,7 @@ func TestCommonServiceEntry_getSwUrl_HappyCase(t *testing.T) {
 		},
 	}
 
-	res := getSwUrl(gwEntry, context.TODO())
+	res := getSwUrl(context.TODO(), gwEntry)
 	assert.NotEmpty(t, res)
 	assert.True(t, strings.HasPrefix(res, "https://"))
 	assert.True(t, strings.HasSuffix(res, "8080/sw/"))
@@ -286,7 +286,7 @@ func TestCommonServiceEntry_getSwUrl_WithoutSw(t *testing.T) {
 	// Create GwEntry with tls and sw enabled
 	gwEntry := NewGwEntry()
 
-	res := getSwUrl(gwEntry, context.TODO())
+	res := getSwUrl(context.TODO(), gwEntry)
 	assert.Empty(t, res)
 }
 

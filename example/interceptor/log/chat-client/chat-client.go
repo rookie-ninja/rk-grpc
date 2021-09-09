@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
+	api "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"go.uber.org/zap"
@@ -75,10 +75,10 @@ func main() {
 	}
 
 	// 4: Send "Hi" and "Nice to meet you!" to server
-	if err := stream.Send(&proto.ServerMessage{Message: "Hi!"}); err != nil {
+	if err := stream.Send(&api.ServerMessage{Message: "Hi!"}); err != nil {
 		rkgrpcctx.GetLogger(ctx).Fatal("Failed to send to server.", zap.Error(err))
 	}
-	if err := stream.Send(&proto.ServerMessage{Message: "Nice to meet you!"}); err != nil {
+	if err := stream.Send(&api.ServerMessage{Message: "Nice to meet you!"}); err != nil {
 		rkgrpcctx.GetLogger(ctx).Fatal("Failed to send to server.", zap.Error(err))
 	}
 	// 5: Close stream
@@ -116,7 +116,7 @@ func main() {
 }
 
 // Create grpc client.
-func createChatClient(opts ...grpc.DialOption) (*grpc.ClientConn, proto.ChatClient) {
+func createChatClient(opts ...grpc.DialOption) (*grpc.ClientConn, api.ChatClient) {
 	// 1: Set up a connection to the server.
 	conn, err := grpc.DialContext(context.Background(), "localhost:8080", opts...)
 	if err != nil {
@@ -124,7 +124,7 @@ func createChatClient(opts ...grpc.DialOption) (*grpc.ClientConn, proto.ChatClie
 	}
 
 	// 2: Create grpc client
-	client := proto.NewChatClient(conn)
+	client := api.NewChatClient(conn)
 
 	return conn, client
 }

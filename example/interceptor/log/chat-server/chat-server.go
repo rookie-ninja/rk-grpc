@@ -7,7 +7,7 @@ package main
 import (
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
+	api "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/gen"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"google.golang.org/grpc"
@@ -73,15 +73,15 @@ func main() {
 type ChatServer struct{}
 
 // Say Implementation of Say().
-func (server *ChatServer) Say(stream proto.Chat_SayServer) error {
+func (server *ChatServer) Say(stream api.Chat_SayServer) error {
 	for {
 		in, err := stream.Recv()
 
 		if err == io.EOF {
-			if err := stream.Send(&proto.ClientMessage{Message: "Hi!"}); err != nil {
+			if err := stream.Send(&api.ClientMessage{Message: "Hi!"}); err != nil {
 				return err
 			}
-			if err := stream.Send(&proto.ClientMessage{Message: "Nice to meet you too!"}); err != nil {
+			if err := stream.Send(&api.ClientMessage{Message: "Nice to meet you too!"}); err != nil {
 				return err
 			}
 
@@ -108,7 +108,7 @@ func startChatServer(opts ...grpc.ServerOption) *grpc.Server {
 	server := grpc.NewServer(opts...)
 
 	// 3: Register server to proto
-	proto.RegisterChatServer(server, &ChatServer{})
+	api.RegisterChatServer(server, &ChatServer{})
 
 	// 4: Start server
 	go func() {
