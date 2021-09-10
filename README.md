@@ -40,11 +40,10 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Meta](#meta)
 - [YAML Config](#yaml-config)
   - [GRPC Service](#grpc-service-1)
-  - [Common Service](#common-service-1)
-  - [GRPC Gateway Service](#grpc-gateway-service-1)
-    - [Swagger Service](#swagger-service-1)
+    - [Common Service](#common-service-1)
     - [Prom Client](#prom-client)
     - [TV Service](#tv-service-1)
+    - [Swagger Service](#swagger-service-1)
   - [Interceptors](#interceptors)
     - [Log](#log)
     - [Metrics](#metrics-1)
@@ -64,7 +63,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 Bootstrapper can be used with YAML config. In the bellow example, we will start bellow services automatically.
 - GRPC Service
 - GRPC Server Reflection
-- GRPC Gateway Service
+- GRPC Gateway Service(By default, gateway is always open)
 - Swagger Service
 - Common Service
 - TV Service
@@ -81,25 +80,24 @@ Please refer example at [example/boot/simple](example/boot/simple).
 ---
 grpc:
   - name: greeter
-    port: 1949
-    reflection: true
+    port: 8080
+    enableReflection: true
+    enableRkGwOption: true
     commonService:
       enabled: true
-    gw:
+    tv:
       enabled: true
-      port: 8080
-      rkServerOption: true
-      tv:
-        enabled: true
-      sw:
-        enabled: true
-      prom:
-        enabled: true
-    interceptors:
-      loggingZap:
-        enabled: true
-      metricsProm:
-        enabled: true
+    sw:
+      enabled: true
+    prom:
+      enabled: true
+#    interceptors:
+#      loggingZap:
+#        enabled: true
+#      metricsProm:
+#        enabled: true
+#      meta:
+#        enabled: true
 ```
 - [main.go](example/boot/simple/main.go)
 
@@ -130,14 +128,14 @@ $ go run main.go
 #### GRPC Service
 Try to test GRPC Service with [grpcurl](https://github.com/fullstorydev/grpcurl)
 ```shell script
-# List grpc services at port 1949 without TLS
+# List grpc services at port 8080 without TLS
 # Expect RkCommonService since we enabled common services.
-$ grpcurl -plaintext localhost:1949 list                           
+$ grpcurl -plaintext localhost:8080 list                           
 grpc.reflection.v1alpha.ServerReflection
 rk.api.v1.RkCommonService
 
 # List grpc methods in rk.api.v1.RkCommonService
-$ grpcurl -plaintext localhost:1949 list rk.api.v1.RkCommonService            
+$ grpcurl -plaintext localhost:8080 list rk.api.v1.RkCommonService            
 rk.api.v1.RkCommonService.Apis
 rk.api.v1.RkCommonService.Certs
 rk.api.v1.RkCommonService.Configs
@@ -155,14 +153,17 @@ rk.api.v1.RkCommonService.Sys
 rk.api.v1.RkCommonService.Git
 
 # Send request to rk.api.v1.RkCommonService.Healthy
-$ grpcurl -plaintext localhost:1949 rk.api.v1.RkCommonService.Healthy
+$ grpcurl -plaintext localhost:8080 rk.api.v1.RkCommonService.Healthy
 {
     "healthy": true
 }
 ```
 
 #### GRPC Gateway Service
-Gateway was enabled at port 8080. We will try to send request to common service API.
+Gateway and gRPC will open at the same port. rk-grpc will automatically determine connection type between http and grpc
+requests.
+ 
+We will try to send request to common service API.
 
 Gateway to GRPC mapping defined at [gw-mapping](boot/api/v1/gw_mapping.yaml)
 ```shell script
@@ -195,21 +196,20 @@ By default, we could access prometheus client at [/metrics]
 #### Logging
 By default, we enable zap logger and event logger with console encoding type.
 ```shell script
-2021-06-24T05:25:20.621+0800    INFO    boot/common_service_entry.go:141        Bootstrapping CommonServiceEntry.       {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GrpcCommonServiceEntry"}
-2021-06-24T05:25:20.622+0800    INFO    boot/tv_entry.go:172    Bootstrapping TvEntry.  {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GrpcTvEntry"}
-2021-06-24T05:25:20.624+0800    INFO    boot/sw_entry.go:202    Bootstrapping SwEntry.  {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GrpcSwEntry", "swPath": "/sw/", "headers": {}}
-2021-06-24T05:25:20.624+0800    INFO    boot/prom_entry.go:202  Bootstrapping promEntry.        {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GrpcPromEntry", "path": "/metrics", "port": 8080}
-2021-06-24T05:25:20.624+0800    INFO    boot/gw_entry.go:415    Bootstrapping GwEntry.  {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GwEntry", "grpcPort": 1949, "httpPort": 8080, "swEnabled": true, "tvEnabled": true, "promEnabled": true, "commonServiceEnabled": true, "clientTlsEnabled": false, "serverTlsEnabled": false}
-2021-06-24T05:25:20.624+0800    INFO    boot/grpc_entry.go:671  Bootstrapping grpcEntry.        {"eventId": "5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a", "entryName": "greeter", "entryType": "GrpcEntry", "grpcPort": 1949, "commonServiceEnabled": true, "tlsEnabled": false, "gwEnabled": true, "reflectionEnabled": true, "swEnabled": true, "tvEnabled": true, "promEnabled": true, "gwClientTlsEnabled": false, "gwServerTlsEnabled": false, "swPath": "/sw/", "headers": {}, "tvPath": "/rk/v1/tv"}
+2021-09-11T04:43:23.216+0800    INFO    boot/common_service_entry.go:133        Bootstrapping CommonServiceEntry.       {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcCommonServiceEntry"}
+2021-09-11T04:43:23.217+0800    INFO    boot/sw_entry.go:208    Bootstrapping SwEntry.  {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcSwEntry", "swPath": "/sw/", "headers": {}}
+2021-09-11T04:43:23.217+0800    INFO    boot/prom_entry.go:206  Bootstrapping promEntry.        {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcPromEntry", "path": "/metrics", "port": 8080}
+2021-09-11T04:43:23.217+0800    INFO    boot/tv_entry.go:178    Bootstrapping TvEntry.  {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcTvEntry"}
+2021-09-11T04:43:23.219+0800    INFO    boot/grpc_entry.go:829  Bootstrapping grpcEntry.        {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcEntry", "port": 8080, "swEnabled": true, "tvEnabled": true, "promEnabled": true, "commonServiceEnabled": true, "tlsEnabled": false, "reflectionEnabled": true, "swPath": "/sw/", "headers": {}, "tvPath": "/rk/v1/tv"}
 ```
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-06-24T05:25:20.622025+08:00
-startTime=2021-06-24T05:25:20.621977+08:00
-elapsedNano=48142
+endTime=2021-09-11T04:43:23.217002+08:00
+startTime=2021-09-11T04:43:23.216935+08:00
+elapsedNano=67240
 timezone=CST
-ids={"eventId":"5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a"}
-app={"appName":"rk-grpc","appVersion":"master-xxx","entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
+ids={"eventId":"2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce"}
+app={"appName":"rk-grpc","appVersion":"master-bd63f29","entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
 payloads={"entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
 error={}
@@ -223,14 +223,14 @@ eventStatus=Ended
 EOE
 ...
 ------------------------------------------------------------------------
-endTime=2021-06-24T05:25:20.62478+08:00
-startTime=2021-06-24T05:25:20.621944+08:00
-elapsedNano=2836634
+endTime=2021-09-11T04:43:23.217156+08:00
+startTime=2021-09-11T04:43:23.217145+08:00
+elapsedNano=11496
 timezone=CST
-ids={"eventId":"5b82a7e0-f7ef-4a3a-abe7-fc1f9f83673a"}
-app={"appName":"rk-grpc","appVersion":"master-xxx","entryName":"greeter","entryType":"GrpcEntry"}
+ids={"eventId":"2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce"}
+app={"appName":"rk-grpc","appVersion":"master-bd63f29","entryName":"greeter","entryType":"GrpcPromEntry"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
-payloads={"commonServiceEnabled":true,"entryName":"greeter","entryType":"GrpcEntry","grpcPort":1949,"gwClientTlsEnabled":false,"gwEnabled":true,"gwServerTlsEnabled":false,"headers":{},"promEnabled":true,"reflectionEnabled":true,"swEnabled":true,"swPath":"/sw/","tlsEnabled":false,"tvEnabled":true,"tvPath":"/rk/v1/tv"}
+payloads={"entryName":"greeter","entryType":"GrpcPromEntry","path":"/metrics","port":8080}
 error={}
 counters={}
 pairs={}
@@ -268,12 +268,14 @@ User can start multiple grpc servers at the same time. Please make sure use diff
 | grpc.name | The name of grpc server | string | N/A |
 | grpc.port | The port of grpc server | integer | nil, server won't start |
 | grpc.description | Description of grpc entry. | string | "" |
-| grpc.reflection | Enable grpc server reflection | boolean | false |
+| grpc.enableReflection | Enable grpc server reflection | boolean | false |
+| grpc.enableRkGwOption | Enable RK style gateway server options. [detail](boot/gw_server_options.go) | false |
+| grpc.gwMappingFilePaths | The grpc gateway mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
 | grpc.cert.ref | Reference of cert entry declared in [cert entry](https://github.com/rookie-ninja/rk-entry#certentry) | string | "" |
 | grpc.logger.zapLogger.ref | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
 | grpc.logger.eventLogger.ref | Reference of eventLoggerEntry declared in [eventLoggerEntry](https://github.com/rookie-ninja/rk-entry#eventloggerentry) | string | "" |
 
-### Common Service
+#### Common Service
 ```yaml
 http:
   rules:
@@ -313,39 +315,30 @@ http:
 | ------ | ------ | ------ | ------ |
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
 
-### GRPC Gateway Service
-| name | description | type | default value |
-| ------ | ------ | ------ | ------ |
-| grpc.gw.enabled | Enable gateway service over gRpc server | boolean | false |
-| grpc.gw.port | The port of gRpc gateway | integer | 0 |
-| grpc.gw.rkServerOption | Enable RK style gateway server options. [detail](boot/gw_server_options.go) | false |
-| grpc.gw.gwMappingFilePaths | The grpc gateway mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
-| grpc.gw.cert.ref | Reference of cert entry declared in cert section | string | "" |
-
-#### Swagger Service
-| name | description | type | default value |
-| ------ | ------ | ------ | ------ |
-| grpc.gw.sw.enabled | Enable swagger service over gRpc server | boolean | false |
-| grpc.gw.sw.path | The path access swagger service from web | string | /sw |
-| grpc.gw.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
-| grpc.gw.sw.headers | Headers would be sent to caller as scheme of [key:value] | []string | [] |
-
 #### Prom Client
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.gw.prom.enabled | Enable prometheus | boolean | false |
-| grpc.gw.prom.path | Path of prometheus | string | /metrics |
-| grpc.gw.prom.pusher.enabled | Enable prometheus pusher | bool | false |
-| grpc.gw.prom.pusher.jobName | Job name would be attached as label while pushing to remote pushgateway | string | "" |
-| grpc.gw.prom.pusher.remoteAddress | PushGateWay address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
-| grpc.gw.prom.pusher.intervalMs | Push interval in milliseconds | string | 1000 |
-| grpc.gw.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of [user:pass] | string | "" |
-| grpc.gw.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
+| grpc.prom.enabled | Enable prometheus | boolean | false |
+| grpc.prom.path | Path of prometheus | string | /metrics |
+| grpc.prom.pusher.enabled | Enable prometheus pusher | bool | false |
+| grpc.prom.pusher.jobName | Job name would be attached as label while pushing to remote pushgateway | string | "" |
+| grpc.prom.pusher.remoteAddress | PushGateWay address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
+| grpc.prom.pusher.intervalMs | Push interval in milliseconds | string | 1000 |
+| grpc.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of [user:pass] | string | "" |
+| grpc.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
 
 #### TV Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.gw.tv.enabled | Enable RK TV | boolean | false |
+| grpc.tv.enabled | Enable RK TV | boolean | false |
+
+#### Swagger Service
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.sw.enabled | Enable swagger service over gRpc server | boolean | false |
+| grpc.sw.path | The path access swagger service from web | string | /sw |
+| grpc.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
+| grpc.sw.headers | Headers would be sent to caller as scheme of [key:value] | []string | [] |
 
 ### Interceptors
 #### Log
