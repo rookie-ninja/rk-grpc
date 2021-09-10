@@ -57,7 +57,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Installation
-`go get -u github.com/rookie-ninja/rk-grpc`
+`go get github.com/rookie-ninja/rk-grpc`
 
 ## Quick Start
 Bootstrapper can be used with YAML config. In the bellow example, we will start bellow services automatically.
