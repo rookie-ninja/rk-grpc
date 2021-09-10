@@ -12,6 +12,7 @@ require (
 	github.com/rookie-ninja/rk-logger v1.2.3
 	github.com/rookie-ninja/rk-prom v1.1.3
 	github.com/rookie-ninja/rk-query v1.2.4
+	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/contrib v0.20.0
 	go.opentelemetry.io/otel v0.20.0

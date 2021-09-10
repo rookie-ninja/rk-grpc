@@ -40,7 +40,6 @@
                 <th>Port</th>
                 <th>GW Pattern</th>
                 <th>GW Method</th>
-                <th>GW Port</th>
                 <th>Swagger</th>
               </tr>
             </thead>
@@ -53,7 +52,6 @@
                 <td>{{ .Grpc.Port }}</td>
                 <td>{{ .Grpc.Gw.Pattern }}</td>
                 <td>{{ .Grpc.Gw.Method }}</td>
-                <td>{{ .Grpc.Gw.Port }}</td>
                 <td><a target="_blank" href="{{ .Grpc.Gw.SwUrl }}">{{ .Grpc.Gw.SwUrl }}</a></td>
               </tr>
               {{ end }}

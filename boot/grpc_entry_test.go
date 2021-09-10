@@ -9,6 +9,8 @@ package rkgrpc
 import (
 	"context"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+
+	//gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +47,6 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 	serverOpt := grpc.InitialWindowSize(1)
 	loggingInterUnary := rkgrpclog.UnaryServerInterceptor()
 	loggingInterStream := rkgrpclog.StreamServerInterceptor()
-	gwEntry := NewGwEntry()
 	certEntry := &rkentry.CertEntry{}
 	commonServiceEntry := NewCommonServiceEntry()
 
@@ -57,7 +58,6 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 		WithServerOptionsGrpc(serverOpt),
 		WithUnaryInterceptorsGrpc(loggingInterUnary),
 		WithStreamInterceptorsGrpc(loggingInterStream),
-		WithGwEntryGrpc(gwEntry),
 		WithCertEntryGrpc(certEntry),
 		WithCommonServiceEntryGrpc(commonServiceEntry))
 
@@ -70,7 +70,6 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 	assert.Len(t, entry.ServerOpts, 1)
 	assert.Len(t, entry.UnaryInterceptors, 2)
 	assert.Len(t, entry.StreamInterceptors, 2)
-	assert.Equal(t, gwEntry, entry.GwEntry)
 	assert.Equal(t, certEntry, entry.CertEntry)
 	assert.Equal(t, commonServiceEntry, entry.CommonServiceEntry)
 
@@ -78,7 +77,7 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 }
 
 func TestRegisterGrpcEntriesWithConfig_HappyCase(t *testing.T) {
-	defer assertNotPanic(t)
+	//defer assertNotPanic(t)
 
 	configFile := `
 ---
@@ -93,29 +92,23 @@ grpc:
       enabled: true                                  # Optional, default: false
     cert:
       ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
-    gw:
-      enabled: true
-      port: 8080
-      cert:
-        ref: "local-cert"
-      pathPrefix: "/rk/v1/"                          # Optional, default: "/rk/v1/"
-      tv:
-        enabled: true                                 # Optional, default: false
-      sw:
-        enabled: true                                  # Optional, default: false
-        path: "sw"                                     # Optional, default: "sw"
-        headers: [ "sw:rk" ]                             # Optional, default: []
-      prom:
-        enabled: true                                  # Optional, default: false
-        path: "metrics"                                # Optional, default: ""
-        pusher:
-          enabled: false                               # Optional, default: false
-          jobName: "greeter-pusher"                    # Required
-          remoteAddress: "localhost:9091"              # Required
-          basicAuth: "user:pass"                       # Optional, default: ""
-          intervalMS: 1000                             # Optional, default: 1000
-          cert:
-            ref: "local-cert"                          # Optional, default: "", reference of cert entry declared above
+    tv:
+      enabled: true                                 # Optional, default: false
+    sw:
+      enabled: true                                  # Optional, default: false
+      path: "sw"                                     # Optional, default: "sw"
+      headers: [ "sw:rk" ]                             # Optional, default: []
+    prom:
+      enabled: true                                  # Optional, default: false
+      path: "metrics"                                # Optional, default: ""
+      pusher:
+        enabled: false                               # Optional, default: false
+        jobName: "greeter-pusher"                    # Required
+        remoteAddress: "localhost:9091"              # Required
+        basicAuth: "user:pass"                       # Optional, default: ""
+        intervalMS: 1000                             # Optional, default: 1000
+        cert:
+          ref: "local-cert"                          # Optional, default: "", reference of cert entry declared above
     logger:
       zapLogger:
         ref: zap-logger                              # Optional, default: logger of STDOUT, reference of logger entry declared above
@@ -155,7 +148,9 @@ grpc:
 	assert.Equal(t, "greeter", entry.GetName())
 	assert.Equal(t, uint64(1949), entry.Port)
 	assert.NotNil(t, entry.CommonServiceEntry)
-	assert.NotNil(t, entry.GwEntry)
+	assert.NotNil(t, entry.SwEntry)
+	assert.NotNil(t, entry.TvEntry)
+	assert.NotNil(t, entry.PromEntry)
 
 	assert.True(t, len(entry.UnaryInterceptors) > 0)
 	assert.True(t, len(entry.StreamInterceptors) > 0)
@@ -185,20 +180,18 @@ func TestGrpcEntry_GetDescription(t *testing.T) {
 	assert.NotEmpty(t, entry.GetDescription())
 }
 
-func TestGrpcEntry_AddGrpcRegFuncs(t *testing.T) {
+func TestGrpcEntry_AddRegFuncGrpc(t *testing.T) {
 	entry := RegisterGrpcEntry()
-	entry.AddGrpcRegFuncs(func(server *grpc.Server) {})
-	assert.Len(t, entry.RegFuncs, 1)
+	entry.AddRegFuncGrpc(func(server *grpc.Server) {})
+	assert.Len(t, entry.GrpcRegF, 1)
 }
 
-func TestGrpcEntry_AddGwRegFuncs(t *testing.T) {
-	gwEntry := NewGwEntry()
-	grpcEntry := RegisterGrpcEntry(
-		WithGwEntryGrpc(gwEntry))
-	grpcEntry.AddGwRegFuncs(func(ctx context.Context, mux *gwruntime.ServeMux, s string, options []grpc.DialOption) error {
+func TestWithGwRegFGrpc(t *testing.T) {
+	entry := RegisterGrpcEntry()
+	entry.AddRegFuncGw(func(ctx context.Context, mux *gwruntime.ServeMux, s string, options []grpc.DialOption) error {
 		return nil
 	})
-	assert.Len(t, gwEntry.RegFuncsGw, 1)
+	assert.Len(t, entry.GwRegF, 1)
 }
 
 func TestGrpcEntry_AddServerOptions(t *testing.T) {

@@ -86,9 +86,9 @@ func TestNewCommonServiceEntry_WithoutOptions(t *testing.T) {
 	assert.Equal(t, CommonServiceEntryDescription, entry.EntryDescription)
 	assert.NotNil(t, entry.EventLoggerEntry)
 	assert.NotNil(t, entry.ZapLoggerEntry)
-	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.RegFuncGrpc).Pointer())
+	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.GrpcRegF).Pointer())
 	assert.Equal(t, reflect.ValueOf(api.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
-		reflect.ValueOf(entry.RegFuncGw).Pointer())
+		reflect.ValueOf(entry.GwRegF).Pointer())
 	assert.Equal(t, CommonServiceGwMappingFilePath, entry.GwMappingFilePath)
 	assert.NotNil(t, entry.GwMapping)
 }
@@ -109,9 +109,9 @@ func TestNewCommonServiceEntry_WithOptions(t *testing.T) {
 	assert.Equal(t, CommonServiceEntryDescription, entry.EntryDescription)
 	assert.Equal(t, eventLoggerEntry, entry.EventLoggerEntry)
 	assert.Equal(t, zapLoggerEntry, entry.ZapLoggerEntry)
-	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.RegFuncGrpc).Pointer())
+	assert.Equal(t, reflect.ValueOf(registerRkCommonService).Pointer(), reflect.ValueOf(entry.GrpcRegF).Pointer())
 	assert.Equal(t, reflect.ValueOf(api.RegisterRkCommonServiceHandlerFromEndpoint).Pointer(),
-		reflect.ValueOf(entry.RegFuncGw).Pointer())
+		reflect.ValueOf(entry.GwRegF).Pointer())
 	assert.Equal(t, CommonServiceGwMappingFilePath, entry.GwMappingFilePath)
 	assert.NotNil(t, entry.GwMapping)
 }
@@ -264,19 +264,19 @@ func TestCommonServiceEntry_Configs_HappyCase(t *testing.T) {
 
 func TestCommonServiceEntry_getSwUrl_HappyCase(t *testing.T) {
 	// Create GwEntry with tls and sw enabled
-	gwEntry := NewGwEntry()
+	grpcEntry := RegisterGrpcEntry()
 	// Enable SwEntry
-	gwEntry.SwEntry = NewSwEntry(
+	grpcEntry.SwEntry = NewSwEntry(
 		WithPortSw(8080),
 		WithPathSw("sw"))
 	// Enable CertEntry with CertStore and ServerCert
-	gwEntry.CertEntry = &rkentry.CertEntry{
+	grpcEntry.CertEntry = &rkentry.CertEntry{
 		Store: &rkentry.CertStore{
 			ServerCert: []byte("fake-cert"),
 		},
 	}
 
-	res := getSwUrl(context.TODO(), gwEntry)
+	res := getSwUrl(context.TODO(), grpcEntry)
 	assert.NotEmpty(t, res)
 	assert.True(t, strings.HasPrefix(res, "https://"))
 	assert.True(t, strings.HasSuffix(res, "8080/sw/"))
@@ -284,9 +284,9 @@ func TestCommonServiceEntry_getSwUrl_HappyCase(t *testing.T) {
 
 func TestCommonServiceEntry_getSwUrl_WithoutSw(t *testing.T) {
 	// Create GwEntry with tls and sw enabled
-	gwEntry := NewGwEntry()
+	grpcEntry := RegisterGrpcEntry()
 
-	res := getSwUrl(context.TODO(), gwEntry)
+	res := getSwUrl(context.TODO(), grpcEntry)
 	assert.Empty(t, res)
 }
 
@@ -298,9 +298,7 @@ func TestCommonServiceEntry_getGwMapping_WithoutGw(t *testing.T) {
 }
 
 func TestCommonServiceEntry_getGwMapping_WithoutGwMapping(t *testing.T) {
-	grpcEntry := &GrpcEntry{
-		GwEntry: NewGwEntry(),
-	}
+	grpcEntry := &GrpcEntry{}
 
 	res := getGwMapping(context.TODO(), grpcEntry, "fake-grpc-method")
 	assert.NotNil(t, res)
@@ -308,23 +306,24 @@ func TestCommonServiceEntry_getGwMapping_WithoutGwMapping(t *testing.T) {
 
 func TestCommonServiceEntry_getGwMapping_HappyCase(t *testing.T) {
 	grpcEntry := &GrpcEntry{
-		GwEntry: NewGwEntry(WithHttpPortGw(8080)),
+		Port:                8080,
+		GwHttpToGrpcMapping: map[string]*gwRule{},
 	}
 
 	grpcMethod := "fake-grpc-method"
 	gwMethod := "fake-gw-method"
 	gwPattern := "fake-gw-pattern"
-	grpcEntry.GwEntry.GwMapping[grpcMethod] = &gwRule{
+	grpcEntry.GwHttpToGrpcMapping[grpcMethod] = &gwRule{
 		Method:  gwMethod,
 		Pattern: gwPattern,
 	}
 
-	grpcEntry.GwEntry.SwEntry = NewSwEntry(
+	grpcEntry.SwEntry = NewSwEntry(
 		WithPortSw(8080),
 		WithPathSw("sw"))
 
 	// Enable CertEntry with CertStore and ServerCert
-	grpcEntry.GwEntry.CertEntry = &rkentry.CertEntry{
+	grpcEntry.CertEntry = &rkentry.CertEntry{
 		Store: &rkentry.CertStore{
 			ServerCert: []byte("fake-cert"),
 		},

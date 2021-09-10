@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rookie-ninja/rk-common/error"
-	"github.com/rookie-ninja/rk-entry/entry"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -55,8 +54,6 @@ var (
 // HttpErrorHandler Mainly copies from runtime.DefaultHTTPErrorHandler.
 // We reformat error response with rkerror.ErrorResp.
 func HttpErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
-	logger := rkentry.GlobalAppCtx.GetZapLoggerEntryDefault().GetLogger()
-
 	s := status.Convert(err)
 	pb := s.Proto()
 
@@ -72,10 +69,7 @@ func HttpErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runt
 	resp.Err.Status = http.StatusText(resp.Err.Code)
 	resp.Err.Details = append(resp.Err.Details, s.Details()...)
 
-	md, ok := runtime.ServerMetadataFromContext(ctx)
-	if !ok {
-		logger.Warn("Failed to extract ServerMetadata from context")
-	}
+	md, _ := runtime.ServerMetadataFromContext(ctx)
 
 	// handle forward response server metadata
 	for k, vs := range md.HeaderMD {
