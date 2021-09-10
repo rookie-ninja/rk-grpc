@@ -459,5 +459,5 @@ lark@rkdev.info.
 
 <hr>
 
-Released under the [MIT License](LICENSE).
+Released under the [Apache 2.0 License](LICENSE).
 
