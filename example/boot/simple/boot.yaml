@@ -1,20 +1,17 @@
 ---
 grpc:
   - name: greeter
-    port: 1949
-    reflection: true
+    port: 8080
+    enableReflection: true
+    enableRkGwOption: true
     commonService:
       enabled: true
-    gw:
+    tv:
       enabled: true
-      port: 8080
-      rkServerOption: true
-      tv:
-        enabled: true
-      sw:
-        enabled: true
-      prom:
-        enabled: true
+    sw:
+      enabled: true
+    prom:
+      enabled: true
 #    interceptors:
 #      loggingZap:
 #        enabled: true

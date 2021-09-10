@@ -60,8 +60,8 @@ type CommonServiceEntry struct {
 	EntryDescription  string                    `json:"entryDescription" yaml:"entryDescription"`
 	EventLoggerEntry  *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
 	ZapLoggerEntry    *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
-	RegFuncGrpc       GrpcRegFunc               `json:"regFuncGrpc" yaml:"regFuncGrpc"`
-	RegFuncGw         GwRegFunc                 `json:"regFuncGw" yaml:"regFuncGw"`
+	GrpcRegF          GrpcRegFunc               `json:"regFuncGrpc" yaml:"regFuncGrpc"`
+	GwRegF            GwRegFunc                 `json:"regFuncGw" yaml:"regFuncGw"`
 	GwMappingFilePath string                    `json:"gwMappingFilePath" yaml:"gwMappingFilePath"`
 	GwMapping         map[string]string         `json:"gwMapping" yaml:"gwMapping"`
 }
@@ -98,8 +98,8 @@ func NewCommonServiceEntry(opts ...CommonServiceEntryOption) *CommonServiceEntry
 		EntryDescription:  CommonServiceEntryDescription,
 		ZapLoggerEntry:    rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
 		EventLoggerEntry:  rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
-		RegFuncGrpc:       registerRkCommonService,
-		RegFuncGw:         api.RegisterRkCommonServiceHandlerFromEndpoint,
+		GrpcRegF:          registerRkCommonService,
+		GwRegF:            api.RegisterRkCommonServiceHandlerFromEndpoint,
 		GwMappingFilePath: CommonServiceGwMappingFilePath,
 		GwMapping:         make(map[string]string),
 	}
@@ -270,10 +270,10 @@ func (entry *CommonServiceEntry) Configs(ctx context.Context, request *api.Confi
 }
 
 // Compose swagger URL based on SwEntry.
-func getSwUrl(ctx context.Context, entry *GwEntry) string {
+func getSwUrl(ctx context.Context, entry *GrpcEntry) string {
 	if entry.IsSwEnabled() {
 		scheme := "http"
-		if entry.IsServerTlsEnabled() {
+		if entry.IsTlsEnabled() {
 			scheme = "https"
 		}
 
@@ -293,20 +293,16 @@ func getSwUrl(ctx context.Context, entry *GwEntry) string {
 func getGwMapping(ctx context.Context, entry *GrpcEntry, grpcMethod string) *rkentry.ApisResponse_Rest {
 	res := &rkentry.ApisResponse_Rest{}
 
-	if !entry.IsGwEnabled() {
-		return res
-	}
-
 	var value *gwRule
 	var ok bool
-	if value, ok = entry.GwEntry.GwMapping[grpcMethod]; !ok {
+	if value, ok = entry.GwHttpToGrpcMapping[grpcMethod]; !ok {
 		return res
 	}
 
-	res.Port = entry.GwEntry.HttpPort
+	res.Port = entry.Port
 	res.Method = value.Method
 	res.Pattern = value.Pattern
-	res.SwUrl = getSwUrl(ctx, entry.GwEntry)
+	res.SwUrl = getSwUrl(ctx, entry)
 
 	return res
 }
