@@ -77,34 +77,42 @@ type gwRule struct {
 // 1: Grpc.Name: Name of entry, should be unique globally.
 // 2: Grpc.Description: Description of entry.
 // 3: Grpc.Port: Port of entry.
-// 4: Grpc.Cert.Ref: Reference of rkentry.CertEntry.
-// 5: Grpc.GW.Enabled: Enable grpc gateway.
-// 6: Grpc.GW.Port: Grpc gateway port.
-// 7: Grpc.GW.Cert.Ref: Reference of rkentry.CertEntry.
-// 8: Grpc.GW.Logger.ZapLogger.Ref: Reference of rkentry.ZapLoggerEntry.
-// 9: Grpc.GW.Logger.EventLogger.Ref: Reference of rkentry.EventLoggerEntry.
-// 10: Grpc.GW.PathPrefix: Grpc gateway path prefix for all path.
-// 11: Grpc.Gw.Tv.Enabled: Enable TvEntry.
-// 12: Grpc.GW.Sw.Enabled: Enable SwEntry.
-// 13: Grpc.GW.Sw.Path: Swagger UI path.
-// 14: Grpc.GW.Sw.JsonPath: Swagger JSON config file path.
-// 15: Grpc.GW.Sw.Headers: Http headers which would be forwarded to user.
-// 16: Grpc.GW.Prom.Pusher.Enabled: Enable prometheus pushgateway pusher.
-// 17: Grpc.GW.Prom.Pusher.IntervalMs: Interval in milliseconds while pushing metrics to remote pushGateway.
-// 18: Grpc.GW.Prom.Pusher.JobName: Name of pushGateway pusher job.
-// 19: Grpc.GW.Prom.Pusher.RemoteAddress: Remote address of pushGateway server.
-// 20: Grpc.GW.Prom.Pusher.BasicAuth: Basic auth credential of pushGateway server.
-// 21: Grpc.GW.Prom.Pusher.Cert.Ref: Reference of rkentry.CertEntry.
-// 22: Grpc.GW.Prom.Cert.Ref: Reference of rkentry.CertEntry.
-// 23: Grpc.CommonService.Enabled: Reference of CommonService.
-// 24: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
-// 25: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
-// 26: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
-// 27: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
-// 28: Grpc.Interceptors.Auth.Bearer: Bearer auth tokens.
-// 29: Grpc.Interceptors.Auth.API: API key.
-// 30: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 31: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 4: Grpc.EnableReflection: Enable gRPC reflection or not.
+// 5: Grpc.Cert.Ref: Reference of rkentry.CertEntry.
+// 6: Grpc.CommonService.Enabled: Reference of CommonService.
+// 7: Grpc.Sw.Enabled: Enable SwEntry.
+// 8: Grpc.Sw.Path: Swagger UI path.
+// 9: Grpc.Sw.JsonPath: Swagger JSON config file path.
+// 10: Grpc.Sw.Headers: Http headers which would be forwarded to user.
+// 11: Grpc.Tv.Enabled: Enable TvEntry.
+// 12: Grpc.Prom.Pusher.Enabled: Enable prometheus pushgateway pusher.
+// 13: Grpc.Prom.Pusher.IntervalMs: Interval in milliseconds while pushing metrics to remote pushGateway.
+// 14: Grpc.Prom.Pusher.JobName: Name of pushGateway pusher job.
+// 15: Grpc.Prom.Pusher.RemoteAddress: Remote address of pushGateway server.
+// 16: Grpc.Prom.Pusher.BasicAuth: Basic auth credential of pushGateway server.
+// 17: Grpc.Prom.Pusher.Cert.Ref: Reference of rkentry.CertEntry.
+// 18: Grpc.Prom.Cert.Ref: Reference of rkentry.CertEntry.
+// 19: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
+// 20: Grpc.Interceptors.LoggingZap.ZapLoggerEncoding: json or console.
+// 21: Grpc.Interceptors.LoggingZap.ZapLoggerOutputPaths: Output paths, stdout is supported.
+// 22: Grpc.Interceptors.LoggingZap.EventLoggerEncoding: json or console.
+// 23: Grpc.Interceptors.LoggingZap.EventLoggerOutputPaths: Output paths, stdout is supported.
+// 24: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
+// 25: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
+// 26: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
+// 27: Grpc.Interceptors.Auth.ApiKey: API key auth type.
+// 28: Grpc.Interceptors.Auth.IgnorePrefix: The prefix that ignoring auth.
+// 29: Grpc.Interceptors.Meta.Enabled: Meta interceptor which attach meta headers to response.
+// 30: Grpc.Interceptors.Meta.Prefix: Meta interceptor which attach meta headers to response with prefix.
+// 31: Grpc.Interceptors.Meta.TracingTelemetry.Enabled: Tracing interceptor.
+// 32: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.Enabled: Tracing interceptor with file as exporter.
+// 33: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.OutputPath: Exporter output paths.
+// 34: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.Enabled: Tracing interceptor with jaeger as exporter.
+// 35: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint: Jaeger collector endpoint.
+// 36: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorUsername: Jaeger collector user name.
+// 37: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorPassword: Jaeger collector password.
+// 38: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
+// 39: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name             string `yaml:"name" json:"name"`
@@ -170,19 +178,31 @@ type BootConfigGrpc struct {
 
 // GrpcEntry implements rkentry.Entry interface.
 //
-// 1: ZapLoggerEntry: See rkentry.ZapLoggerEntry for details.
-// 2: EventLoggerEntry: See rkentry.EventLoggerEntry for details.
-// 3: GwEntry: See GwEntry for details.
-// 4: CommonServiceEntry: See CommonServiceEntry for details.
-// 5: CertEntry: See CertEntry for details.
-// 6: Server: http.Server created while bootstrapping.
-// 7: Port: http/https port server listen to.
-// 8: ServerOpts: Server options for grpc.
-// 9: UnaryInterceptors: Interceptors user enabled from YAML config.
-// 10: StreamInterceptors: Interceptors user enabled from YAML config.
-// 11: RegFuncs: Grpc registration functions.
-// 12: Listener: Listener of grpc.
-// 13: EnableReflection: Enable grpc serve reflection.
+// 1: EntryName: Name of entry
+// 2: EntryType: Type of entry
+// 3: EntryDescription: Description of entry
+// 4: ZapLoggerEntry: See rkentry.ZapLoggerEntry for details.
+// 5: EventLoggerEntry: See rkentry.EventLoggerEntry for details.
+// 6: Port: http/https port server listen to.
+// 7: TlsConfig: TLS config for http and grpc server
+// 8: TlsConfigInsecure: TLS config for grpc client of gateway
+// 9: Server: gRPC server created while bootstrapping.
+// 10: ServerOpts: Server options for grpc server.
+// 11: UnaryInterceptors: Interceptors user enabled.
+// 12: StreamInterceptors: Interceptors user enabled.
+// 13: GrpcRegF: gRPC registration functions.
+// 14: HttpMux: http mux for overall http server
+// 15: HttpServer: http server over grpc server
+// 16: GwMux: gRPC gateway mux only routes http requests over grpc
+// 17: GwMuxOptions: gRPC gateway mux options.
+// 18: GwRegF: gRPC gateway registration function which generated from protocol buffer
+// 19: GwMappingFilePaths: gRPC gateway to grpc method mapping file paths.
+// 20: GwHttpToGrpcMapping: gRPC gateway to grpc method mapping.
+// 21: SwEntry: Swagger entry.
+// 22: TvEntry: RK tv entry.
+// 23: PromEntry: Prometheus client entry.
+// 24: CommonServiceEntry: CommonService entry.
+// 25: CertEntry: See CertEntry for details.
 type GrpcEntry struct {
 	EntryName         string                    `json:"entryName" yaml:"entryName"`
 	EntryType         string                    `json:"entryType" yaml:"entryType"`
@@ -190,7 +210,6 @@ type GrpcEntry struct {
 	ZapLoggerEntry    *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
 	EventLoggerEntry  *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
 	Port              uint64                    `json:"port" yaml:"port"`
-	Listener          net.Listener              `json:"-" yaml:"-"`
 	TlsConfig         *tls.Config               `json:"-" yaml:"-"`
 	TlsConfigInsecure *tls.Config               `json:"-" yaml:"-"`
 	// GRPC related
