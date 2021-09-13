@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"github.com/ghodss/yaml"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1166,36 +1165,6 @@ func (entry *GrpcEntry) parseGwMappingHelper(bytes []byte) {
 			rule.Method = "PATCH"
 		}
 	}
-}
-
-// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
-// connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
-	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			fmt.Println("grpc")
-			grpcServer.ServeHTTP(w, r)
-		} else {
-			fmt.Println("gw")
-			otherHandler.ServeHTTP(w, r)
-		}
-	}), &http2.Server{})
-}
-
-// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
-// connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc2(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO(tamird): point to merged gRPC code rather than a PR.
-		// This is a partial recreation of gRPC's internal checks https://github.com/grpc/grpc-go/pull/514/files#diff-95e9a25b738459a2d3030e1e6fa2a718R61
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			fmt.Println("grpc")
-			grpcServer.ServeHTTP(w, r)
-		} else {
-			fmt.Println("gw")
-			otherHandler.ServeHTTP(w, r)
-		}
-	})
 }
 
 // GetGrpcEntry Get GinEntry from rkentry.GlobalAppCtx.
