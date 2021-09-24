@@ -35,6 +35,7 @@ config:
     locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
 grpc:
   - name: greeter                                         # Required
+    enabled: true                                         # Required
     port: 8080                                            # Optional
     enableReflection: true                                # Optional, default: false
     enableRkGwOption: true                                # Optional, default: false

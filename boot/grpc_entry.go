@@ -75,48 +75,50 @@ type gwRule struct {
 //
 // 1: Grpc.Name: Name of entry, should be unique globally.
 // 2: Grpc.Description: Description of entry.
-// 3: Grpc.Port: Port of entry.
-// 4: Grpc.EnableReflection: Enable gRPC reflection or not.
-// 5: Grpc.Cert.Ref: Reference of rkentry.CertEntry.
-// 6: Grpc.CommonService.Enabled: Reference of CommonService.
-// 7: Grpc.Sw.Enabled: Enable SwEntry.
-// 8: Grpc.Sw.Path: Swagger UI path.
-// 9: Grpc.Sw.JsonPath: Swagger JSON config file path.
-// 10: Grpc.Sw.Headers: Http headers which would be forwarded to user.
-// 11: Grpc.Tv.Enabled: Enable TvEntry.
-// 12: Grpc.Prom.Pusher.Enabled: Enable prometheus pushgateway pusher.
-// 13: Grpc.Prom.Pusher.IntervalMs: Interval in milliseconds while pushing metrics to remote pushGateway.
-// 14: Grpc.Prom.Pusher.JobName: Name of pushGateway pusher job.
-// 15: Grpc.Prom.Pusher.RemoteAddress: Remote address of pushGateway server.
-// 16: Grpc.Prom.Pusher.BasicAuth: Basic auth credential of pushGateway server.
-// 17: Grpc.Prom.Pusher.Cert.Ref: Reference of rkentry.CertEntry.
-// 18: Grpc.Prom.Cert.Ref: Reference of rkentry.CertEntry.
-// 19: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
-// 20: Grpc.Interceptors.LoggingZap.ZapLoggerEncoding: json or console.
-// 21: Grpc.Interceptors.LoggingZap.ZapLoggerOutputPaths: Output paths, stdout is supported.
-// 22: Grpc.Interceptors.LoggingZap.EventLoggerEncoding: json or console.
-// 23: Grpc.Interceptors.LoggingZap.EventLoggerOutputPaths: Output paths, stdout is supported.
-// 24: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
-// 25: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
-// 26: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
-// 27: Grpc.Interceptors.Auth.ApiKey: API key auth type.
-// 28: Grpc.Interceptors.Auth.IgnorePrefix: The prefix that ignoring auth.
-// 29: Grpc.Interceptors.Meta.Enabled: Meta interceptor which attach meta headers to response.
-// 30: Grpc.Interceptors.Meta.Prefix: Meta interceptor which attach meta headers to response with prefix.
-// 31: Grpc.Interceptors.Meta.TracingTelemetry.Enabled: Tracing interceptor.
-// 32: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.Enabled: Tracing interceptor with file as exporter.
-// 33: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.OutputPath: Exporter output paths.
-// 34: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.Enabled: Tracing interceptor with jaeger as exporter.
-// 35: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint: Jaeger collector endpoint.
-// 36: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorUsername: Jaeger collector user name.
-// 37: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorPassword: Jaeger collector password.
-// 38: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 39: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 3: Grpc.Enabled: Enable GrpcEntry.
+// 4: Grpc.Port: Port of entry.
+// 5: Grpc.EnableReflection: Enable gRPC reflection or not.
+// 6: Grpc.Cert.Ref: Reference of rkentry.CertEntry.
+// 7: Grpc.CommonService.Enabled: Reference of CommonService.
+// 8: Grpc.Sw.Enabled: Enable SwEntry.
+// 9: Grpc.Sw.Path: Swagger UI path.
+// 10: Grpc.Sw.JsonPath: Swagger JSON config file path.
+// 11: Grpc.Sw.Headers: Http headers which would be forwarded to user.
+// 12: Grpc.Tv.Enabled: Enable TvEntry.
+// 13: Grpc.Prom.Pusher.Enabled: Enable prometheus pushgateway pusher.
+// 14: Grpc.Prom.Pusher.IntervalMs: Interval in milliseconds while pushing metrics to remote pushGateway.
+// 15: Grpc.Prom.Pusher.JobName: Name of pushGateway pusher job.
+// 16: Grpc.Prom.Pusher.RemoteAddress: Remote address of pushGateway server.
+// 17: Grpc.Prom.Pusher.BasicAuth: Basic auth credential of pushGateway server.
+// 18: Grpc.Prom.Pusher.Cert.Ref: Reference of rkentry.CertEntry.
+// 19: Grpc.Prom.Cert.Ref: Reference of rkentry.CertEntry.
+// 20: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
+// 21: Grpc.Interceptors.LoggingZap.ZapLoggerEncoding: json or console.
+// 22: Grpc.Interceptors.LoggingZap.ZapLoggerOutputPaths: Output paths, stdout is supported.
+// 23: Grpc.Interceptors.LoggingZap.EventLoggerEncoding: json or console.
+// 24: Grpc.Interceptors.LoggingZap.EventLoggerOutputPaths: Output paths, stdout is supported.
+// 25: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
+// 26: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
+// 27: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
+// 28: Grpc.Interceptors.Auth.ApiKey: API key auth type.
+// 29: Grpc.Interceptors.Auth.IgnorePrefix: The prefix that ignoring auth.
+// 30: Grpc.Interceptors.Meta.Enabled: Meta interceptor which attach meta headers to response.
+// 31: Grpc.Interceptors.Meta.Prefix: Meta interceptor which attach meta headers to response with prefix.
+// 32: Grpc.Interceptors.Meta.TracingTelemetry.Enabled: Tracing interceptor.
+// 33: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.Enabled: Tracing interceptor with file as exporter.
+// 34: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.OutputPath: Exporter output paths.
+// 35: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.Enabled: Tracing interceptor with jaeger as exporter.
+// 36: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint: Jaeger collector endpoint.
+// 37: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorUsername: Jaeger collector user name.
+// 38: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorPassword: Jaeger collector password.
+// 39: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
+// 40: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name             string `yaml:"name" json:"name"`
 		Description      string `yaml:"description" json:"description"`
 		Port             uint64 `yaml:"port" json:"port"`
+		Enabled          bool   `yaml:"enabled" json:"enabled"`
 		EnableReflection bool   `yaml:"enableReflection" json:"enableReflection"`
 		Cert             struct {
 			Ref string `yaml:"ref" json:"ref"`
@@ -268,6 +270,9 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 	for i := range config.Grpc {
 		element := config.Grpc[i]
+		if !element.Enabled {
+			continue
+		}
 
 		zapLoggerEntry := rkentry.GlobalAppCtx.GetZapLoggerEntry(element.Logger.ZapLogger.Ref)
 		if zapLoggerEntry == nil {
