@@ -80,6 +80,7 @@ Please refer example at [example/boot/simple](example/boot/simple).
 ---
 grpc:
   - name: greeter
+    enabled: true
     port: 8080
     enableReflection: true
     enableRkGwOption: true
@@ -266,6 +267,7 @@ User can start multiple grpc servers at the same time. Please make sure use diff
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.name | The name of grpc server | string | N/A |
+| grpc.enabled | Enable grpc entry | bool | false |
 | grpc.port | The port of grpc server | integer | nil, server won't start |
 | grpc.description | Description of grpc entry. | string | "" |
 | grpc.enableReflection | Enable grpc server reflection | boolean | false |

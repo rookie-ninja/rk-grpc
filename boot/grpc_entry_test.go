@@ -88,16 +88,17 @@ eventLogger:
 grpc:
   - name: greeter
     port: 1949
+    enabled: true
     commonService:
       enabled: true                                  # Optional, default: false
     cert:
       ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
     tv:
-      enabled: true                                 # Optional, default: false
+      enabled: true                                  # Optional, default: false
     sw:
       enabled: true                                  # Optional, default: false
       path: "sw"                                     # Optional, default: "sw"
-      headers: [ "sw:rk" ]                             # Optional, default: []
+      headers: [ "sw:rk" ]                           # Optional, default: []
     prom:
       enabled: true                                  # Optional, default: false
       path: "metrics"                                # Optional, default: ""
