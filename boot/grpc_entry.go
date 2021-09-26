@@ -877,8 +877,8 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 			go entry.startHttpServer(httpL, logger)
 
 			// 5: Start listener
-			if err := tcpL.Serve(); err != nil {
-				if err != cmux.ErrListenerClosed || !strings.Contains(err.Error(), "use of closed network connection") {
+			if err := tcpL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+				if err != cmux.ErrListenerClosed {
 					event.AddErr(err)
 					logger.Error("Error occurs while serving TCP listener.", zap.Error(err))
 					rkcommon.ShutdownWithError(err)
@@ -902,7 +902,7 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 			// 5: Start listener
 			if err := tlsL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
-				if err != cmux.ErrListenerClosed || !strings.Contains(err.Error(), "use of closed network connection") {
+				if err != cmux.ErrListenerClosed {
 					event.AddErr(err)
 					logger.Error("Error occurs while serving TLS listener.", zap.Error(err))
 					rkcommon.ShutdownWithError(err)
