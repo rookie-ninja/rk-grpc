@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/ghodss/yaml"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +27,7 @@ import (
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
 	"github.com/soheilhy/cmux"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -158,10 +160,17 @@ type BootConfigGrpc struct {
 						OutputPath string `yaml:"outputPath" json:"outputPath"`
 					} `yaml:"file" json:"file"`
 					Jaeger struct {
-						Enabled           bool   `yaml:"enabled" json:"enabled"`
-						CollectorEndpoint string `yaml:"collectorEndpoint" json:"collectorEndpoint"`
-						CollectorUsername string `yaml:"collectorUsername" json:"collectorUsername"`
-						CollectorPassword string `yaml:"collectorPassword" json:"collectorPassword"`
+						Agent struct {
+							Enabled bool   `yaml:"enabled" json:"enabled"`
+							Host    string `yaml:"host" json:"host"`
+							Port    int    `yaml:"port" json:"port"`
+						} `yaml:"agent" json:"agent"`
+						Collector struct {
+							Enabled  bool   `yaml:"enabled" json:"enabled"`
+							Endpoint string `yaml:"endpoint" json:"endpoint"`
+							Username string `yaml:"username" json:"username"`
+							Password string `yaml:"password" json:"password"`
+						} `yaml:"collector" json:"collector"`
 					} `yaml:"jaeger" json:"jaeger"`
 				} `yaml:"exporter" json:"exporter"`
 			} `yaml:"tracingTelemetry" json:"tracingTelemetry"`
@@ -430,11 +439,32 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				exporter = rkgrpctrace.CreateFileExporter(element.Interceptors.TracingTelemetry.Exporter.File.OutputPath)
 			}
 
-			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Enabled {
-				exporter = rkgrpctrace.CreateJaegerExporter(
-					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint,
-					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorUsername,
-					element.Interceptors.TracingTelemetry.Exporter.Jaeger.CollectorPassword)
+			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Enabled {
+				opts := make([]jaeger.AgentEndpointOption, 0)
+				if len(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Host) > 0 {
+					opts = append(opts,
+						jaeger.WithAgentHost(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Host))
+				}
+				if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Port > 0 {
+					opts = append(opts,
+						jaeger.WithAgentPort(
+							fmt.Sprintf("%d", element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Port)))
+				}
+
+				exporter = rkgrpctrace.CreateJaegerExporter(jaeger.WithAgentEndpoint(opts...))
+			}
+
+			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Enabled {
+				opts := []jaeger.CollectorEndpointOption{
+					jaeger.WithUsername(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Username),
+					jaeger.WithPassword(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Password),
+				}
+
+				if len(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Endpoint) > 0 {
+					opts = append(opts, jaeger.WithEndpoint(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Endpoint))
+				}
+
+				exporter = rkgrpctrace.CreateJaegerExporter(jaeger.WithCollectorEndpoint(opts...))
 			}
 
 			opts := []rkgrpctrace.Option{

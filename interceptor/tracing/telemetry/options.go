@@ -14,22 +14,22 @@ import (
 	"github.com/rookie-ninja/rk-logger"
 	"go.opentelemetry.io/contrib"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout"
-	"go.opentelemetry.io/otel/exporters/trace/jaeger"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"os"
 	"path"
-	"strings"
 )
 
 // NoopExporter exporter which do nothing
 type NoopExporter struct{}
 
 // ExportSpans handles export of SpanSnapshots by dropping them.
-func (nsb *NoopExporter) ExportSpans(context.Context, []*sdktrace.SpanSnapshot) error { return nil }
+func (nsb *NoopExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error { return nil }
 
 // Shutdown stops the exporter by doing nothing.
 func (nsb *NoopExporter) Shutdown(context.Context) error { return nil }
@@ -40,9 +40,9 @@ func CreateNoopExporter() sdktrace.SpanExporter {
 }
 
 // CreateFileExporter Create a file exporter whose default output is stdout.
-func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanExporter {
+func CreateFileExporter(outputPath string, opts ...stdouttrace.Option) sdktrace.SpanExporter {
 	if opts == nil {
-		opts = make([]stdout.Option, 0)
+		opts = make([]stdouttrace.Option, 0)
 	}
 
 	if outputPath == "" {
@@ -50,9 +50,7 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 	}
 
 	if outputPath == "stdout" {
-		opts = append(opts,
-			stdout.WithPrettyPrint(),
-			stdout.WithoutMetricExport())
+		opts = append(opts, stdouttrace.WithPrettyPrint())
 	} else {
 		// init lumberjack logger
 		writer := rklogger.NewLumberjackConfigDefault()
@@ -63,31 +61,29 @@ func CreateFileExporter(outputPath string, opts ...stdout.Option) sdktrace.SpanE
 
 		writer.Filename = outputPath
 
-		opts = append(opts, stdout.WithWriter(writer), stdout.WithoutMetricExport())
+		opts = append(opts, stdouttrace.WithWriter(writer))
 	}
 
-	exporter, _ := stdout.NewExporter(opts...)
+	exporter, _ := stdouttrace.New(opts...)
 
 	return exporter
 }
 
-// CreateJaegerExporter Beta stage
-// TODO: Wait for opentelemetry update version of jeager exporter. Current exporter is not compatible with jaeger agent.
-func CreateJaegerExporter(endpoint, username, password string) sdktrace.SpanExporter {
-	if len(endpoint) < 1 {
-		endpoint = "http://localhost:14268"
+// CreateJaegerExporter Create jaeger exporter with bellow condition.
+//
+// 1: If no option provided, then export to jaeger agent at localhost:6831
+// 2: Jaeger agent
+//    If no jaeger agent host was provided, then use localhost
+//    If no jaeger agent port was provided, then use 6831
+// 3: Jaeger collector
+//    If no jaeger collector endpoint was provided, then use http://localhost:14268/api/traces
+func CreateJaegerExporter(opt jaeger.EndpointOption) sdktrace.SpanExporter {
+	// Assign default jaeger agent endpoint which is localhost:6831
+	if opt == nil {
+		opt = jaeger.WithAgentEndpoint()
 	}
 
-	if !strings.HasPrefix(endpoint, "http://") {
-		endpoint = "http://" + endpoint
-	}
-
-	exporter, err := jaeger.NewRawExporter(
-		jaeger.WithCollectorEndpoint(
-			jaeger.WithEndpoint(endpoint+"/api/traces"),
-			jaeger.WithUsername(username),
-			jaeger.WithPassword(password)),
-	)
+	exporter, err := jaeger.New(opt)
 
 	if err != nil {
 		rkcommon.ShutdownWithError(err)
@@ -124,6 +120,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 			sdktrace.WithSpanProcessor(set.Processor),
 			sdktrace.WithResource(
 				sdkresource.NewWithAttributes(
+					semconv.SchemaURL,
 					attribute.String("service.name", rkentry.GlobalAppCtx.GetAppInfoEntry().AppName),
 					attribute.String("service.version", rkentry.GlobalAppCtx.GetAppInfoEntry().Version),
 					attribute.String("service.entryName", set.EntryName),

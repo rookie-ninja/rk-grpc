@@ -109,7 +109,7 @@ func grpcInfoToAttributes(ctx context.Context, method, rpcType string) []attribu
 
 // Handle logic before handle requests.
 func serverBefore(ctx context.Context, set *optionSet, method, rpcType string) (context.Context, oteltrace.Span) {
-	opts := []oteltrace.SpanOption{
+	opts := []oteltrace.SpanStartOption{
 		oteltrace.WithSpanKind(oteltrace.SpanKindServer),
 		oteltrace.WithAttributes(localeToAttributes()...),
 		oteltrace.WithAttributes(grpcInfoToAttributes(ctx, method, rpcType)...),
