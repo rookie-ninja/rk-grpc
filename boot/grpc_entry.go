@@ -474,8 +474,6 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpctrace.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
-
-			rkentry.GlobalAppCtx.AddShutdownHook("tracing exporter", rkgrpctrace.ShutdownExporters)
 		}
 
 		// Did we enabled meta interceptor?
