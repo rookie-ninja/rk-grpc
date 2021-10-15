@@ -7,7 +7,8 @@ package rkgrpctrace
 import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/exporters/stdout"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/metadata"
@@ -65,19 +66,19 @@ func TestCreateFileExporter_WithFilepath(t *testing.T) {
 	assert.NotNil(t, exporter)
 }
 
-func TestCreateJaegerExporter_WithEmptyEndpoint(t *testing.T) {
-	exporter := CreateJaegerExporter("", "", "")
+func TestCreateJaegerExporter_WithNilEndpoint(t *testing.T) {
+	exporter := CreateJaegerExporter(nil)
 	assert.NotNil(t, exporter)
 }
 
 func TestCreateJaegerExporter_HappyCase(t *testing.T) {
-	exporter := CreateJaegerExporter("localhost:1949", "user", "pass")
+	exporter := CreateJaegerExporter(jaeger.WithAgentEndpoint())
 	assert.NotNil(t, exporter)
 }
 
 func TestWithExporter_WithNilInput(t *testing.T) {
 	opt := WithExporter(nil)
-	exporter, _ := stdout.NewExporter()
+	exporter, _ := stdouttrace.New()
 	set := &optionSet{
 		Exporter: exporter,
 	}
@@ -87,7 +88,7 @@ func TestWithExporter_WithNilInput(t *testing.T) {
 }
 
 func TestWithExporter_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
+	exporter, _ := stdouttrace.New()
 
 	opt := WithExporter(exporter)
 	set := &optionSet{}
@@ -99,7 +100,7 @@ func TestWithExporter_HappyCase(t *testing.T) {
 func TestWithSpanProcessor_WithNilInput(t *testing.T) {
 	opt := WithSpanProcessor(nil)
 
-	exporter, _ := stdout.NewExporter()
+	exporter, _ := stdouttrace.New()
 	processor := sdktrace.NewSimpleSpanProcessor(exporter)
 	set := &optionSet{
 		Processor: processor,
@@ -110,7 +111,7 @@ func TestWithSpanProcessor_WithNilInput(t *testing.T) {
 }
 
 func TestWithSpanProcessor_HappyCase(t *testing.T) {
-	exporter, _ := stdout.NewExporter()
+	exporter, _ := stdouttrace.New()
 	processor := sdktrace.NewSimpleSpanProcessor(exporter)
 
 	opt := WithSpanProcessor(processor)

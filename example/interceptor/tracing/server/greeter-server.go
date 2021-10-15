@@ -29,8 +29,8 @@ func main() {
 	// Export trace to local file system
 	// exporter := rkgrpctrace.CreateFileExporter("logs/trace.log")
 
-	// Export trace to jaeger collector
-	// exporter := rkgrpctrace.CreateJaegerExporter("localhost:14268", "", "")
+	// Export trace to jaeger agent by default
+	// exporter := rkgrpctrace.CreateJaegerExporter(jaeger.WithAgentEndpoint())
 
 	// ********************************************
 	// ********** Enable interceptors *************

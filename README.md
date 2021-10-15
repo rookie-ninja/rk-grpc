@@ -10,16 +10,16 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | ---- | ---- |
 | Start with YAML | Start service with YAML config. |
 | Start with code | Start service from code. |
-| GRPC Service | GRPC service defined with protocol buffer. |
-| GRPC Gateway Service | GRPC Gateway service with new port. |
-| Swagger Service | Swagger UI with same port as GRPC Gateway. |
-| Common Service | List of common API available on GRPC, GRPC Gateway and swagger. |
+| gRPC Service | gRPC service defined with protocol buffer. |
+| gRPC Gateway Service | gRPC Gateway service with new port. |
+| Swagger Service | Swagger UI with same port as gRPC Gateway. |
+| Common Service | List of common API available on gRPC, gRPC Gateway and swagger. |
 | TV Service | A Web UI shows application and environment information. |
-| Metrics interceptor | Collect RPC metrics and export as prometheus client with same port of GRPC gateway. |
+| Metrics interceptor | Collect RPC metrics and export as prometheus client with same port of gRPC gateway. |
 | Log interceptor | Log every RPC requests as event with rk-query. |
 | Trace interceptor | Collect RPC trace and export it to stdout, file or jaeger. |
 | Panic interceptor | Recover from panic for RPC requests and log it. |
-| Meta interceptor | Send application metadata as header to client and GRPC Gateway. |
+| Meta interceptor | Send application metadata as header to client and gRPC Gateway. |
 | Auth interceptor | Support [Basic Auth] and [API Key] authrization types. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -28,10 +28,10 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-  - [Start GRPC Service](#start-grpc-service)
+  - [Start gRPC Service](#start-grpc-service)
   - [Output](#output)
-    - [GRPC Service](#grpc-service)
-    - [GRPC Gateway Service](#grpc-gateway-service)
+    - [gRPC Service](#grpc-service)
+    - [gRPC Gateway Service](#grpc-gateway-service)
     - [Swagger Service](#swagger-service)
     - [Common Service](#common-service)
     - [TV Service](#tv-service)
@@ -39,7 +39,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Logging](#logging)
     - [Meta](#meta)
 - [YAML Config](#yaml-config)
-  - [GRPC Service](#grpc-service-1)
+  - [gRPC Service](#grpc-service-1)
     - [Common Service](#common-service-1)
     - [Prom Client](#prom-client)
     - [TV Service](#tv-service-1)
@@ -61,9 +61,9 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 
 ## Quick Start
 Bootstrapper can be used with YAML config. In the bellow example, we will start bellow services automatically.
-- GRPC Service
-- GRPC Server Reflection
-- GRPC Gateway Service(By default, gateway is always open)
+- gRPC Service
+- gRPC Server Reflection
+- gRPC Gateway Service(By default, gateway is always open)
 - Swagger Service
 - Common Service
 - TV Service
@@ -73,7 +73,7 @@ Bootstrapper can be used with YAML config. In the bellow example, we will start 
 
 Please refer example at [example/boot/simple](example/boot/simple).
 
-### Start GRPC Service
+### Start gRPC Service
 - [boot.yaml](example/boot/simple/boot.yaml)
 
 ```yaml
@@ -126,8 +126,8 @@ $ go run main.go
 ```
 
 ### Output
-#### GRPC Service
-Try to test GRPC Service with [grpcurl](https://github.com/fullstorydev/grpcurl)
+#### gRPC Service
+Try to test gRPC Service with [grpcurl](https://github.com/fullstorydev/grpcurl)
 ```shell script
 # List grpc services at port 8080 without TLS
 # Expect RkCommonService since we enabled common services.
@@ -160,13 +160,13 @@ $ grpcurl -plaintext localhost:8080 rk.api.v1.RkCommonService.Healthy
 }
 ```
 
-#### GRPC Gateway Service
+#### gRPC Gateway Service
 Gateway and gRPC will open at the same port. rk-grpc will automatically determine connection type between http and grpc
 requests.
  
 We will try to send request to common service API.
 
-Gateway to GRPC mapping defined at [gw-mapping](boot/api/v1/gw_mapping.yaml)
+Gateway to gRPC mapping defined at [gw-mapping](boot/api/v1/gw_mapping.yaml)
 ```shell script
 $ curl localhost:8080/rk/v1/healthy
 {"healthy":true}
@@ -179,7 +179,7 @@ By default, we could access swagger UI at [/sw].
 ![sw](docs/img/simple-sw.png)
 
 #### Common Service
-We can access common service both from Gateway and GRPC.
+We can access common service both from Gateway and gRPC.
 
 ![cs](docs/img/simple-cs.png)
 
@@ -263,7 +263,7 @@ $ curl -vs localhost:8080/rk/v1/healthy
 Available configuration
 User can start multiple grpc servers at the same time. Please make sure use different port and name.
 
-### GRPC Service
+### gRPC Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.name | The name of grpc server | string | N/A |
@@ -432,10 +432,13 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.tracingTelemetry.enabled | Enable tracing interceptor | boolean | false |
 | grpc.interceptors.exporter.file.enabled | Enable file exporter | boolean | RK |
 | grpc.interceptors.exporter.file.outputPath | Export tracing info to files | string | stdout |
-| grpc.interceptors.exporter.jaeger.enabled | Export tracing info jaeger | boolean | false |
-| grpc.interceptors.exporter.jaeger.collectorEndpoint | As name described | string | localhost:16368/api/trace |
-| grpc.interceptors.exporter.jaeger.collectorUsername | As name described | string | "" |
-| grpc.interceptors.exporter.jaeger.collectorPassword | As name described | string | "" |
+| grpc.interceptors.exporter.jaeger.agent.enabled | Export tracing info to jaeger agent | boolean | false |
+| grpc.interceptors.exporter.jaeger.agent.host | As name described | string | localhost |
+| grpc.interceptors.exporter.jaeger.agent.port | As name described | int | 6831 |
+| grpc.interceptors.exporter.jaeger.collector.enabled | Export tracing info to jaeger collector | boolean | false |
+| grpc.interceptors.exporter.jaeger.collector.endpoint | As name described | string | http://localhost:16368/api/trace |
+| grpc.interceptors.exporter.jaeger.collector.username | As name described | string | "" |
+| grpc.interceptors.exporter.jaeger.collector.password | As name described | string | "" |
 
 ### Development Status: Stable
 

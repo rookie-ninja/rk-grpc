@@ -73,7 +73,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 
 // Handle logic before handle requests.
 func clientBefore(ctx context.Context, set *optionSet, method, rpcType string) (context.Context, oteltrace.Span) {
-	opts := []oteltrace.SpanOption{
+	opts := []oteltrace.SpanStartOption{
 		oteltrace.WithSpanKind(oteltrace.SpanKindClient),
 		oteltrace.WithAttributes(localeToAttributes()...),
 		oteltrace.WithAttributes(grpcInfoToAttributes(ctx, method, rpcType)...),
