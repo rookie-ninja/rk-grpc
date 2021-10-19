@@ -8,8 +8,8 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 
 | Name | Description |
 | ---- | ---- |
-| Start with YAML | Start service with YAML config. |
-| Start with code | Start service from code. |
+| Start from YAML | Start service from YAML config. |
+| Start from code | Start service from code. |
 | gRPC Service | gRPC service defined with protocol buffer. |
 | gRPC Gateway Service | gRPC Gateway service with new port. |
 | Swagger Service | Swagger UI with same port as gRPC Gateway. |
@@ -50,9 +50,11 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Auth](#auth)
     - [Meta](#meta-1)
     - [Tracing](#tracing)
-  - [Development Status: Stable](#development-status-stable)
-  - [Appendix](#appendix)
-  - [Contributing](#contributing)
+- [Development Status: Stable](#development-status-stable)
+- [Build instruction](#build-instruction)
+- [Test instruction](#test-instruction)
+- [Dependencies](#dependencies)
+- [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -440,15 +442,54 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.collector.username | As name described | string | "" |
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.collector.password | As name described | string | "" |
 
-### Development Status: Stable
+## Development Status: Stable
 
-### Appendix
-Use bellow command to rebuild proto files, we are using [buf](https://docs.buf.build/generate-usage) to generate proto related files.
-Configuration could be found at root path of project.
+## Build instruction
+Simply run make all to validate your changes. Or run codes in example/ folder.
+
+- make all
+
+Run unit-test, golangci-lint, doctoc and gofmt.
 
 - make buf
 
-### Contributing
+Compile internal protocol buffer files.
+
+- make pkger
+
+If proto or files in boot/assets were modified, then we need to run it.
+
+## Test instruction
+Run unit test with **make test** command.
+
+github workflow will automatically run unit test and golangci-lint for testing and lint validation.
+
+## Dependencies
+- github.com/ghodss/yaml v1.0.0
+- github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
+- github.com/markbates/pkger v0.17.1
+- github.com/prometheus/client_golang v1.10.0
+- github.com/rookie-ninja/rk-common v1.2.1
+- github.com/rookie-ninja/rk-entry v1.0.3
+- github.com/rookie-ninja/rk-logger v1.2.3
+- github.com/rookie-ninja/rk-prom v1.1.3
+- github.com/rookie-ninja/rk-query v1.2.4
+- github.com/soheilhy/cmux v0.1.5
+- github.com/stretchr/testify v1.7.0
+- go.opentelemetry.io/contrib v1.0.0
+- go.opentelemetry.io/otel v1.0.1
+- go.opentelemetry.io/otel/exporters/jaeger v1.0.1 // indirect
+- go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.0.1 // indirect
+- go.opentelemetry.io/otel/sdk v1.0.1
+- go.opentelemetry.io/otel/trace v1.0.1
+- go.uber.org/zap v1.16.0
+- golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+- golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
+- google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced
+- google.golang.org/grpc v1.38.0
+- google.golang.org/protobuf v1.26.0
+
+## Contributing
 We encourage and support an active, healthy community of contributors &mdash;
 including you! Details are in the [contribution guide](CONTRIBUTING.md) and
 the [code of conduct](CODE_OF_CONDUCT.md). The rk maintainers keep an eye on
