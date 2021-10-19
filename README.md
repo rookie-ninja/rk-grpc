@@ -3,6 +3,7 @@
 [![codecov](https://codecov.io/gh/rookie-ninja/rk-grpc/branch/master/graph/badge.svg?token=08TCFIIVS0)](https://codecov.io/gh/rookie-ninja/rk-grpc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rookie-ninja/rk-grpc)](https://goreportcard.com/report/github.com/rookie-ninja/rk-grpc)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Frookie-ninja%2Frk-grpc.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Frookie-ninja%2Frk-grpc?ref=badge_shield)
 
 Interceptor & bootstrapper designed for grpc. Currently, supports bellow functionalities.
 
@@ -317,6 +318,9 @@ http:
 | ------ | ------ | ------ | ------ |
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
 
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Frookie-ninja%2Frk-grpc.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Frookie-ninja%2Frk-grpc?ref=badge_large)
+
 #### Prom Client
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -458,4 +462,3 @@ lark@rkdev.info.
 <hr>
 
 Released under the [Apache 2.0 License](LICENSE).
-
