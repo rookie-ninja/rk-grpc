@@ -77,7 +77,7 @@ func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
 }
 
 func TestRegisterGrpcEntriesWithConfig_HappyCase(t *testing.T) {
-	//defer assertNotPanic(t)
+	defer assertNotPanic(t)
 
 	configFile := `
 ---
@@ -131,6 +131,13 @@ grpc:
         exporter:                                    # Optional, default will create a stdout exporter
           file:
             enabled: true                            # Optional, default: false
+      rateLimit:
+        enabled: true
+        algorithm: leakyBucket
+        reqPerSec: 1
+        methods:
+          - name: "ut-method"
+            reqPerSec: 1
 `
 
 	// Create bootstrap config file at ut temp dir
