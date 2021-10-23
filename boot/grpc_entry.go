@@ -23,6 +23,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
+	rkgrpclimit "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
@@ -152,6 +153,15 @@ type BootConfigGrpc struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
 				Prefix  string `yaml:"prefix" json:"prefix"`
 			} `yaml:"meta" json:"meta"`
+			RateLimit struct {
+				Enabled   bool   `yaml:"enabled" json:"enabled"`
+				Algorithm string `yaml:"algorithm" json:"algorithm"`
+				ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
+				Methods   []struct {
+					Name      string `yaml:"name" json:"name"`
+					ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
+				} `yaml:"methods" json:"methods"`
+			} `yaml:"rateLimit" json:"rateLimit"`
 			TracingTelemetry struct {
 				Enabled  bool `yaml:"enabled" json:"enabled"`
 				Exporter struct {
@@ -431,7 +441,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			entry.AddStreamInterceptors(rkgrpcmetrics.StreamServerInterceptor(opts...))
 		}
 
-		// Did we enabled tracing interceptor?
+		// did we enabled tracing interceptor?
 		if element.Interceptors.TracingTelemetry.Enabled {
 			var exporter trace.SpanExporter
 
@@ -476,7 +486,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
 		}
 
-		// Did we enabled meta interceptor?
+		// did we enabled meta interceptor?
 		if element.Interceptors.Meta.Enabled {
 			opts := []rkgrpcmeta.Option{
 				rkgrpcmeta.WithEntryNameAndType(element.Name, GrpcEntryType),
@@ -499,6 +509,25 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(opts...))
+		}
+
+		// did we enabled rate limit interceptor?
+		if element.Interceptors.RateLimit.Enabled {
+			opts := make([]rkgrpclimit.Option, 0)
+			opts = append(opts, rkgrpclimit.WithEntryNameAndType(element.Name, GrpcEntryType))
+
+			if len(element.Interceptors.RateLimit.Algorithm) > 0 {
+				opts = append(opts, rkgrpclimit.WithAlgorithm(element.Interceptors.RateLimit.Algorithm))
+			}
+			opts = append(opts, rkgrpclimit.WithReqPerSec(element.Interceptors.RateLimit.ReqPerSec))
+
+			for i := range element.Interceptors.RateLimit.Methods {
+				method := element.Interceptors.RateLimit.Methods[i]
+				opts = append(opts, rkgrpclimit.WithReqPerSecByMethod(method.Name, method.ReqPerSec))
+			}
+
+			entry.AddUnaryInterceptors(rkgrpclimit.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpclimit.StreamServerInterceptor(opts...))
 		}
 
 		res[element.Name] = entry

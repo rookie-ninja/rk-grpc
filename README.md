@@ -20,7 +20,8 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Trace interceptor | Collect RPC trace and export it to stdout, file or jaeger. |
 | Panic interceptor | Recover from panic for RPC requests and log it. |
 | Meta interceptor | Send application metadata as header to client and gRPC Gateway. |
-| Auth interceptor | Support [Basic Auth] and [API Key] authrization types. |
+| Auth interceptor | Support [Basic Auth] and [API Key] authorization types. |
+| RateLimit interceptor | Limit request rate from interceptor. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -50,6 +51,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Auth](#auth)
     - [Meta](#meta-1)
     - [Tracing](#tracing)
+    - [RateLimit](#ratelimit)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
@@ -432,7 +434,7 @@ Send application metadata as header to client and GRPC Gateway.
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.interceptors.tracingTelemetry.enabled | Enable tracing interceptor | boolean | false |
-| grpc.interceptors.tracingTelemetry.exporter.file.enabled | Enable file exporter | boolean | RK |
+| grpc.interceptors.tracingTelemetry.exporter.file.enabled | Enable file exporter | boolean | false |
 | grpc.interceptors.tracingTelemetry.exporter.file.outputPath | Export tracing info to files | string | stdout |
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.agent.enabled | Export tracing info to jaeger agent | boolean | false |
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.agent.host | As name described | string | localhost |
@@ -441,6 +443,15 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.collector.endpoint | As name described | string | http://localhost:16368/api/trace |
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.collector.username | As name described | string | "" |
 | grpc.interceptors.tracingTelemetry.exporter.jaeger.collector.password | As name described | string | "" |
+
+#### RateLimit
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.interceptors.rateLimit.enabled | Enable rate limit interceptor | boolean | false |
+| grpc.interceptors.rateLimit.algorithm | Provide algorithm, tokenBucket and leakyBucket are available options | string | tokenBucket |
+| grpc.interceptors.rateLimit.reqPerSec | Request per second globally | int | 0 |
+| grpc.interceptors.rateLimit.methods.name | gRPC full name | string | "" |
+| grpc.interceptors.rateLimit.methods.reqPerSec | Request per second by method name | int | 0 |
 
 ## Development Status: Stable
 
