@@ -5,8 +5,8 @@ Rate limit interceptor contains bellow algorithm
 
 | Type | Description |
 | ---- | ---- |
-| tokenBucket | [wiki](https://en.wikipedia.org/wiki/Leaky_bucket) |
-| leakyBucket | [wiki](https://en.wikipedia.org/wiki/Token_bucket) |
+| tokenBucket | [wiki](https://en.wikipedia.org/wiki/Token_bucket) |
+| leakyBucket | [wiki](https://en.wikipedia.org/wiki/Leaky_bucket) |
 
 **Please make sure panic interceptor to be added at last in chain of interceptors.**
 
