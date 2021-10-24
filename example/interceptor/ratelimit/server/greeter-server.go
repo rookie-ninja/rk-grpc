@@ -36,19 +36,19 @@ func main() {
 				// resource exhausted.
 				rkgrpclimit.WithReqPerSec(0),
 				//
-				// Provide request per second with method name.
+				// Provide request per second with path name.
 				// The name should be gRPC full method name. if provide value of zero,
 				// then no requests will be pass through and user will receive an error with resource exhausted.
-				// rkgrpclimit.WithReqPerSecByMethod("/Greeter/SayHello", 0),
+				// rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
 				//
 				// Provide user function of limiter
 				// rkgrpclimit.WithGlobalLimiter(func(ctx context.Context) error {
 				// 	 return nil
 				// }),
 				//
-				// Provide user function of limiter by method name.
+				// Provide user function of limiter by path name.
 				// The name should be gRPC full method name.
-				// rkgrpclimit.WithLimiterByMethod("/Greeter/SayHello", func(ctx context.Context) error {
+				// rkgrpclimit.WithLimiterByPath("/Greeter/SayHello", func(ctx context.Context) error {
 				//	 return nil
 				// }),
 			),

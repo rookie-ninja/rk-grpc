@@ -107,6 +107,6 @@ grpc:
         enabled: false
         algorithm: "leakyBucket"
         reqPerSec: 0
-        methods:
-          - name: "/rk.api.v1.RkCommonService/Healthy"
+        paths:
+          - path: "/rk.api.v1.RkCommonService/Healthy"
             reqPerSec: 0
