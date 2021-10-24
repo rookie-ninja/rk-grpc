@@ -9,7 +9,7 @@ package rkgrpclimit
 import (
 	"context"
 	juju "github.com/juju/ratelimit"
-	rkerror "github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-common/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	uber "go.uber.org/ratelimit"
 	"strings"
@@ -70,12 +70,12 @@ var optionsMap = make(map[string]*optionSet)
 // Create new optionSet with rpc type and options.
 func newOptionSet(rpcType string, opts ...Option) *optionSet {
 	set := &optionSet{
-		EntryName:         rkgrpcinter.RpcEntryNameValue,
-		EntryType:         rkgrpcinter.RpcEntryTypeValue,
-		reqPerSec:         DefaultLimit,
-		reqPerSecByMethod: make(map[string]int, DefaultLimit),
-		algorithm:         TokenBucket,
-		limiter:           make(map[string]Limiter),
+		EntryName:       rkgrpcinter.RpcEntryNameValue,
+		EntryType:       rkgrpcinter.RpcEntryTypeValue,
+		reqPerSec:       DefaultLimit,
+		reqPerSecByPath: make(map[string]int, DefaultLimit),
+		algorithm:       TokenBucket,
+		limiter:         make(map[string]Limiter),
 	}
 
 	for i := range opts {
@@ -94,7 +94,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 			set.setLimiter(GlobalLimiter, l.Limit)
 		}
 
-		for k, v := range set.reqPerSecByMethod {
+		for k, v := range set.reqPerSecByPath {
 			if v < 1 {
 				l := &ZeroRateLimiter{}
 				set.setLimiter(k, l.Limit)
@@ -116,7 +116,7 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 			set.setLimiter(GlobalLimiter, l.Limit)
 		}
 
-		for k, v := range set.reqPerSecByMethod {
+		for k, v := range set.reqPerSecByPath {
 			if v < 1 {
 				l := &ZeroRateLimiter{}
 				set.setLimiter(k, l.Limit)
@@ -142,19 +142,19 @@ func newOptionSet(rpcType string, opts ...Option) *optionSet {
 
 // options which is used while initializing extension interceptor
 type optionSet struct {
-	EntryName         string
-	EntryType         string
-	reqPerSec         int
-	reqPerSecByMethod map[string]int
-	algorithm         string
-	limiter           map[string]Limiter
+	EntryName       string
+	EntryType       string
+	reqPerSec       int
+	reqPerSecByPath map[string]int
+	algorithm       string
+	limiter         map[string]Limiter
 }
 
 // Wait until rate limit pass through
-func (set *optionSet) Wait(ctx context.Context, method string) (time.Duration, error) {
+func (set *optionSet) Wait(ctx context.Context, path string) (time.Duration, error) {
 	now := time.Now()
 
-	limiter := set.getLimiter(method)
+	limiter := set.getLimiter(path)
 	if err := limiter(ctx); err != nil {
 		return now.Sub(now), err
 	}
@@ -162,8 +162,8 @@ func (set *optionSet) Wait(ctx context.Context, method string) (time.Duration, e
 	return now.Sub(time.Now()), nil
 }
 
-func (set *optionSet) getLimiter(method string) Limiter {
-	if v, ok := set.limiter[method]; ok {
+func (set *optionSet) getLimiter(path string) Limiter {
+	if v, ok := set.limiter[path]; ok {
 		return v
 	}
 
@@ -171,12 +171,12 @@ func (set *optionSet) getLimiter(method string) Limiter {
 }
 
 // Set limiter if not exists
-func (set *optionSet) setLimiter(method string, l Limiter) {
-	if _, ok := set.limiter[method]; ok {
+func (set *optionSet) setLimiter(path string, l Limiter) {
+	if _, ok := set.limiter[path]; ok {
 		return
 	}
 
-	set.limiter[method] = l
+	set.limiter[path] = l
 }
 
 // Option option for optionSet
@@ -199,11 +199,11 @@ func WithReqPerSec(reqPerSec int) Option {
 	}
 }
 
-// WithReqPerSecByMethod Provide request per second by method.
-func WithReqPerSecByMethod(method string, reqPerSec int) Option {
+// WithReqPerSecByPath Provide request per second by path.
+func WithReqPerSecByPath(path string, reqPerSec int) Option {
 	return func(opt *optionSet) {
 		if reqPerSec >= 0 {
-			opt.reqPerSecByMethod[method] = reqPerSec
+			opt.reqPerSecByPath[path] = reqPerSec
 		}
 	}
 }
@@ -224,13 +224,13 @@ func WithGlobalLimiter(l Limiter) Option {
 	}
 }
 
-// WithLimiterByMethod provide user defined Limiter by method.
-func WithLimiterByMethod(method string, l Limiter) Option {
+// WithLimiterByPath provide user defined Limiter by path.
+func WithLimiterByPath(path string, l Limiter) Option {
 	return func(opt *optionSet) {
-		if !strings.HasPrefix(method, "/") {
-			method = "/" + method
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
 		}
 
-		opt.limiter[method] = l
+		opt.limiter[path] = l
 	}
 }

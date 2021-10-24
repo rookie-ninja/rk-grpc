@@ -135,8 +135,8 @@ grpc:
         enabled: true
         algorithm: leakyBucket
         reqPerSec: 1
-        methods:
-          - name: "ut-method"
+        paths:
+          - path: "ut-method"
             reqPerSec: 1
 `
 

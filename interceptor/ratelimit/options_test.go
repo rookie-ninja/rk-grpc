@@ -3,7 +3,7 @@ package rkgrpclimit
 import (
 	"context"
 	"fmt"
-	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -47,13 +47,13 @@ func TestWithReqPerSec(t *testing.T) {
 	assert.NotNil(t, set.getLimiter("")(context.TODO()))
 }
 
-func TestWithReqPerSecByMethod(t *testing.T) {
+func TestWithReqPerSecByPath(t *testing.T) {
 	// with non-zero
 	set := newOptionSet(
 		rkgrpcinter.RpcTypeUnaryServer,
-		WithReqPerSecByMethod("ut-method", 1))
+		WithReqPerSecByPath("ut-method", 1))
 
-	assert.Equal(t, 1, set.reqPerSecByMethod["ut-method"])
+	assert.Equal(t, 1, set.reqPerSecByPath["ut-method"])
 	assert.NotNil(t, set.limiter["ut-method"])
 
 	// Should be token based limiter
@@ -62,9 +62,9 @@ func TestWithReqPerSecByMethod(t *testing.T) {
 	// With zero
 	set = newOptionSet(
 		rkgrpcinter.RpcTypeUnaryServer,
-		WithReqPerSecByMethod("ut-method", 0))
+		WithReqPerSecByPath("ut-method", 0))
 
-	assert.Equal(t, 0, set.reqPerSecByMethod["ut-method"])
+	assert.Equal(t, 0, set.reqPerSecByPath["ut-method"])
 	assert.NotNil(t, set.limiter["ut-method"])
 
 	// should be zero rate limiter which returns error
@@ -88,7 +88,7 @@ func TestWithAlgorithm(t *testing.T) {
 		rkgrpcinter.RpcTypeUnaryServer,
 		WithAlgorithm(LeakyBucket),
 		WithReqPerSec(1),
-		WithReqPerSecByMethod("ut-method", 1))
+		WithReqPerSecByPath("ut-method", 1))
 
 	// should be leaky bucket
 	assert.Len(t, set.limiter, 2)
@@ -110,7 +110,7 @@ func TestWithGlobalLimiter(t *testing.T) {
 func TestWithLimiterByMethod(t *testing.T) {
 	set := newOptionSet(
 		rkgrpcinter.RpcTypeUnaryServer,
-		WithLimiterByMethod("/ut-method", func(ctx context.Context) error {
+		WithLimiterByPath("/ut-method", func(ctx context.Context) error {
 			return fmt.Errorf("ut error")
 		}))
 
@@ -141,7 +141,7 @@ func TestOptionSet_Wait(t *testing.T) {
 	set = newOptionSet(
 		rkgrpcinter.RpcTypeUnaryServer,
 		WithAlgorithm(TokenBucket),
-		WithReqPerSecByMethod("ut-method", 100))
+		WithReqPerSecByPath("ut-method", 100))
 
 	set.Wait(context.TODO(), "ut-method")
 
@@ -156,7 +156,7 @@ func TestOptionSet_Wait(t *testing.T) {
 	set = newOptionSet(
 		rkgrpcinter.RpcTypeUnaryServer,
 		WithAlgorithm(LeakyBucket),
-		WithReqPerSecByMethod("ut-method", 100))
+		WithReqPerSecByPath("ut-method", 100))
 
 	set.Wait(context.TODO(), "ut-method")
 

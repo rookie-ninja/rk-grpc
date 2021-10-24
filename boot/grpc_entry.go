@@ -23,7 +23,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
-	rkgrpclimit "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
+	"github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
@@ -114,8 +114,13 @@ type gwRule struct {
 // 36: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint: Jaeger collector endpoint.
 // 37: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorUsername: Jaeger collector user name.
 // 38: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorPassword: Jaeger collector password.
-// 39: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 40: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 39: Grpc.Interceptors.RateLimit.Enabled: Enable rate limit interceptor.
+// 40: Grpc.Interceptors.RateLimit.Algorithm: Algorithm of rate limiter.
+// 41: Grpc.Interceptors.RateLimit.ReqPerSec: Request per second.
+// 42: Grpc.Interceptors.RateLimit.Paths.Path: Name of gRPC full method.
+// 43: Grpc.Interceptors.RateLimit.Paths.ReqPerSec: Request per second by method.
+// 44: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
+// 45: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name             string `yaml:"name" json:"name"`
@@ -157,10 +162,10 @@ type BootConfigGrpc struct {
 				Enabled   bool   `yaml:"enabled" json:"enabled"`
 				Algorithm string `yaml:"algorithm" json:"algorithm"`
 				ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
-				Methods   []struct {
-					Name      string `yaml:"name" json:"name"`
+				Paths     []struct {
+					Path      string `yaml:"path" json:"path"`
 					ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
-				} `yaml:"methods" json:"methods"`
+				} `yaml:"paths" json:"paths"`
 			} `yaml:"rateLimit" json:"rateLimit"`
 			TracingTelemetry struct {
 				Enabled  bool `yaml:"enabled" json:"enabled"`
@@ -521,9 +526,9 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			}
 			opts = append(opts, rkgrpclimit.WithReqPerSec(element.Interceptors.RateLimit.ReqPerSec))
 
-			for i := range element.Interceptors.RateLimit.Methods {
-				method := element.Interceptors.RateLimit.Methods[i]
-				opts = append(opts, rkgrpclimit.WithReqPerSecByMethod(method.Name, method.ReqPerSec))
+			for i := range element.Interceptors.RateLimit.Paths {
+				e := element.Interceptors.RateLimit.Paths[i]
+				opts = append(opts, rkgrpclimit.WithReqPerSecByPath(e.Path, e.ReqPerSec))
 			}
 
 			entry.AddUnaryInterceptors(rkgrpclimit.UnaryServerInterceptor(opts...))

@@ -45,7 +45,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
         grpc.ChainUnaryInterceptor(
             rkgrpclimit.UnaryServerInterceptor(
                 rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByMethod("/Greeter/SayHello", 0),
+                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
             ),
         ),
     }
@@ -57,7 +57,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
         grpc.ChainStreamInterceptor(
             rkgrpclimit.StreamServerInterceptor(
                 rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByMethod("/Greeter/SayHello", 0),
+                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
             ),
         ),
     }
@@ -68,10 +68,10 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
 | ---- | ---- | ---- |
 | WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
 | WithReqPerSec(int) | int | Global rate limit per second. |
-| WithReqPerSecByMethod(method string, reqPerSec int) | "", 0 | Request limiter by gRPC method. |
+| WithReqPerSecByPath(path string, reqPerSec int) | "", 0 | Request limiter by gRPC method. |
 | WithAlgorithm(algo string) | tokenBucket | Algorithm of rate limiter. |
 | WithGlobalLimiter(l Limiter) | nil | Provider user defined limiter. |
-| WithLimiterByMethod(method string, l Limiter) | "", nil | Provider user defined limiter by method. |
+| WithLimiterByPath(path string, l Limiter) | "", nil | Provider user defined limiter by gRPC method. |
 
 ### Context Usage
 | Name | Functionality |
