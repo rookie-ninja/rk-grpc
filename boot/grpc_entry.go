@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/encoding/protojson"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -123,12 +124,13 @@ type gwRule struct {
 // 45: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
-		Name             string `yaml:"name" json:"name"`
-		Description      string `yaml:"description" json:"description"`
-		Port             uint64 `yaml:"port" json:"port"`
-		Enabled          bool   `yaml:"enabled" json:"enabled"`
-		EnableReflection bool   `yaml:"enableReflection" json:"enableReflection"`
-		Cert             struct {
+		Name               string `yaml:"name" json:"name"`
+		Description        string `yaml:"description" json:"description"`
+		Port               uint64 `yaml:"port" json:"port"`
+		Enabled            bool   `yaml:"enabled" json:"enabled"`
+		EnableReflection   bool   `yaml:"enableReflection" json:"enableReflection"`
+		NoRecvMsgSizeLimit bool   `yaml:"noRecvMsgSizeLimit" json:"noRecvMsgSizeLimit"`
+		Cert               struct {
 			Ref string `yaml:"ref" json:"ref"`
 		} `yaml:"cert" json:"cert"`
 		CommonService      BootConfigCommonService `yaml:"commonService" json:"commonService"`
@@ -406,6 +408,11 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithEnableReflectionGrpc(element.EnableReflection),
 			WithGwMappingFilePathsGrpc(element.GwMappingFilePaths...),
 			WithCertEntryGrpc(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
+
+		// Did we disabled message size for receiving?
+		if element.NoRecvMsgSizeLimit {
+			entry.ServerOpts = append(entry.ServerOpts, grpc.MaxRecvMsgSize(math.MaxInt64))
+		}
 
 		// did we enabled logging interceptor?
 		if element.Interceptors.LoggingZap.Enabled {

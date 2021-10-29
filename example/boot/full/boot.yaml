@@ -17,14 +17,14 @@ cred:
   - name: "local-cred"                                    # Required
     description: "Description of entry"                   # Optional
     provider: "localFs"                                   # Required, etcd, consul, localFs, remoteFs are supported options
-    locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
+    locale: "*::*::*::*"                                  # Required, default: ""
     paths:                                                # Optional
       - "example/boot/full/cred.yaml"
 cert:                                                     # Optional
   - name: "local-cert"                                    # Required
     description: "Description of entry"                   # Optional
     provider: "localFs"                                   # Required, etcd, consul, localFs, remoteFs are supported options
-    locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
+    locale: "*::*::*::*"                                  # Required, default: ""
     serverCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
     serverKeyPath: "example/boot/full/server-key.pem"     # Optional, default: "", path of certificate on local FS
     clientCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
@@ -32,13 +32,14 @@ config:
   - name: rk-main                                         # Required
     path: "example/boot/full/config.yaml"                 # Required
     description: "Description of entry"                   # Optional
-    locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
+    locale: "*::*::*::*"                                  # Required, default: ""
 grpc:
   - name: greeter                                         # Required
     enabled: true                                         # Required
     port: 8080                                            # Optional
     enableReflection: true                                # Optional, default: false
     enableRkGwOption: true                                # Optional, default: false
+    noRecvMsgSizeLimit: true                              # Optional, default: false
 #    cert:
 #      ref: "local-cert"                                  # Optional, default: "", reference of cert entry declared above
     commonService:

@@ -276,6 +276,7 @@ User can start multiple grpc servers at the same time. Please make sure use diff
 | grpc.description | Description of grpc entry. | string | "" |
 | grpc.enableReflection | Enable grpc server reflection | boolean | false |
 | grpc.enableRkGwOption | Enable RK style gateway server options. [detail](boot/gw_server_options.go) | false |
+| grpc.noRecvMsgSizeLimit | Disable grpc server side receive message size limit | false |
 | grpc.gwMappingFilePaths | The grpc gateway mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
 | grpc.cert.ref | Reference of cert entry declared in [cert entry](https://github.com/rookie-ninja/rk-entry#certentry) | string | "" |
 | grpc.logger.zapLogger.ref | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
