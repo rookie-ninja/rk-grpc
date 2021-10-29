@@ -1,12 +1,5 @@
-# Rate limit interceptor
-In this example, we will try to create unary grpc server rate limit interceptor enabled.
-
-Rate limit interceptor contains bellow algorithm
-
-| Type | Description |
-| ---- | ---- |
-| tokenBucket | [wiki](https://en.wikipedia.org/wiki/Token_bucket) |
-| leakyBucket | [wiki](https://en.wikipedia.org/wiki/Leaky_bucket) |
+# Timeout interceptor
+In this example, we will try to create unary grpc server timeout interceptor enabled.
 
 **Please make sure panic interceptor to be added at last in chain of interceptors.**
 
@@ -35,7 +28,7 @@ go get -u github.com/rookie-ninja/rk-grpc
 
 ### Code
 ```go
-import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
+import     "github.com/rookie-ninja/rk-grpc/interceptor/timeout"
 ```
 ```go
     // *************************************
@@ -43,9 +36,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
     // *************************************
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
-            rkgrpclimit.UnaryServerInterceptor(
-                rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
+            rkgrpctimeout.UnaryServerInterceptor(
+                rkgrpctimeout.WithTimeoutAndResp(time.Second, nil),
             ),
         ),
     }
@@ -55,9 +47,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
     // *************************************
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
-            rkgrpclimit.StreamServerInterceptor(
-                rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
+            rkgrpctimeout.StreamServerInterceptor(
+                rkgrpctimeout.WithTimeoutAndResp(time.Second, nil),
             ),
         ),
     }
@@ -67,11 +58,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
 | Name | Default | Description |
 | ---- | ---- | ---- |
 | WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
-| WithReqPerSec(int) | int | Global rate limit per second. |
-| WithReqPerSecByPath(path string, reqPerSec int) | "", 0 | Request limiter by gRPC method. |
-| WithAlgorithm(algo string) | tokenBucket | Algorithm of rate limiter. |
-| WithGlobalLimiter(l Limiter) | nil | Provider user defined limiter. |
-| WithLimiterByPath(path string, l Limiter) | "", nil | Provider user defined limiter by gRPC method. |
+| WithTimeoutAndResp(time.Duration, error) | 5*time.Second, codes.Canceled | Set timeout interceptor with all methods. |
+| WithTimeoutAndRespByPath(method string, time.Duration, error) | "", 5*time.Second, codes.Canceled | Set timeout interceptor with specified method. |
 
 ### Context Usage
 | Name | Functionality |
@@ -99,46 +87,46 @@ $ go run greeter-client.go
 - Server side (event)
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-10-24T04:41:24.60081+08:00
-startTime=2021-10-24T04:41:24.600718+08:00
-elapsedNano=91409
+endTime=2021-10-30T00:15:14.386439+08:00
+startTime=2021-10-30T00:15:13.383453+08:00
+elapsedNano=1002992959
 timezone=CST
-ids={"eventId":"1e4859f6-be62-45a2-99a8-f21d9113a057"}
+ids={"eventId":"a607b956-b9e4-43fc-b707-74e343684855"}
 app={"appName":"rk","appVersion":"","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"192.168.101.5","os":"darwin","realm":"*","region":"*"}
 payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
-error={"rpc error: code = ResourceExhausted desc = Slow down your request.":2}
-counters={"rateLimitWaitMs":0}
+error={"rpc error: code = Canceled desc = Request timed out!":1}
+counters={"timeout":1}
 pairs={}
 timing={}
-remoteAddr=127.0.0.1:54189
+remoteAddr=127.0.0.1:61786
 operation=/Greeter/SayHello
-resCode=ResourceExhausted
+resCode=Canceled
 eventStatus=Ended
 EOE
 ```
 
 - Client side (zap & event)
 ```shell script
-2021-10-24T04:41:24.601+0800    FATAL   client/greeter-client.go:40     Failed to send request to server.       {"error": "rpc error: code = ResourceExhausted desc = Slow down your request."}
+2021-10-30T00:15:14.387+0800    FATAL   client/greeter-client.go:40     Failed to send request to server.       {"error": "rpc error: code = Canceled desc = Request timed out!"}
 ```
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-10-24T04:41:24.601294+08:00
-startTime=2021-10-24T04:41:24.599985+08:00
-elapsedNano=1308704
+endTime=2021-10-30T00:15:14.387264+08:00
+startTime=2021-10-30T00:15:13.382787+08:00
+elapsedNano=1004483920
 timezone=CST
-ids={"eventId":"f8d0bcf2-da63-489a-bc7d-7b81035b4bfc"}
+ids={"eventId":"1e176aa9-46a5-44a0-8507-9b69120cd600"}
 app={"appName":"rk","appVersion":"","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"192.168.101.5","os":"darwin","realm":"*","region":"*"}
 payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={"rpc error: code = ResourceExhausted desc = Slow down your request.":1}
+error={"rpc error: code = Canceled desc = Request timed out!":1}
 counters={}
 pairs={}
 timing={}
 remoteAddr=localhost:8080
 operation=/Greeter/SayHello
-resCode=ResourceExhausted
+resCode=Canceled
 eventStatus=Ended
 EOE
 ```
