@@ -93,6 +93,7 @@ grpc:
       enabled: true                                  # Optional, default: false
     cert:
       ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
+    noRecvMsgSizeLimit: true
     tv:
       enabled: true                                  # Optional, default: false
     sw:
