@@ -24,6 +24,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
+	"github.com/rookie-ninja/rk-grpc/interceptor/timeout"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
@@ -120,8 +121,12 @@ type gwRule struct {
 // 41: Grpc.Interceptors.RateLimit.ReqPerSec: Request per second.
 // 42: Grpc.Interceptors.RateLimit.Paths.Path: Name of gRPC full method.
 // 43: Grpc.Interceptors.RateLimit.Paths.ReqPerSec: Request per second by method.
-// 44: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 45: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 44: Grpc.Interceptors.Timeout.Enabled: Enable timeout interceptor.
+// 45: Grpc.Interceptors.Timeout.TimeoutMs: Timeout in milliseconds.
+// 46: Grpc.Interceptors.Timeout.Paths.path: Name of full path.
+// 47: Grpc.Interceptors.Timeout.Paths.TimeoutMs: Timeout in milliseconds by path.
+// 48: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
+// 49: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name               string `yaml:"name" json:"name"`
@@ -169,6 +174,14 @@ type BootConfigGrpc struct {
 					ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
 				} `yaml:"paths" json:"paths"`
 			} `yaml:"rateLimit" json:"rateLimit"`
+			Timeout struct {
+				Enabled   bool `yaml:"enabled" json:"enabled"`
+				TimeoutMs int  `yaml:"timeoutMs" json:"timeoutMs"`
+				Paths     []struct {
+					Path      string `yaml:"path" json:"path"`
+					TimeoutMs int    `yaml:"timeoutMs" json:"timeoutMs"`
+				} `yaml:"paths" json:"paths"`
+			} `yaml:"timeout" json:"timeout"`
 			TracingTelemetry struct {
 				Enabled  bool `yaml:"enabled" json:"enabled"`
 				Exporter struct {
@@ -521,6 +534,26 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(opts...))
+		}
+
+		// did we enabled timeout interceptor?
+		// This should be in front of rate limit interceptor since rate limit may block over the threshold of timeout.
+		if element.Interceptors.Timeout.Enabled {
+			opts := make([]rkgrpctimeout.Option, 0)
+			opts = append(opts,
+				rkgrpctimeout.WithEntryNameAndType(element.Name, GrpcEntryType))
+
+			timeout := time.Duration(element.Interceptors.Timeout.TimeoutMs) * time.Millisecond
+			opts = append(opts, rkgrpctimeout.WithTimeoutAndResp(timeout, nil))
+
+			for i := range element.Interceptors.Timeout.Paths {
+				e := element.Interceptors.Timeout.Paths[i]
+				timeout := time.Duration(e.TimeoutMs) * time.Millisecond
+				opts = append(opts, rkgrpctimeout.WithTimeoutAndRespByPath(e.Path, timeout, nil))
+			}
+
+			entry.AddUnaryInterceptors(rkgrpctimeout.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpctimeout.StreamServerInterceptor(opts...))
 		}
 
 		// did we enabled rate limit interceptor?

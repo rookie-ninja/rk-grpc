@@ -139,6 +139,8 @@ grpc:
         paths:
           - path: "ut-method"
             reqPerSec: 1
+      timeout:
+        enabled: true
 `
 
 	// Create bootstrap config file at ut temp dir
