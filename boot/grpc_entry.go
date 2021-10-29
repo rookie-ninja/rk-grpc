@@ -425,7 +425,9 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 		// Did we disabled message size for receiving?
 		if element.NoRecvMsgSizeLimit {
 			entry.ServerOpts = append(entry.ServerOpts, grpc.MaxRecvMsgSize(math.MaxInt64))
-			entry.GwDialOptions = append(entry.GwDialOptions, grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt64)))
+			entry.GwDialOptions = append(entry.GwDialOptions, grpc.WithDefaultCallOptions(
+				grpc.MaxCallSendMsgSize(math.MaxInt64),
+				grpc.MaxCallRecvMsgSize(math.MaxInt64)))
 		}
 
 		// did we enabled logging interceptor?
