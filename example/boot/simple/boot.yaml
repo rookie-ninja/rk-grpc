@@ -1,22 +1,22 @@
 ---
 grpc:
-  - name: greeter
-    enabled: true
-    port: 8080
-    enableReflection: true
-    enableRkGwOption: true
+  - name: greeter                     # Required
+    port: 8080                        # Required
+    enabled: true                     # Required
+    enableReflection: true            # Optional, default: false
+    enableRkGwOption: true            # Optional, default: false
     commonService:
-      enabled: true
+      enabled: true                   # Optional, default: false
     tv:
-      enabled: true
+      enabled: true                   # Optional, default: false
     sw:
-      enabled: true
+      enabled: true                   # Optional, default: false
     prom:
-      enabled: true
-#    interceptors:
-#      loggingZap:
-#        enabled: true
-#      metricsProm:
-#        enabled: true
-#      meta:
-#        enabled: true
+      enabled: true                   # Optional, default: false
+    interceptors:
+      loggingZap:
+        enabled: true                 # Optional, default: false
+      metricsProm:
+        enabled: true                 # Optional, default: false
+      meta:
+        enabled: true                 # Optional, default: false
