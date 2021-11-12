@@ -142,6 +142,7 @@ type BootConfigGrpc struct {
 		Sw                 BootConfigSw            `yaml:"sw" json:"sw"`
 		Tv                 BootConfigTv            `yaml:"tv" json:"tv"`
 		Prom               BootConfigProm          `yaml:"prom" json:"prom"`
+		Proxy              BootConfigProxy         `yaml:"proxy" json:"proxy"`
 		EnableRkGwOption   bool                    `yaml:"enableRkGwOption" json:"enableRkGwOption"`
 		GwMappingFilePaths []string                `yaml:"gwMappingFilePaths" json:"gwMappingFilePaths"`
 		Interceptors       struct {
@@ -271,6 +272,7 @@ type GrpcEntry struct {
 	// Utility related
 	SwEntry            *SwEntry            `json:"swEntry" yaml:"swEntry"`
 	TvEntry            *TvEntry            `json:"tvEntry" yaml:"tvEntry"`
+	ProxyEntry         *ProxyEntry         `json:"proxyEntry" yaml:"proxyEntry"`
 	PromEntry          *PromEntry          `json:"promEntry" yaml:"promEntry"`
 	CommonServiceEntry *CommonServiceEntry `json:"commonServiceEntry" yaml:"commonServiceEntry"`
 	CertEntry          *rkentry.CertEntry  `json:"certEntry" yaml:"certEntry"`
@@ -365,6 +367,49 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithZapLoggerEntryTv(zapLoggerEntry))
 		}
 
+		// Did we enabled proxy?
+		var proxy *ProxyEntry
+		if element.Proxy.Enabled {
+			opts := make([]ruleOption, 0)
+			for i := range element.Proxy.Rules {
+				rule := element.Proxy.Rules[i]
+				switch rule.Type {
+				case HeaderBased:
+					headers := make(map[string]string, 0)
+
+					for i := range rule.HeaderPairs {
+						tokens := strings.SplitN(rule.HeaderPairs[i], ":", 2)
+						if len(tokens) != 2 {
+							continue
+						}
+						headers[tokens[0]] = tokens[1]
+					}
+
+					opts = append(opts, WithHeaderPatterns(&HeaderPattern{
+						Headers: headers,
+						Dest:    rule.Dest,
+					}))
+
+				case PathBased:
+					opts = append(opts, WithPathPatterns(&PathPattern{
+						Paths: rule.Paths,
+						Dest:  rule.Dest,
+					}))
+				case IpBased:
+					opts = append(opts, WithIpPatterns(&IpPattern{
+						Cidrs: rule.Ips,
+						Dest:  rule.Dest,
+					}))
+				}
+			}
+
+			proxy = NewProxyEntry(
+				WithNameProxy(element.Name),
+				WithEventLoggerEntryProxy(eventLoggerEntry),
+				WithZapLoggerEntryProxy(zapLoggerEntry),
+				WithRuleProxy(NewRule(opts...)))
+		}
+
 		// Did we enable prom?
 		var prom *PromEntry
 		var promRegistry *prometheus.Registry
@@ -416,6 +461,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithSwEntryGrpc(sw),
 			WithTvEntryGrpc(tv),
 			WithPromEntryGrpc(prom),
+			WithProxyEntryGrpc(proxy),
 			WithGwMuxOptionsGrpc(gwMuxOpts...),
 			WithCommonServiceEntryGrpc(commonService),
 			WithEnableReflectionGrpc(element.EnableReflection),
@@ -681,6 +727,13 @@ func WithTvEntryGrpc(tv *TvEntry) GrpcEntryOption {
 	}
 }
 
+// WithProxyEntryGrpc Provide ProxyEntry.
+func WithProxyEntryGrpc(proxy *ProxyEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.ProxyEntry = proxy
+	}
+}
+
 // WithPromEntryGrpc Provide PromEntry.
 func WithPromEntryGrpc(prom *PromEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
@@ -889,6 +942,15 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	entry.ServerOpts = append(entry.ServerOpts,
 		grpc.ChainUnaryInterceptor(entry.UnaryInterceptors...),
 		grpc.ChainStreamInterceptor(entry.StreamInterceptors...))
+
+	// 4.2: Add proxy entry
+	if entry.IsProxyEnabled() {
+		entry.ServerOpts = append(entry.ServerOpts,
+			grpc.ForceServerCodec(Codec()),
+			grpc.UnknownServiceHandler(TransparentHandler(entry.ProxyEntry.r.GetDirector())),
+		)
+		entry.ProxyEntry.Bootstrap(ctx)
+	}
 
 	// 4.3: Create grpc server
 	entry.Server = grpc.NewServer(entry.ServerOpts...)
@@ -1151,6 +1213,11 @@ func (entry *GrpcEntry) IsTlsEnabled() bool {
 // IsCommonServiceEnabled Is common service enabled?
 func (entry *GrpcEntry) IsCommonServiceEnabled() bool {
 	return entry.CommonServiceEntry != nil
+}
+
+// IsProxyEnabled Is proxy enabled?
+func (entry *GrpcEntry) IsProxyEnabled() bool {
+	return entry.ProxyEntry != nil
 }
 
 // IsSwEnabled Is swagger enabled?

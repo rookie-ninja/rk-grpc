@@ -1,0 +1,17 @@
+---
+grpc:
+  - name: greeter                     # Required
+    port: 8080                        # Required
+    enabled: true                     # Required
+    proxy:
+      enabled: true
+      rules:
+        - type: headerBased
+          headerPairs: ["domain:test"]
+          dest: ["localhost:8081"]
+#        - type: pathBased
+#          paths: [""]
+#          dest: [""]
+#        - type: IpBased
+#          Ips: [""]
+#          dest: [""]

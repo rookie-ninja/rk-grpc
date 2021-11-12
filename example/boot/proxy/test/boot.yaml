@@ -1,0 +1,7 @@
+---
+grpc:
+  - name: greeter                     # Required
+    port: 8081                        # Required
+    enabled: true                     # Required
+    commonService:
+      enabled: true                   # Optional, default: false
