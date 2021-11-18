@@ -11,7 +11,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Start from YAML | Start service from YAML config. |
 | Start from code | Start service from code. |
 | gRPC Service | gRPC service defined with protocol buffer. |
-| gRPC Gateway Service | gRPC Gateway service with new port. |
+| gRPC Gateway Service | gRPC Gateway service with same port. |
 | Swagger Service | Swagger UI with same port as gRPC Gateway. |
 | Common Service | List of common API available on gRPC, gRPC Gateway and swagger. |
 | TV Service | A Web UI shows application and environment information. |
@@ -42,10 +42,11 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Meta](#meta)
 - [YAML Config](#yaml-config)
   - [gRPC Service](#grpc-service-1)
-    - [Common Service](#common-service-1)
-    - [Prom Client](#prom-client)
-    - [TV Service](#tv-service-1)
-    - [Swagger Service](#swagger-service-1)
+  - [gRPC gateway options](#grpc-gateway-options)
+  - [Common Service](#common-service-1)
+  - [Prom Client](#prom-client)
+  - [TV Service](#tv-service-1)
+  - [Swagger Service](#swagger-service-1)
   - [Interceptors](#interceptors)
     - [Log](#log)
     - [Metrics](#metrics-1)
@@ -284,7 +285,23 @@ User can start multiple grpc servers at the same time. Please make sure use diff
 | grpc.logger.zapLogger.ref | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
 | grpc.logger.eventLogger.ref | Reference of eventLoggerEntry declared in [eventLoggerEntry](https://github.com/rookie-ninja/rk-entry#eventloggerentry) | string | "" |
 
-#### Common Service
+### gRPC gateway options
+Please refer to bellow repository for detailed explanations.
+- [protobuf-go/encoding/protojson/encode.go](https://github.com/protocolbuffers/protobuf-go/blob/master/encoding/protojson/encode.go#L43)
+- [protobuf-go/encoding/protojson/decode.go ](https://github.com/protocolbuffers/protobuf-go/blob/master/encoding/protojson/decode.go#L33)
+
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.gwOption.marshal.multiline | Enable multiline in grpc-gateway marshaller | bool | false |
+| grpc.gwOption.marshal.emitUnpopulated | Enable emitUnpopulated in grpc-gateway marshaller | bool | false |
+| grpc.gwOption.marshal.indent | Set indent in grpc-gateway marshaller | string | "  " |
+| grpc.gwOption.marshal.allowPartial | Enable allowPartial in grpc-gateway marshaller | bool | false |
+| grpc.gwOption.marshal.useProtoNames | Enable useProtoNames in grpc-gateway marshaller | bool | false |
+| grpc.gwOption.marshal.useEnumNumbers | Enable useEnumNumbers in grpc-gateway marshaller | bool | false |
+| grpc.gwOption.unmarshal.allowPartial | Enable allowPartial in grpc-gateway unmarshaler | bool | false |
+| grpc.gwOption.unmarshal.discardUnknown | Enable discardUnknown in grpc-gateway unmarshaler | bool | false |
+
+### Common Service
 ```yaml
 http:
   rules:
@@ -324,7 +341,7 @@ http:
 | ------ | ------ | ------ | ------ |
 | grpc.commonService.enabled | Enable embedded common service | boolean | false |
 
-#### Prom Client
+### Prom Client
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.prom.enabled | Enable prometheus | boolean | false |
@@ -336,12 +353,12 @@ http:
 | grpc.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of [user:pass] | string | "" |
 | grpc.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
 
-#### TV Service
+### TV Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.tv.enabled | Enable RK TV | boolean | false |
 
-#### Swagger Service
+### Swagger Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.sw.enabled | Enable swagger service over gRpc server | boolean | false |

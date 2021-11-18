@@ -127,6 +127,14 @@ type gwRule struct {
 // 47: Grpc.Interceptors.Timeout.Paths.TimeoutMs: Timeout in milliseconds by path.
 // 48: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
 // 49: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
+// 50: Grpc.GwOption.Marshal.Multiline: Enable multiline in gateway option.
+// 51: Grpc.GwOption.Marshal.EmitUnpopulated: Enable emitUnpopulated in gateway option.
+// 52: Grpc.GwOption.Marshal.Indent: Set indent in gateway option.
+// 53: Grpc.GwOption.Marshal.AllowPartial: Enable allowPartial in gateway option.
+// 54: Grpc.GwOption.Marshal.UseProtoNames: Enable useProtoNames in gateway option.
+// 55: Grpc.GwOption.Marshal.UseEnumNumbers: Enable useEnumNumbers in gateway option.
+// 56: Grpc.GwOption.Unmarshal.AllowPartial: Enable allowPartial in gateway option.
+// 57: Grpc.GwOption.Unmarshal.DiscardUnknown: Enable discardUnknown in gateway option.
 type BootConfigGrpc struct {
 	Grpc []struct {
 		Name               string `yaml:"name" json:"name"`
@@ -144,6 +152,7 @@ type BootConfigGrpc struct {
 		Prom               BootConfigProm          `yaml:"prom" json:"prom"`
 		Proxy              BootConfigProxy         `yaml:"proxy" json:"proxy"`
 		EnableRkGwOption   bool                    `yaml:"enableRkGwOption" json:"enableRkGwOption"`
+		GwOption           *gwOption               `yaml:"gwOption" json:"gwOption"`
 		GwMappingFilePaths []string                `yaml:"gwMappingFilePaths" json:"gwMappingFilePaths"`
 		Interceptors       struct {
 			LoggingZap struct {
@@ -448,7 +457,14 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 		var grpcDialOptions = make([]grpc.DialOption, 0)
 		var gwMuxOpts = make([]gwruntime.ServeMuxOption, 0)
 		if element.EnableRkGwOption {
-			gwMuxOpts = append(gwMuxOpts, RkGwServerMuxOptions...)
+			mOpt := mergeWithRkGwMarshalOption(element.GwOption)
+			uOpt := mergeWithRkGwUnmarshalOption(element.GwOption)
+			gwMuxOpts = append(gwMuxOpts, NewRkGwServerMuxOptions(mOpt, uOpt)...)
+		} else {
+			gwMuxOpts = append(gwMuxOpts, gwruntime.WithMarshalerOption(gwruntime.MIMEWildcard, &gwruntime.JSONPb{
+				MarshalOptions:   *toMarshalOptions(element.GwOption),
+				UnmarshalOptions: *toUnmarshalOptions(element.GwOption),
+			}))
 		}
 
 		entry := RegisterGrpcEntry(
@@ -817,6 +833,14 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	//    +-------+
 	//    | auth  |
 	//    +-------+
+	//        |
+	//    +---------+
+	//    | timeout |
+	//    +---------+
+	//        |
+	//    +-------------+
+	//    | rate limit  |
+	//    +-------------+
 	//        |
 	//    +-------+
 	//    | panic |

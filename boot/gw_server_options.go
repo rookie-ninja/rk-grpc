@@ -20,16 +20,150 @@ import (
 	"strings"
 )
 
-var (
-	// RkGwServerMuxOptions RK style server mux
-	RkGwServerMuxOptions = []runtime.ServeMuxOption{
+// Gateway options for marshaller and unmarshaler.
+//
+// The inner fields was defined as pointer instead of reference which look strange.
+//
+// It is because we hope to make sure the value was defined by user in YAML file.
+// Otherwise, the boolean value will always be false even there nothing in YAML file.
+type gwOption struct {
+	Marshal *struct {
+		Multiline       *bool   `yaml:"multiline" json:"multiline"`
+		EmitUnpopulated *bool   `yaml:"emitUnpopulated" json:"emitUnpopulated"`
+		Indent          *string `yaml:"indent" json:"indent"`
+		AllowPartial    *bool   `yaml:"allowPartial" json:"allowPartial"`
+		UseProtoNames   *bool   `yaml:"useProtoNames" json:"useProtoNames"`
+		UseEnumNumbers  *bool   `yaml:"useEnumNumbers" json:"useEnumNumbers"`
+	} `yaml:"marshal" json:"marshal"`
+	Unmarshal *struct {
+		AllowPartial   *bool `yaml:"allowPartial" json:"allowPartial"`
+		DiscardUnknown *bool `yaml:"discardUnknown" json:"discardUnknown"`
+	} `yaml:"unmarshal" json:"unmarshal"`
+}
+
+// Convert gwOption to protojson.MarshalOptions
+func toMarshalOptions(opt *gwOption) *protojson.MarshalOptions {
+	res := &protojson.MarshalOptions{}
+
+	if opt == nil || opt.Marshal == nil {
+		return res
+	}
+
+	// Parse fields on by one
+	if opt.Marshal.Multiline != nil {
+		res.Multiline = *opt.Marshal.Multiline
+	}
+	if opt.Marshal.EmitUnpopulated != nil {
+		res.EmitUnpopulated = *opt.Marshal.EmitUnpopulated
+	}
+	if opt.Marshal.Indent != nil {
+		res.Indent = *opt.Marshal.Indent
+	}
+	if opt.Marshal.AllowPartial != nil {
+		res.AllowPartial = *opt.Marshal.AllowPartial
+	}
+	if opt.Marshal.UseProtoNames != nil {
+		res.UseProtoNames = *opt.Marshal.UseProtoNames
+	}
+	if opt.Marshal.UseEnumNumbers != nil {
+		res.UseEnumNumbers = *opt.Marshal.UseEnumNumbers
+	}
+
+	return res
+}
+
+// Convert gwOption to protojson.UnmarshalOptions
+func toUnmarshalOptions(opt *gwOption) *protojson.UnmarshalOptions {
+	res := &protojson.UnmarshalOptions{}
+
+	if opt == nil || opt.Unmarshal == nil {
+		return res
+	}
+
+	if opt.Unmarshal.AllowPartial != nil {
+		res.AllowPartial = *opt.Unmarshal.AllowPartial
+	}
+	if opt.Unmarshal.DiscardUnknown != nil {
+		res.DiscardUnknown = *opt.Unmarshal.DiscardUnknown
+	}
+
+	return res
+}
+
+// Merge gwOption with default RK style protojson.MarshalOptions
+func mergeWithRkGwMarshalOption(opt *gwOption) *protojson.MarshalOptions {
+	res := &protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+	}
+
+	if opt == nil || opt.Marshal == nil {
+		return res
+	}
+
+	// Parse fields on by one
+	if opt.Marshal.Multiline != nil {
+		res.Multiline = *opt.Marshal.Multiline
+	}
+	if opt.Marshal.EmitUnpopulated != nil {
+		res.EmitUnpopulated = *opt.Marshal.EmitUnpopulated
+	}
+	if opt.Marshal.Indent != nil {
+		res.Indent = *opt.Marshal.Indent
+	}
+	if opt.Marshal.AllowPartial != nil {
+		res.AllowPartial = *opt.Marshal.AllowPartial
+	}
+	if opt.Marshal.UseProtoNames != nil {
+		res.UseProtoNames = *opt.Marshal.UseProtoNames
+	}
+	if opt.Marshal.UseEnumNumbers != nil {
+		res.UseEnumNumbers = *opt.Marshal.UseEnumNumbers
+	}
+
+	return res
+}
+
+// Merge gwOption with default RK style protojson.UnmarshalOptions
+func mergeWithRkGwUnmarshalOption(opt *gwOption) *protojson.UnmarshalOptions {
+	res := &protojson.UnmarshalOptions{}
+
+	if opt == nil || opt.Unmarshal == nil {
+		return res
+	}
+
+	// Parse fields on by one
+	if opt.Unmarshal.AllowPartial != nil {
+		res.AllowPartial = *opt.Unmarshal.AllowPartial
+	}
+	if opt.Unmarshal.DiscardUnknown != nil {
+		res.DiscardUnknown = *opt.Unmarshal.DiscardUnknown
+	}
+
+	return res
+}
+
+// NewRkGwServerMuxOptions creates new gw server mux options.
+func NewRkGwServerMuxOptions(mOptIn *protojson.MarshalOptions, uOptIn *protojson.UnmarshalOptions) []runtime.ServeMuxOption {
+	mOpt := &protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+	}
+
+	if mOptIn != nil {
+		mOpt = mOptIn
+	}
+
+	uOpt := &protojson.UnmarshalOptions{}
+	if uOptIn != nil {
+		uOpt = uOptIn
+	}
+
+	return []runtime.ServeMuxOption{
 		runtime.WithErrorHandler(HttpErrorHandler),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-			MarshalOptions: protojson.MarshalOptions{
-				UseProtoNames:   false,
-				EmitUnpopulated: true,
-			},
-			UnmarshalOptions: protojson.UnmarshalOptions{},
+			MarshalOptions:   *mOpt,
+			UnmarshalOptions: *uOpt,
 		}),
 		runtime.WithMetadata(func(c context.Context, req *http.Request) metadata.MD {
 			// we are unable to get scheme with req.URL.Scheme.
@@ -49,7 +183,7 @@ var (
 		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher),
 		runtime.WithIncomingHeaderMatcher(IncomingHeaderMatcher),
 	}
-)
+}
 
 // HttpErrorHandler Mainly copies from runtime.DefaultHTTPErrorHandler.
 // We reformat error response with rkerror.ErrorResp.
