@@ -82,6 +82,17 @@ grpc:
 #    description: "greeter server"                         # Optional, default: ""
 #    enableReflection: true                                # Optional, default: false
 #    enableRkGwOption: true                                # Optional, default: false
+#    gwOption:                                             # Optional, default: nil
+#      marshal:                                            # Optional, default: nil
+#        multiline: false                                  # Optional, default: false
+#        emitUnpopulated: false                            # Optional, default: false
+#        indent: ""                                        # Optional, default: false
+#        allowPartial: false                               # Optional, default: false
+#        useProtoNames: false                              # Optional, default: false
+#        useEnumNumbers: false                             # Optional, default: false
+#      unmarshal:                                          # Optional, default: nil
+#        allowPartial: false                               # Optional, default: false
+#        discardUnknown: false                             # Optional, default: false
 #    noRecvMsgSizeLimit: true                              # Optional, default: false
 #    gwMappingFilePaths: []                                # Optional
 #    cert:
