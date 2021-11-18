@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	testhttp "github.com/stretchr/testify/http"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v3"
 	"io"
 	"net/http"
 	"testing"
@@ -77,4 +79,198 @@ func TestIncomingHeaderMatcher(t *testing.T) {
 	key, ok := IncomingHeaderMatcher("ut")
 	assert.True(t, ok)
 	assert.Equal(t, "ut", key)
+}
+
+func TestToMarshalOptions(t *testing.T) {
+	// with nil gwOption
+	assert.NotNil(t, toMarshalOptions(nil))
+
+	// with nil gwOption.Marshal
+	assert.NotNil(t, toMarshalOptions(&gwOption{}))
+
+	// with all fields in gwOption.Marshal to be nil
+	gwOptStr := `
+---
+marshal:
+`
+	gwOpt := &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	mOpt := toMarshalOptions(gwOpt)
+	assert.NotNil(t, mOpt)
+	assert.False(t, mOpt.Multiline)
+	assert.False(t, mOpt.EmitUnpopulated)
+	assert.Empty(t, mOpt.Indent)
+	assert.False(t, mOpt.AllowPartial)
+	assert.False(t, mOpt.UseProtoNames)
+	assert.False(t, mOpt.UseEnumNumbers)
+
+	// with fields
+	gwOptStr = `
+---
+marshal:
+  multiline: true
+  emitUnpopulated: true
+  indent: "ut-indent"
+  allowPartial: true
+  useProtoNames: true
+  useEnumNumbers: true
+`
+	gwOpt = &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	mOpt = toMarshalOptions(gwOpt)
+	assert.NotNil(t, mOpt)
+	assert.True(t, mOpt.Multiline)
+	assert.True(t, mOpt.EmitUnpopulated)
+	assert.Equal(t, "ut-indent", mOpt.Indent)
+	assert.True(t, mOpt.AllowPartial)
+	assert.True(t, mOpt.UseProtoNames)
+	assert.True(t, mOpt.UseEnumNumbers)
+}
+
+func TestToUnmarshalOptions(t *testing.T) {
+	// with nil gwOption
+	assert.NotNil(t, toUnmarshalOptions(nil))
+
+	// with nil gwOption.Unmarshal
+	assert.NotNil(t, toUnmarshalOptions(&gwOption{}))
+
+	// with all fields in gwOption.Marshal to be nil
+	gwOptStr := `
+---
+unmarshal:
+`
+	gwOpt := &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	uOpt := toUnmarshalOptions(gwOpt)
+	assert.NotNil(t, uOpt)
+	assert.False(t, uOpt.AllowPartial)
+	assert.False(t, uOpt.DiscardUnknown)
+
+	// with fields
+	gwOptStr = `
+---
+unmarshal:
+  allowPartial: true
+  discardUnknown: true
+`
+	gwOpt = &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	uOpt = toUnmarshalOptions(gwOpt)
+	assert.NotNil(t, uOpt)
+	assert.True(t, uOpt.AllowPartial)
+	assert.True(t, uOpt.DiscardUnknown)
+}
+
+func TestMergeWithRkGwMarshalOption(t *testing.T) {
+	// with nil gwOption
+	mOpt := mergeWithRkGwMarshalOption(nil)
+	assert.NotNil(t, mOpt)
+	assert.False(t, mOpt.Multiline)
+	assert.True(t, mOpt.EmitUnpopulated)
+	assert.Empty(t, mOpt.Indent)
+	assert.False(t, mOpt.AllowPartial)
+	assert.False(t, mOpt.UseProtoNames)
+	assert.False(t, mOpt.UseEnumNumbers)
+
+	// with nil gwOption.Marshal
+	mOpt = mergeWithRkGwMarshalOption(&gwOption{})
+	assert.NotNil(t, mOpt)
+	assert.False(t, mOpt.Multiline)
+	assert.True(t, mOpt.EmitUnpopulated)
+	assert.Empty(t, mOpt.Indent)
+	assert.False(t, mOpt.AllowPartial)
+	assert.False(t, mOpt.UseProtoNames)
+	assert.False(t, mOpt.UseEnumNumbers)
+
+	// with all fields in gwOption.Marshal to be nil
+	gwOptStr := `
+---
+marshal:
+`
+	gwOpt := &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	mOpt = mergeWithRkGwMarshalOption(gwOpt)
+	assert.NotNil(t, mOpt)
+	assert.False(t, mOpt.Multiline)
+	assert.True(t, mOpt.EmitUnpopulated)
+	assert.Empty(t, mOpt.Indent)
+	assert.False(t, mOpt.AllowPartial)
+	assert.False(t, mOpt.UseProtoNames)
+	assert.False(t, mOpt.UseEnumNumbers)
+
+	// with fields
+	gwOptStr = `
+---
+marshal:
+  multiline: true
+  emitUnpopulated: true
+  indent: "ut-indent"
+  allowPartial: true
+  useProtoNames: true
+  useEnumNumbers: true
+`
+	gwOpt = &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	mOpt = mergeWithRkGwMarshalOption(gwOpt)
+	assert.NotNil(t, mOpt)
+	assert.True(t, mOpt.Multiline)
+	assert.True(t, mOpt.EmitUnpopulated)
+	assert.Equal(t, "ut-indent", mOpt.Indent)
+	assert.True(t, mOpt.AllowPartial)
+	assert.True(t, mOpt.UseProtoNames)
+	assert.True(t, mOpt.UseEnumNumbers)
+}
+
+func TestMergeWithRkGwUnmarshalOption(t *testing.T) {
+	// with nil gwOption
+	uOpt := mergeWithRkGwUnmarshalOption(nil)
+	assert.NotNil(t, uOpt)
+	assert.False(t, uOpt.AllowPartial)
+	assert.False(t, uOpt.DiscardUnknown)
+
+	// with nil gwOption.Marshal
+	uOpt = mergeWithRkGwUnmarshalOption(&gwOption{})
+	assert.NotNil(t, uOpt)
+	assert.False(t, uOpt.AllowPartial)
+	assert.False(t, uOpt.DiscardUnknown)
+
+	// with all fields in gwOption.Marshal to be nil
+	gwOptStr := `
+---
+unmarshal:
+`
+	gwOpt := &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	uOpt = mergeWithRkGwUnmarshalOption(gwOpt)
+	assert.NotNil(t, uOpt)
+	assert.False(t, uOpt.AllowPartial)
+	assert.False(t, uOpt.DiscardUnknown)
+
+	// with fields
+	gwOptStr = `
+---
+unmarshal:
+  allowPartial: true
+  discardUnknown: true
+`
+	gwOpt = &gwOption{}
+	assert.Nil(t, yaml.Unmarshal([]byte(gwOptStr), gwOpt))
+	uOpt = mergeWithRkGwUnmarshalOption(gwOpt)
+	assert.NotNil(t, uOpt)
+	assert.True(t, uOpt.AllowPartial)
+	assert.True(t, uOpt.DiscardUnknown)
+}
+
+func TestNewRkGwServerMuxOptions(t *testing.T) {
+	// with nil marshal and unmarshal option
+	opts := NewRkGwServerMuxOptions(nil, nil)
+	assert.NotNil(t, opts)
+	assert.Len(t, opts, 5)
+
+	// with marshal and unmarshal option
+	mOptIn := &protojson.MarshalOptions{}
+	uOptIn := &protojson.UnmarshalOptions{}
+	opts = NewRkGwServerMuxOptions(mOptIn, uOptIn)
+	assert.NotNil(t, opts)
+	assert.Len(t, opts, 5)
 }

@@ -94,6 +94,18 @@ grpc:
     cert:
       ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
     noRecvMsgSizeLimit: true
+    enableRkGwOption: true
+    gwOption:
+      marshal:
+        multiline: true
+        emitUnpopulated: true
+        indent: "  "
+        allowPartial: true
+        useProtoNames: true
+        useEnumNumbers: true
+      unmarshal:
+        allowPartial: true
+        discardUnknown: true
     tv:
       enabled: true                                  # Optional, default: false
     sw:
