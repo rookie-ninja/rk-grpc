@@ -1,0 +1,13 @@
+---
+grpc:
+  - name: greeter                     # Required
+    port: 8080                        # Required
+    enabled: true                     # Required
+    commonService:
+      enabled: true                   # Optional, default: false
+    interceptors:
+      cors:
+        enabled: true
+        allowOrigins:
+          - "http://localhost:8080"
+          - "http://localhost:*"

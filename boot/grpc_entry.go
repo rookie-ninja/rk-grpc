@@ -19,6 +19,7 @@ import (
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
+	rkgrpccors "github.com/rookie-ninja/rk-grpc/interceptor/cors"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
@@ -171,6 +172,15 @@ type BootConfigGrpc struct {
 				Basic        []string `yaml:"basic" json:"basic"`
 				ApiKey       []string `yaml:"apiKey" json:"apiKey"`
 			} `yaml:"auth" json:"auth"`
+			Cors struct {
+				Enabled          bool     `yaml:"enabled" json:"enabled"`
+				AllowOrigins     []string `yaml:"allowOrigins" json:"allowOrigins"`
+				AllowCredentials bool     `yaml:"allowCredentials" json:"allowCredentials"`
+				AllowHeaders     []string `yaml:"allowHeaders" json:"allowHeaders"`
+				AllowMethods     []string `yaml:"allowMethods" json:"allowMethods"`
+				ExposeHeaders    []string `yaml:"exposeHeaders" json:"exposeHeaders"`
+				MaxAge           int      `yaml:"maxAge" json:"maxAge"`
+			} `yaml:"cors" json:"cors"`
 			Meta struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
 				Prefix  string `yaml:"prefix" json:"prefix"`
@@ -278,6 +288,7 @@ type GrpcEntry struct {
 	GwMappingFilePaths  []string                   `json:"gwMappingFilePaths" yaml:"gwMappingFilePaths"`
 	GwDialOptions       []grpc.DialOption          `json:"-" yaml:"-"`
 	GwHttpToGrpcMapping map[string]*gwRule         `json:"gwMapping" yaml:"gwMapping"`
+	gwCorsOptions       []rkgrpccors.Option        `json:"-" yaml:"-"`
 	// Utility related
 	SwEntry            *SwEntry            `json:"swEntry" yaml:"swEntry"`
 	TvEntry            *TvEntry            `json:"tvEntry" yaml:"tvEntry"`
@@ -576,6 +587,22 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
 		}
 
+		// did we enabled cors interceptor?
+		// CORS interceptor is for grpc-gateway
+		if element.Interceptors.Cors.Enabled {
+			opts := []rkgrpccors.Option{
+				rkgrpccors.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpccors.WithAllowOrigins(element.Interceptors.Cors.AllowOrigins...),
+				rkgrpccors.WithAllowCredentials(element.Interceptors.Cors.AllowCredentials),
+				rkgrpccors.WithExposeHeaders(element.Interceptors.Cors.ExposeHeaders...),
+				rkgrpccors.WithMaxAge(element.Interceptors.Cors.MaxAge),
+				rkgrpccors.WithAllowHeaders(element.Interceptors.Cors.AllowHeaders...),
+				rkgrpccors.WithAllowMethods(element.Interceptors.Cors.AllowMethods...),
+			}
+
+			entry.AddGwCorsOptions(opts...)
+		}
+
 		// did we enabled meta interceptor?
 		if element.Interceptors.Meta.Enabled {
 			opts := []rkgrpcmeta.Option{
@@ -771,7 +798,7 @@ func WithGrpcDialOptionsGrpc(opts ...grpc.DialOption) GrpcEntryOption {
 	}
 }
 
-// GwMuxOptions Provide gateway server mux options.
+// WithGwMuxOptionsGrpc Provide gateway server mux options.
 func WithGwMuxOptionsGrpc(opts ...gwruntime.ServeMuxOption) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.GwMuxOptions = append(entry.GwMuxOptions, opts...)
@@ -806,6 +833,7 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 		GwHttpToGrpcMapping: make(map[string]*gwRule),
 		GwDialOptions:       make([]grpc.DialOption, 0),
 		HttpMux:             http.NewServeMux(),
+		gwCorsOptions:       make([]rkgrpccors.Option, 0),
 	}
 
 	for i := range opts {
@@ -905,6 +933,11 @@ func (entry *GrpcEntry) AddUnaryInterceptors(inter ...grpc.UnaryServerIntercepto
 // AddStreamInterceptors Add stream interceptor.
 func (entry *GrpcEntry) AddStreamInterceptors(inter ...grpc.StreamServerInterceptor) {
 	entry.StreamInterceptors = append(entry.StreamInterceptors, inter...)
+}
+
+// AddGwCorsOptions Enable CORS at gateway side with options.
+func (entry *GrpcEntry) AddGwCorsOptions(opts ...rkgrpccors.Option) {
+	entry.gwCorsOptions = append(entry.gwCorsOptions, opts...)
 }
 
 // AddRegFuncGrpc Add grpc registration func.
@@ -1020,9 +1053,17 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		entry.HttpMux.Handle(entry.PromEntry.Path, promhttp.HandlerFor(entry.PromEntry.Gatherer, promhttp.HandlerOpts{}))
 	}
 	// 5.5: Create http server
+	var httpHandler http.Handler
+	httpHandler = entry.HttpMux
+
+	// 5.6: If CORS enabled, then add interceptor for grpc-gateway
+	if len(entry.gwCorsOptions) > 0 {
+		httpHandler = rkgrpccors.Interceptor(entry.HttpMux, entry.gwCorsOptions...)
+	}
+
 	entry.HttpServer = &http.Server{
 		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.Port, 10),
-		Handler: h2c.NewHandler(entry.HttpMux, &http2.Server{}),
+		Handler: h2c.NewHandler(httpHandler, &http2.Server{}),
 	}
 
 	// 6: Bootstrap CommonServiceEntry, SwEntry, PromEntry and TvEntry
