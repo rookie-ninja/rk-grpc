@@ -153,6 +153,8 @@ grpc:
             reqPerSec: 1
       timeout:
         enabled: true
+      cors:
+        enabled: true
 `
 
 	// Create bootstrap config file at ut temp dir

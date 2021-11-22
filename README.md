@@ -23,6 +23,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Auth interceptor | Support [Basic Auth] and [API Key] authorization types. |
 | RateLimit interceptor | Limit request rate from interceptor. |
 | Timeout interceptor | Timing out request by configuration. |
+| CORS interceptor | CORS interceptor for grpc-gateway. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -55,6 +56,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Tracing](#tracing)
     - [RateLimit](#ratelimit)
     - [Timeout](#timeout)
+    - [CORS](#cors)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
@@ -480,6 +482,17 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.timeout.timeoutMs | Global timeout in milliseconds. | int | 5000 |
 | grpc.interceptors.timeout.paths.path | Full path | string | "" |
 | grpc.interceptors.timeout.paths.timeoutMs | Timeout in milliseconds by full path | int | 5000 |
+
+#### CORS
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.interceptors.cors.enabled | Enable cors interceptor | boolean | false |
+| grpc.interceptors.cors.allowOrigins | Provide allowed origins with wildcard enabled. | []string | * |
+| grpc.interceptors.cors.allowMethods | Provide allowed methods returns as response header of OPTIONS request. | []string | All http methods |
+| grpc.interceptors.cors.allowHeaders | Provide allowed headers returns as response header of OPTIONS request. | []string | Headers from request |
+| grpc.interceptors.cors.allowCredentials | Returns as response header of OPTIONS request. | bool | false |
+| grpc.interceptors.cors.exposeHeaders | Provide exposed headers returns as response header of OPTIONS request. | []string | "" |
+| grpc.interceptors.cors.maxAge | Provide max age returns as response header of OPTIONS request. | int | 0 |
 
 ## Development Status: Stable
 

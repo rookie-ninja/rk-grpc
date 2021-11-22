@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>CORS Test</h1>
+
+<p>Call http://localhost:8080/rk/v1/healthy</p>
+
+<script type="text/javascript">
+    window.onload = function() {
+        var apiUrl = 'http://localhost:8080/rk/v1/healthy';
+        fetch(apiUrl).then(response => response.json()).then(data => {
+            document.getElementById("res").innerHTML = data["healthy"]
+        }).catch(err => {
+            document.getElementById("res").innerHTML = err
+        });
+    };
+</script>
+
+<h4>Response: </h4>
+<p id="res"></p>
+
+</body>
+</html>
