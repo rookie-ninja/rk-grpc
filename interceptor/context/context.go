@@ -383,8 +383,6 @@ func EndTraceSpan(ctx context.Context, span trace.Span, success bool) {
 		span.SetStatus(otelcodes.Ok, otelcodes.Ok.String())
 	}
 
-	span.SetName()
-
 	span.End()
 }
 
