@@ -24,6 +24,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | RateLimit interceptor | Limit request rate from interceptor. |
 | Timeout interceptor | Timing out request by configuration. |
 | CORS interceptor | CORS interceptor for grpc-gateway. |
+| JWT interceptor | JWT interceptor on server side. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -57,6 +58,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [RateLimit](#ratelimit)
     - [Timeout](#timeout)
     - [CORS](#cors)
+    - [JWT](#jwt)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
@@ -494,6 +496,27 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.cors.exposeHeaders | Provide exposed headers returns as response header of OPTIONS request. | []string | "" |
 | grpc.interceptors.cors.maxAge | Provide max age returns as response header of OPTIONS request. | int | 0 |
 
+#### JWT
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.interceptors.jwt.enabled | Enable JWT interceptor | boolean | false |
+| grpc.interceptors.jwt.signingKey | Required, Provide signing key. | string | "" |
+| grpc.interceptors.jwt.ignorePrefix | Provide ignoring path prefix. | []string | [] |
+| grpc.interceptors.jwt.signingKeys | Provide signing keys as scheme of <key>:<value>. | []string | [] |
+| grpc.interceptors.jwt.signingAlgo | Provide signing algorithm. | string | HS256 |
+| grpc.interceptors.jwt.tokenLookup | Provide token lookup scheme, please see bellow description. | string | "header:Authorization" |
+| grpc.interceptors.jwt.authScheme | Provide auth scheme. | string | Bearer |
+
+The supported scheme of **tokenLookup** 
+
+```
+// Optional. Default value "header:Authorization".
+// Possible values:
+// - "header:<name>"
+// Multiply sources example:
+// - "header: Authorization,cookie: myowncookie"
+```
+
 ## Development Status: Stable
 
 ## Build instruction
@@ -524,6 +547,8 @@ go 1.14
 
 require (
 	github.com/ghodss/yaml v1.0.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/juju/ratelimit v1.0.1
 	github.com/markbates/pkger v0.17.1
@@ -535,12 +560,12 @@ require (
 	github.com/rookie-ninja/rk-query v1.2.4
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.7.0
-	go.opentelemetry.io/contrib v1.0.0
-	go.opentelemetry.io/otel v1.0.1
-	go.opentelemetry.io/otel/exporters/jaeger v1.0.1
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.0.1
-	go.opentelemetry.io/otel/sdk v1.0.1
-	go.opentelemetry.io/otel/trace v1.0.1
+	go.opentelemetry.io/contrib v1.2.0
+	go.opentelemetry.io/otel v1.2.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.2.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.2.0
+	go.opentelemetry.io/otel/sdk v1.2.0
+	go.opentelemetry.io/otel/trace v1.2.0
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
@@ -548,6 +573,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 ```
 

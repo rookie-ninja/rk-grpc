@@ -17,7 +17,7 @@ func main() {
 	// Bootstrap grpc entry from boot config
 	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/simple/boot.yaml")
 
-	// Bootstrap gin entry
+	// Bootstrap grpc entry
 	res["greeter"].Bootstrap(context.Background())
 
 	// Wait for shutdown signal

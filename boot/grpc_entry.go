@@ -20,6 +20,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
 	rkgrpccors "github.com/rookie-ninja/rk-grpc/interceptor/cors"
+	rkgrpcjwt "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
@@ -185,6 +186,15 @@ type BootConfigGrpc struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
 				Prefix  string `yaml:"prefix" json:"prefix"`
 			} `yaml:"meta" json:"meta"`
+			Jwt struct {
+				Enabled      bool     `yaml:"enabled" json:"enabled"`
+				IgnorePrefix []string `yaml:"ignorePrefix" json:"ignorePrefix"`
+				SigningKey   string   `yaml:"signingKey" json:"signingKey"`
+				SigningKeys  []string `yaml:"signingKeys" json:"signingKeys"`
+				SigningAlgo  string   `yaml:"signingAlgo" json:"signingAlgo"`
+				TokenLookup  string   `yaml:"tokenLookup" json:"tokenLookup"`
+				AuthScheme   string   `yaml:"authScheme" json:"authScheme"`
+			} `yaml:"jwt" json:"jwt"`
 			RateLimit struct {
 				Enabled   bool   `yaml:"enabled" json:"enabled"`
 				Algorithm string `yaml:"algorithm" json:"algorithm"`
@@ -585,6 +595,33 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpctrace.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
+		}
+
+		// did we enabled jwt interceptor?
+		if element.Interceptors.Jwt.Enabled {
+			var signingKey []byte
+			if len(element.Interceptors.Jwt.SigningKey) > 0 {
+				signingKey = []byte(element.Interceptors.Jwt.SigningKey)
+			}
+
+			opts := []rkgrpcjwt.Option{
+				rkgrpcjwt.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpcjwt.WithSigningKey(signingKey),
+				rkgrpcjwt.WithSigningAlgorithm(element.Interceptors.Jwt.SigningAlgo),
+				rkgrpcjwt.WithTokenLookup(element.Interceptors.Jwt.TokenLookup),
+				rkgrpcjwt.WithAuthScheme(element.Interceptors.Jwt.AuthScheme),
+				rkgrpcjwt.WithIgnorePrefix(element.Interceptors.Jwt.IgnorePrefix...),
+			}
+
+			for _, v := range element.Interceptors.Jwt.SigningKeys {
+				tokens := strings.SplitN(v, ":", 2)
+				if len(tokens) == 2 {
+					opts = append(opts, rkgrpcjwt.WithSigningKeys(tokens[0], tokens[1]))
+				}
+			}
+
+			entry.AddUnaryInterceptors(rkgrpcjwt.UnaryServerInterceptor(opts...))
+			entry.AddStreamInterceptors(rkgrpcjwt.StreamServerInterceptor(opts...))
 		}
 
 		// did we enabled cors interceptor?

@@ -7,6 +7,7 @@
 package rkgrpcctx
 
 import (
+	"github.com/golang-jwt/jwt"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-logger"
 	"github.com/rookie-ninja/rk-query"
@@ -404,4 +405,19 @@ func InjectSpanToHttpRequest(ctx context.Context, req *http.Request) {
 
 	newCtx := trace.ContextWithRemoteSpanContext(req.Context(), GetTraceSpan(ctx).SpanContext())
 	GetTracerPropagator(ctx).Inject(newCtx, propagation.HeaderCarrier(req.Header))
+}
+
+// GetJwtToken return jwt.Token if exists
+func GetJwtToken(ctx context.Context) *jwt.Token {
+	if ctx == nil {
+		return nil
+	}
+
+	if raw := ctx.Value(rkgrpcinter.RpcJwtTokenKey); raw != nil {
+		if res, ok := raw.(*jwt.Token); ok {
+			return res
+		}
+	}
+
+	return nil
 }

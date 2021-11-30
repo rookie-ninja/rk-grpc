@@ -78,6 +78,8 @@ const (
 	RpcTypeUnaryClient = "unaryClient"
 	// RpcTypeStreamClient stream RPC client type in context
 	RpcTypeStreamClient = "streamClient"
+	// RpcJwtTokenKey key of jwt token in context
+	RpcJwtTokenKey = "grpcJwt"
 )
 
 // RpcPayloadAppended a flag used in inner middleware
