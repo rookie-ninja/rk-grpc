@@ -16,10 +16,10 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     contact: {
       name: "rk-dev";
       url: "https://github.com/rookie-ninja/rk-grpc";
-      email: "dongxuny@gmail.com";
+      email: "lark@pointgoal.io";
     };
     license: {
-      name: "MIT License";
+      name: "Apache License 2.0";
       url: "https://github.com/rookie-ninja/rk-grpc/blob/master/LICENSE.txt";
     };
   };
@@ -41,6 +41,14 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
         name: "X-API-Key";
       }
     }
+    security: {
+      key: "JWT";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "Authorization";
+      }
+    }
   }
   security: {
     security_requirement: {
@@ -49,6 +57,10 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     }
     security_requirement: {
       key: "ApiKeyAuth";
+      value: {};
+    }
+    security_requirement: {
+      key: "JWT";
       value: {};
     }
   }

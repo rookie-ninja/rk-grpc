@@ -7,10 +7,10 @@
     "contact": {
       "name": "rk-dev",
       "url": "https://github.com/rookie-ninja/rk-grpc",
-      "email": "dongxuny@gmail.com"
+      "email": "lark@pointgoal.io"
     },
     "license": {
-      "name": "MIT License",
+      "name": "Apache License 2.0",
       "url": "https://github.com/rookie-ninja/rk-grpc/blob/master/LICENSE.txt"
     }
   },
@@ -427,12 +427,18 @@
     },
     "BasicAuth": {
       "type": "basic"
+    },
+    "JWT": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
     }
   },
   "security": [
     {
       "ApiKeyAuth": [],
-      "BasicAuth": []
+      "BasicAuth": [],
+      "JWT": []
     }
   ]
 }
