@@ -26,6 +26,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
+	rkgrpcsec "github.com/rookie-ninja/rk-grpc/interceptor/secure"
 	"github.com/rookie-ninja/rk-grpc/interceptor/timeout"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"github.com/rookie-ninja/rk-prom"
@@ -182,6 +183,19 @@ type BootConfigGrpc struct {
 				ExposeHeaders    []string `yaml:"exposeHeaders" json:"exposeHeaders"`
 				MaxAge           int      `yaml:"maxAge" json:"maxAge"`
 			} `yaml:"cors" json:"cors"`
+			Secure struct {
+				Enabled               bool     `yaml:"enabled" json:"enabled"`
+				IgnorePrefix          []string `yaml:"ignorePrefix" json:"ignorePrefix"`
+				XssProtection         string   `yaml:"xssProtection" json:"xssProtection"`
+				ContentTypeNosniff    string   `yaml:"contentTypeNosniff" json:"contentTypeNosniff"`
+				XFrameOptions         string   `yaml:"xFrameOptions" json:"xFrameOptions"`
+				HstsMaxAge            int      `yaml:"hstsMaxAge" json:"hstsMaxAge"`
+				HstsExcludeSubdomains bool     `yaml:"hstsExcludeSubdomains" json:"hstsExcludeSubdomains"`
+				HstsPreloadEnabled    bool     `yaml:"hstsPreloadEnabled" json:"hstsPreloadEnabled"`
+				ContentSecurityPolicy string   `yaml:"contentSecurityPolicy" json:"contentSecurityPolicy"`
+				CspReportOnly         bool     `yaml:"cspReportOnly" json:"cspReportOnly"`
+				ReferrerPolicy        string   `yaml:"referrerPolicy" json:"referrerPolicy"`
+			} `yaml:"secure" json:"secure"`
 			Meta struct {
 				Enabled bool   `yaml:"enabled" json:"enabled"`
 				Prefix  string `yaml:"prefix" json:"prefix"`
@@ -299,6 +313,7 @@ type GrpcEntry struct {
 	GwDialOptions       []grpc.DialOption          `json:"-" yaml:"-"`
 	GwHttpToGrpcMapping map[string]*gwRule         `json:"gwMapping" yaml:"gwMapping"`
 	gwCorsOptions       []rkgrpccors.Option        `json:"-" yaml:"-"`
+	gwSecureOptions     []rkgrpcsec.Option         `json:"-" yaml:"-"`
 	// Utility related
 	SwEntry            *SwEntry            `json:"swEntry" yaml:"swEntry"`
 	TvEntry            *TvEntry            `json:"tvEntry" yaml:"tvEntry"`
@@ -622,6 +637,26 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 			entry.AddUnaryInterceptors(rkgrpcjwt.UnaryServerInterceptor(opts...))
 			entry.AddStreamInterceptors(rkgrpcjwt.StreamServerInterceptor(opts...))
+		}
+
+		// did we enabled secure interceptor?
+		// secure interceptor is for grpc-gateway
+		if element.Interceptors.Secure.Enabled {
+			opts := []rkgrpcsec.Option{
+				rkgrpcsec.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpcsec.WithXSSProtection(element.Interceptors.Secure.XssProtection),
+				rkgrpcsec.WithContentTypeNosniff(element.Interceptors.Secure.ContentTypeNosniff),
+				rkgrpcsec.WithXFrameOptions(element.Interceptors.Secure.XFrameOptions),
+				rkgrpcsec.WithHSTSMaxAge(element.Interceptors.Secure.HstsMaxAge),
+				rkgrpcsec.WithHSTSExcludeSubdomains(element.Interceptors.Secure.HstsExcludeSubdomains),
+				rkgrpcsec.WithHSTSPreloadEnabled(element.Interceptors.Secure.HstsPreloadEnabled),
+				rkgrpcsec.WithContentSecurityPolicy(element.Interceptors.Secure.ContentSecurityPolicy),
+				rkgrpcsec.WithCSPReportOnly(element.Interceptors.Secure.CspReportOnly),
+				rkgrpcsec.WithReferrerPolicy(element.Interceptors.Secure.ReferrerPolicy),
+				rkgrpcsec.WithIgnorePrefix(element.Interceptors.Secure.IgnorePrefix...),
+			}
+
+			entry.AddGwSecureOptions(opts...)
 		}
 
 		// did we enabled cors interceptor?
@@ -977,6 +1012,11 @@ func (entry *GrpcEntry) AddGwCorsOptions(opts ...rkgrpccors.Option) {
 	entry.gwCorsOptions = append(entry.gwCorsOptions, opts...)
 }
 
+// AddGwSecureOptions Enable secure at gateway side with options.
+func (entry *GrpcEntry) AddGwSecureOptions(opts ...rkgrpcsec.Option) {
+	entry.gwSecureOptions = append(entry.gwSecureOptions, opts...)
+}
+
 // AddRegFuncGrpc Add grpc registration func.
 func (entry *GrpcEntry) AddRegFuncGrpc(f ...GrpcRegFunc) {
 	entry.GrpcRegF = append(entry.GrpcRegF, f...)
@@ -1095,7 +1135,12 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 	// 5.6: If CORS enabled, then add interceptor for grpc-gateway
 	if len(entry.gwCorsOptions) > 0 {
-		httpHandler = rkgrpccors.Interceptor(entry.HttpMux, entry.gwCorsOptions...)
+		httpHandler = rkgrpccors.Interceptor(httpHandler, entry.gwCorsOptions...)
+	}
+
+	// 5.7: If Secure enabled, then add interceptor for grpc-gateway
+	if len(entry.gwSecureOptions) > 0 {
+		httpHandler = rkgrpcsec.Interceptor(httpHandler, entry.gwSecureOptions...)
 	}
 
 	entry.HttpServer = &http.Server{

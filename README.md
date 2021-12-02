@@ -25,6 +25,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Timeout interceptor | Timing out request by configuration. |
 | CORS interceptor | CORS interceptor for grpc-gateway. |
 | JWT interceptor | JWT interceptor on server side. |
+| Secure interceptor | Secure interceptor for grpc-gateway. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -59,6 +60,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [Timeout](#timeout)
     - [CORS](#cors)
     - [JWT](#jwt)
+    - [Secure](#secure)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
@@ -486,6 +488,8 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.timeout.paths.timeoutMs | Timeout in milliseconds by full path | int | 5000 |
 
 #### CORS
+Interceptor for grpc-gateway.
+
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
 | grpc.interceptors.cors.enabled | Enable cors interceptor | boolean | false |
@@ -516,6 +520,23 @@ The supported scheme of **tokenLookup**
 // Multiply sources example:
 // - "header: Authorization,cookie: myowncookie"
 ```
+
+#### Secure
+Interceptor for grpc-gateway.
+
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.interceptors.secure.enabled | Enable secure interceptor | boolean | false |
+| grpc.interceptors.secure.xssProtection | X-XSS-Protection header value. | string | "1; mode=block" |
+| grpc.interceptors.secure.contentTypeNosniff | X-Content-Type-Options header value. | string | nosniff |
+| grpc.interceptors.secure.xFrameOptions | X-Frame-Options header value. | string | SAMEORIGIN |
+| grpc.interceptors.secure.hstsMaxAge | Strict-Transport-Security header value. | int | 0 |
+| grpc.interceptors.secure.hstsExcludeSubdomains | Excluding subdomains of HSTS. | bool | false |
+| grpc.interceptors.secure.hstsPreloadEnabled | Enabling HSTS preload. | bool | false |
+| grpc.interceptors.secure.contentSecurityPolicy | Content-Security-Policy header value. | string | "" |
+| grpc.interceptors.secure.cspReportOnly | Content-Security-Policy-Report-Only header value. | bool | false |
+| grpc.interceptors.secure.referrerPolicy | Referrer-Policy header value. | string | "" |
+| grpc.interceptors.secure.ignorePrefix | Ignoring path prefix. | []string | [] |
 
 ## Development Status: Stable
 

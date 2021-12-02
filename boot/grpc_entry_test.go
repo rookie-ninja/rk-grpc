@@ -155,6 +155,8 @@ grpc:
         enabled: true
       cors:
         enabled: true
+      secure:
+        enabled: true
 `
 
 	// Create bootstrap config file at ut temp dir
