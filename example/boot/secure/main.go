@@ -12,10 +12,10 @@ import (
 
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.RegisterInternalEntriesFromConfig("example/boot/cors/boot.yaml")
+	rkentry.RegisterInternalEntriesFromConfig("example/boot/secure/boot.yaml")
 
 	// Bootstrap grpc entry from boot config
-	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/cors/boot.yaml")
+	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/secure/boot.yaml")
 
 	// Bootstrap grpc entry
 	res["greeter"].Bootstrap(context.Background())
