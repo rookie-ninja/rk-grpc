@@ -157,6 +157,8 @@ grpc:
         enabled: true
       secure:
         enabled: true
+      csrf:
+        enabled: true
 `
 
 	// Create bootstrap config file at ut temp dir

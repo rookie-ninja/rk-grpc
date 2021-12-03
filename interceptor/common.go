@@ -80,6 +80,8 @@ const (
 	RpcTypeStreamClient = "streamClient"
 	// RpcJwtTokenKey key of jwt token in context
 	RpcJwtTokenKey = "grpcJwt"
+	// RpcCsrfTokenKey key of csrf token injected by csrf middleware
+	RpcCsrfTokenKey = "grpcCsrfToken"
 )
 
 // RpcPayloadAppended a flag used in inner middleware

@@ -20,6 +20,7 @@ import (
 	"github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
 	rkgrpccors "github.com/rookie-ninja/rk-grpc/interceptor/cors"
+	rkgrpccsrf "github.com/rookie-ninja/rk-grpc/interceptor/csrf"
 	rkgrpcjwt "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
@@ -209,6 +210,18 @@ type BootConfigGrpc struct {
 				TokenLookup  string   `yaml:"tokenLookup" json:"tokenLookup"`
 				AuthScheme   string   `yaml:"authScheme" json:"authScheme"`
 			} `yaml:"jwt" json:"jwt"`
+			Csrf struct {
+				Enabled        bool     `yaml:"enabled" json:"enabled"`
+				IgnorePrefix   []string `yaml:"ignorePrefix" json:"ignorePrefix"`
+				TokenLength    int      `yaml:"tokenLength" json:"tokenLength"`
+				TokenLookup    string   `yaml:"tokenLookup" json:"tokenLookup"`
+				CookieName     string   `yaml:"cookieName" json:"cookieName"`
+				CookieDomain   string   `yaml:"cookieDomain" json:"cookieDomain"`
+				CookiePath     string   `yaml:"cookiePath" json:"cookiePath"`
+				CookieMaxAge   int      `yaml:"cookieMaxAge" json:"cookieMaxAge"`
+				CookieHttpOnly bool     `yaml:"cookieHttpOnly" json:"cookieHttpOnly"`
+				CookieSameSite string   `yaml:"cookieSameSite" json:"cookieSameSite"`
+			} `yaml:"csrf" yaml:"csrf"`
 			RateLimit struct {
 				Enabled   bool   `yaml:"enabled" json:"enabled"`
 				Algorithm string `yaml:"algorithm" json:"algorithm"`
@@ -314,6 +327,7 @@ type GrpcEntry struct {
 	GwHttpToGrpcMapping map[string]*gwRule         `json:"gwMapping" yaml:"gwMapping"`
 	gwCorsOptions       []rkgrpccors.Option        `json:"-" yaml:"-"`
 	gwSecureOptions     []rkgrpcsec.Option         `json:"-" yaml:"-"`
+	gwCsrfOptions       []rkgrpccsrf.Option        `json:"-" yaml:"-"`
 	// Utility related
 	SwEntry            *SwEntry            `json:"swEntry" yaml:"swEntry"`
 	TvEntry            *TvEntry            `json:"tvEntry" yaml:"tvEntry"`
@@ -657,6 +671,24 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			}
 
 			entry.AddGwSecureOptions(opts...)
+		}
+
+		// did we enabled csrf interceptor?
+		// CSRF interceptor is for grpc-gateway
+		if element.Interceptors.Cors.Enabled {
+			opts := []rkgrpccsrf.Option{
+				rkgrpccsrf.WithEntryNameAndType(element.Name, GrpcEntryType),
+				rkgrpccsrf.WithTokenLength(element.Interceptors.Csrf.TokenLength),
+				rkgrpccsrf.WithTokenLookup(element.Interceptors.Csrf.TokenLookup),
+				rkgrpccsrf.WithCookieName(element.Interceptors.Csrf.CookieName),
+				rkgrpccsrf.WithCookieDomain(element.Interceptors.Csrf.CookieDomain),
+				rkgrpccsrf.WithCookiePath(element.Interceptors.Csrf.CookiePath),
+				rkgrpccsrf.WithCookieMaxAge(element.Interceptors.Csrf.CookieMaxAge),
+				rkgrpccsrf.WithCookieHTTPOnly(element.Interceptors.Csrf.CookieHttpOnly),
+				rkgrpccsrf.WithIgnorePrefix(element.Interceptors.Csrf.IgnorePrefix...),
+			}
+
+			entry.AddGwCsrfOptions(opts...)
 		}
 
 		// did we enabled cors interceptor?
@@ -1012,6 +1044,11 @@ func (entry *GrpcEntry) AddGwCorsOptions(opts ...rkgrpccors.Option) {
 	entry.gwCorsOptions = append(entry.gwCorsOptions, opts...)
 }
 
+// AddGwCsrfOptions Enable CORS at gateway side with options.
+func (entry *GrpcEntry) AddGwCsrfOptions(opts ...rkgrpccsrf.Option) {
+	entry.gwCsrfOptions = append(entry.gwCsrfOptions, opts...)
+}
+
 // AddGwSecureOptions Enable secure at gateway side with options.
 func (entry *GrpcEntry) AddGwSecureOptions(opts ...rkgrpcsec.Option) {
 	entry.gwSecureOptions = append(entry.gwSecureOptions, opts...)
@@ -1141,6 +1178,11 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	// 5.7: If Secure enabled, then add interceptor for grpc-gateway
 	if len(entry.gwSecureOptions) > 0 {
 		httpHandler = rkgrpcsec.Interceptor(httpHandler, entry.gwSecureOptions...)
+	}
+
+	// 5.8: If CSRF enabled, then add interceptor for grpc-gateway
+	if len(entry.gwCsrfOptions) > 0 {
+		httpHandler = rkgrpccsrf.Interceptor(httpHandler, entry.gwCsrfOptions...)
 	}
 
 	entry.HttpServer = &http.Server{

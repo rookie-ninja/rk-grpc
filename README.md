@@ -26,6 +26,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | CORS interceptor | CORS interceptor for grpc-gateway. |
 | JWT interceptor | JWT interceptor on server side. |
 | Secure interceptor | Secure interceptor for grpc-gateway. |
+| CSRF interceptor | CSRF interceptor for grpc-gateway. |
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -61,6 +62,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [CORS](#cors)
     - [JWT](#jwt)
     - [Secure](#secure)
+    - [CSRF](#csrf)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
@@ -537,6 +539,22 @@ Interceptor for grpc-gateway.
 | grpc.interceptors.secure.cspReportOnly | Content-Security-Policy-Report-Only header value. | bool | false |
 | grpc.interceptors.secure.referrerPolicy | Referrer-Policy header value. | string | "" |
 | grpc.interceptors.secure.ignorePrefix | Ignoring path prefix. | []string | [] |
+
+#### CSRF
+Interceptor for grpc-gateway.
+
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.interceptors.csrf.enabled | Enable csrf interceptor | boolean | false |
+| grpc.interceptors.csrf.tokenLength | Provide the length of the generated token. | int | 32 |
+| grpc.interceptors.csrf.tokenLookup | Provide csrf token lookup rules, please see code comments for details. | string | "header:X-CSRF-Token" |
+| grpc.interceptors.csrf.cookieName | Provide name of the CSRF cookie. This cookie will store CSRF token. | string | _csrf |
+| grpc.interceptors.csrf.cookieDomain | Domain of the CSRF cookie. | string | "" |
+| grpc.interceptors.csrf.cookiePath | Path of the CSRF cookie. | string | "" |
+| grpc.interceptors.csrf.cookieMaxAge | Provide max age (in seconds) of the CSRF cookie. | int | 86400 |
+| grpc.interceptors.csrf.cookieHttpOnly | Indicates if CSRF cookie is HTTP only. | bool | false |
+| grpc.interceptors.csrf.cookieSameSite | Indicates SameSite mode of the CSRF cookie. Options: lax, strict, none, default | string | default |
+| grpc.interceptors.csrf.ignorePrefix | Ignoring path prefix. | []string | [] |
 
 ## Development Status: Stable
 
