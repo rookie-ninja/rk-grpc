@@ -330,6 +330,5 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		}
 
 		return "", rkerror.Unauthenticated("invalid or expired jwt").Err()
-		//return "", errors.New("missing or malformed jwt")
 	}
 }
