@@ -104,6 +104,11 @@ grpc:
 #      headers: ["sw:rk"]                                  # Optional, default: []
 #    commonService:
 #      enabled: true                                       # Optional, default: false
+#    static:
+#      enabled: true                                       # Optional, default: false
+#      path: "/rk/v1/static"                               # Optional, default: /rk/v1/static
+#      sourceType: local                                   # Required, options: pkger, local
+#      sourcePath: "."                                     # Required, full path of source directory
 #    tv:
 #      enabled:  true                                      # Optional, default: false
 #    prom:

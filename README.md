@@ -15,6 +15,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
 | Swagger Service | Swagger UI with same port as gRPC Gateway. |
 | Common Service | List of common API available on gRPC, gRPC Gateway and swagger. |
 | TV Service | A Web UI shows application and environment information. |
+| Static file handler | A Web UI shows files could be downloaded from server, currently support source of local and pkger. |
 | Metrics interceptor | Collect RPC metrics and export as prometheus client with same port of gRPC gateway. |
 | Log interceptor | Log every RPC requests as event with rk-query. |
 | Trace interceptor | Collect RPC trace and export it to stdout, file or jaeger. |
@@ -51,6 +52,7 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
   - [Prom Client](#prom-client)
   - [TV Service](#tv-service-1)
   - [Swagger Service](#swagger-service-1)
+  - [Static file handler Service](#static-file-handler-service)
   - [Interceptors](#interceptors)
     - [Log](#log)
     - [Metrics](#metrics-1)
@@ -373,6 +375,20 @@ http:
 | grpc.sw.path | The path access swagger service from web | string | /sw |
 | grpc.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
 | grpc.sw.headers | Headers would be sent to caller as scheme of [key:value] | []string | [] |
+
+### Static file handler Service
+| name | description | type | default value |
+| ------ | ------ | ------ | ------ |
+| grpc.static.enabled | Optional, Enable static file handler | boolean | false |
+| grpc.static.path | Optional, path of static file handler | string | /rk/v1/static |
+| grpc.static.sourceType | Required, local and pkger supported | string | "" |
+| grpc.static.sourcePath | Required, full path of source directory | string | "" |
+
+- About [pkger](https://github.com/markbates/pkger)
+User can use pkger command line tool to embed static files into .go files.
+
+Please use sourcePath like: github.com/rookie-ninja/rk-grpc:/boot/assets
+
 
 ### Interceptors
 #### Log
