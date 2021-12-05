@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-common/common"
@@ -48,6 +49,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -154,6 +156,7 @@ type BootConfigGrpc struct {
 		Sw                 BootConfigSw            `yaml:"sw" json:"sw"`
 		Tv                 BootConfigTv            `yaml:"tv" json:"tv"`
 		Prom               BootConfigProm          `yaml:"prom" json:"prom"`
+		Static             BootConfigStaticHandler `yaml:"static" json:"static"`
 		Proxy              BootConfigProxy         `yaml:"proxy" json:"proxy"`
 		EnableRkGwOption   bool                    `yaml:"enableRkGwOption" json:"enableRkGwOption"`
 		GwOption           *gwOption               `yaml:"gwOption" json:"gwOption"`
@@ -329,12 +332,13 @@ type GrpcEntry struct {
 	gwSecureOptions     []rkgrpcsec.Option         `json:"-" yaml:"-"`
 	gwCsrfOptions       []rkgrpccsrf.Option        `json:"-" yaml:"-"`
 	// Utility related
-	SwEntry            *SwEntry            `json:"swEntry" yaml:"swEntry"`
-	TvEntry            *TvEntry            `json:"tvEntry" yaml:"tvEntry"`
-	ProxyEntry         *ProxyEntry         `json:"proxyEntry" yaml:"proxyEntry"`
-	PromEntry          *PromEntry          `json:"promEntry" yaml:"promEntry"`
-	CommonServiceEntry *CommonServiceEntry `json:"commonServiceEntry" yaml:"commonServiceEntry"`
-	CertEntry          *rkentry.CertEntry  `json:"certEntry" yaml:"certEntry"`
+	SwEntry            *SwEntry                `json:"swEntry" yaml:"swEntry"`
+	TvEntry            *TvEntry                `json:"tvEntry" yaml:"tvEntry"`
+	ProxyEntry         *ProxyEntry             `json:"proxyEntry" yaml:"proxyEntry"`
+	PromEntry          *PromEntry              `json:"promEntry" yaml:"promEntry"`
+	StaticFileEntry    *StaticFileHandlerEntry `json:"staticFileHandlerEntry" yaml:"staticFileHandlerEntry"`
+	CommonServiceEntry *CommonServiceEntry     `json:"commonServiceEntry" yaml:"commonServiceEntry"`
+	CertEntry          *rkentry.CertEntry      `json:"certEntry" yaml:"certEntry"`
 }
 
 // GrpcRegFunc Grpc registration func.
@@ -424,6 +428,29 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithNameTv(element.Name),
 				WithEventLoggerEntryTv(eventLoggerEntry),
 				WithZapLoggerEntryTv(zapLoggerEntry))
+		}
+
+		// Did we enabled static file handler?
+		var staticEntry *StaticFileHandlerEntry
+		if element.Static.Enabled {
+			var fs http.FileSystem
+			switch element.Static.SourceType {
+			case "pkger":
+				fs = pkger.Dir(element.Static.SourcePath)
+			case "local":
+				if !filepath.IsAbs(element.Static.SourcePath) {
+					wd, _ := os.Getwd()
+					element.Static.SourcePath = path.Join(wd, element.Static.SourcePath)
+				}
+				fs = http.Dir(element.Static.SourcePath)
+			}
+
+			staticEntry = NewStaticFileHandlerEntry(
+				WithZapLoggerEntryStatic(zapLoggerEntry),
+				WithEventLoggerEntryStatic(eventLoggerEntry),
+				WithNameStatic(fmt.Sprintf("%s-static", element.Name)),
+				WithPathStatic(element.Static.Path),
+				WithFileSystemStatic(fs))
 		}
 
 		// Did we enabled proxy?
@@ -530,6 +557,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithProxyEntryGrpc(proxy),
 			WithGwMuxOptionsGrpc(gwMuxOpts...),
 			WithCommonServiceEntryGrpc(commonService),
+			WithStaticFileHandlerEntryGrpc(staticEntry),
 			WithEnableReflectionGrpc(element.EnableReflection),
 			WithGwMappingFilePathsGrpc(element.GwMappingFilePaths...),
 			WithCertEntryGrpc(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
@@ -888,6 +916,13 @@ func WithPromEntryGrpc(prom *PromEntry) GrpcEntryOption {
 	}
 }
 
+// WithStaticFileHandlerEntryGrpc provide StaticFileHandlerEntry.
+func WithStaticFileHandlerEntryGrpc(staticEntry *StaticFileHandlerEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.StaticFileEntry = staticEntry
+	}
+}
+
 // WithGwRegFGrpc Provide registration function.
 func WithGwRegFGrpc(f ...GwRegFunc) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
@@ -1162,6 +1197,9 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		entry.HttpMux.HandleFunc(entry.SwEntry.Path, entry.SwEntry.ConfigFileHandler)
 		entry.HttpMux.HandleFunc("/rk/v1/assets/sw/", entry.SwEntry.AssetsFileHandler)
 	}
+	if entry.IsStaticFileHandlerEnabled() {
+		entry.HttpMux.HandleFunc(entry.StaticFileEntry.Path, entry.StaticFileEntry.GetFileHandler)
+	}
 	if entry.IsPromEnabled() {
 		// Register prom path into Router.
 		entry.HttpMux.Handle(entry.PromEntry.Path, promhttp.HandlerFor(entry.PromEntry.Gatherer, promhttp.HandlerOpts{}))
@@ -1199,6 +1237,9 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	}
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Bootstrap(ctx)
+	}
+	if entry.IsStaticFileHandlerEnabled() {
+		entry.StaticFileEntry.Bootstrap(ctx)
 	}
 	if entry.IsTvEnabled() {
 		entry.TvEntry.Bootstrap(ctx)
@@ -1301,6 +1342,9 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 	}
 	if entry.IsSwEnabled() {
 		entry.SwEntry.Interrupt(ctx)
+	}
+	if entry.IsStaticFileHandlerEnabled() {
+		entry.StaticFileEntry.Interrupt(ctx)
 	}
 	if entry.IsTvEnabled() {
 		entry.TvEntry.Interrupt(ctx)
@@ -1412,6 +1456,11 @@ func (entry *GrpcEntry) IsProxyEnabled() bool {
 // IsSwEnabled Is swagger enabled?
 func (entry *GrpcEntry) IsSwEnabled() bool {
 	return entry.SwEntry != nil
+}
+
+// IsStaticFileHandlerEnabled Is static file handler entry enabled?
+func (entry *GrpcEntry) IsStaticFileHandlerEnabled() bool {
+	return entry.StaticFileEntry != nil
 }
 
 // IsTvEnabled Is tv enabled?
@@ -1533,7 +1582,7 @@ func (entry *GrpcEntry) parseGwMappingHelper(bytes []byte) {
 	}
 }
 
-// GetGrpcEntry Get GinEntry from rkentry.GlobalAppCtx.
+// GetGrpcEntry Get GrpcEntry from rkentry.GlobalAppCtx.
 func GetGrpcEntry(name string) *GrpcEntry {
 	entryRaw := rkentry.GlobalAppCtx.GetEntry(name)
 	if entryRaw == nil {
