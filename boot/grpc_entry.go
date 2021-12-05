@@ -703,7 +703,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 
 		// did we enabled csrf interceptor?
 		// CSRF interceptor is for grpc-gateway
-		if element.Interceptors.Cors.Enabled {
+		if element.Interceptors.Csrf.Enabled {
 			opts := []rkgrpccsrf.Option{
 				rkgrpccsrf.WithEntryNameAndType(element.Name, GrpcEntryType),
 				rkgrpccsrf.WithTokenLength(element.Interceptors.Csrf.TokenLength),
