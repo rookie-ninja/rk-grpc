@@ -7,7 +7,7 @@
 package rkgrpctimeout
 
 import (
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"strings"
 	"time"
@@ -24,7 +24,7 @@ const global = "rk-global"
 
 var (
 	defaultTimeout  = 5 * time.Second
-	defaultResponse = rkerror.Canceled("Request timed out!").Err()
+	defaultResponse = rkgrpcerr.Canceled("Request timed out!").Err()
 	globalTimeoutRk = &timeoutRk{
 		timeout:  defaultTimeout,
 		response: defaultResponse,

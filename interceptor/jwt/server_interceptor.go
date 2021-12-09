@@ -7,7 +7,7 @@ package rkgrpcjwt
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
@@ -85,7 +85,7 @@ func serverBefore(ctx context.Context, set *optionSet, method string) (context.C
 	token, err := set.ParseTokenFunc(auth, ctx)
 
 	if err != nil {
-		return ctx, rkerror.Unauthenticated("invalid or expired jwt", err).Err()
+		return ctx, rkgrpcerr.Unauthenticated("invalid or expired jwt", err).Err()
 	}
 
 	// insert into context

@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt"
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"reflect"
@@ -23,8 +23,8 @@ var (
 	defaultSkipper = func(fullMethod string) bool {
 		return false
 	}
-	errJwtMissing = rkerror.InvalidArgument("missing or malformed jwt")
-	errJwtInvalid = rkerror.Unauthenticated("invalid or expired jwt")
+	errJwtMissing = rkgrpcerr.InvalidArgument("missing or malformed jwt")
+	errJwtInvalid = rkgrpcerr.Unauthenticated("invalid or expired jwt")
 )
 
 const (
@@ -329,6 +329,6 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 			return auth[l+1:], nil
 		}
 
-		return "", rkerror.Unauthenticated("invalid or expired jwt").Err()
+		return "", rkgrpcerr.Unauthenticated("invalid or expired jwt").Err()
 	}
 }
