@@ -1,6 +1,6 @@
 module github.com/rookie-ninja/rk-grpc
 
-go 1.14
+go 1.16
 
 require (
 	github.com/ghodss/yaml v1.0.0
@@ -10,8 +10,8 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/markbates/pkger v0.17.1
 	github.com/prometheus/client_golang v1.10.0
-	github.com/rookie-ninja/rk-common v1.2.1
-	github.com/rookie-ninja/rk-entry v1.0.3
+	github.com/rookie-ninja/rk-common v1.2.3
+	github.com/rookie-ninja/rk-entry v1.0.4
 	github.com/rookie-ninja/rk-logger v1.2.3
 	github.com/rookie-ninja/rk-prom v1.1.3
 	github.com/rookie-ninja/rk-query v1.2.4

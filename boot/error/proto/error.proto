@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package rk.api.v1;
+
+option go_package = "rk/v1/rk_error";
+
+message ErrorDetail {
+  int32 code = 1;
+  string status = 2;
+  string message = 3;
+}

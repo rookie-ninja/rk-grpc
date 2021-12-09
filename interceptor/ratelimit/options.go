@@ -9,7 +9,7 @@ package rkgrpclimit
 import (
 	"context"
 	juju "github.com/juju/ratelimit"
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	uber "go.uber.org/ratelimit"
 	"strings"
@@ -39,7 +39,7 @@ type ZeroRateLimiter struct{}
 
 // Limit will block request and return error
 func (l *ZeroRateLimiter) Limit(context.Context) error {
-	return rkerror.ResourceExhausted("Slow down your request.").Err()
+	return rkgrpcerr.ResourceExhausted("Slow down your request.").Err()
 }
 
 // tokenBucketLimiter delegates limit logic to juju.Bucket

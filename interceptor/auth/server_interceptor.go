@@ -9,7 +9,7 @@ package rkgrpcauth
 import (
 	"context"
 	"fmt"
-	rkerror "github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
@@ -74,7 +74,7 @@ func serverBefore(ctx context.Context, set *optionSet, method string) error {
 		// Basic auth type
 		tokens := strings.SplitN(authorizationHeader[0], " ", 2)
 		if len(tokens) != 2 {
-			return rkerror.Unauthenticated("Invalid Basic Auth format").Err()
+			return rkgrpcerr.Unauthenticated("Invalid Basic Auth format").Err()
 		}
 
 		if !set.Authorized(tokens[0], tokens[1]) {
@@ -82,12 +82,12 @@ func serverBefore(ctx context.Context, set *optionSet, method string) error {
 				rkgrpcctx.AddHeaderToClient(ctx, "WWW-Authenticate", fmt.Sprintf(`%s realm="%s"`, typeBasic, set.BasicRealm))
 			}
 
-			return rkerror.Unauthenticated("Invalid credential").Err()
+			return rkgrpcerr.Unauthenticated("Invalid credential").Err()
 		}
 	} else if len(apiKeyHeader) > 0 {
 		// API key auth type
 		if !set.Authorized(typeApiKey, apiKeyHeader[0]) {
-			return rkerror.Unauthenticated("Invalid X-API-Key").Err()
+			return rkgrpcerr.Unauthenticated("Invalid X-API-Key").Err()
 		}
 	} else {
 		authHeaders := []string{}
@@ -101,7 +101,7 @@ func serverBefore(ctx context.Context, set *optionSet, method string) error {
 
 		errMsg := fmt.Sprintf("Missing authorization, provide one of bellow auth header:[%s]", strings.Join(authHeaders, ","))
 
-		return rkerror.Unauthenticated(errMsg).Err()
+		return rkgrpcerr.Unauthenticated(errMsg).Err()
 	}
 
 	return nil

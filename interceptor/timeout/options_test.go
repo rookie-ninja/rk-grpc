@@ -6,7 +6,7 @@
 package rkgrpctimeout
 
 import (
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/stretchr/testify/assert"
 	"reflect"
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var utResp = rkerror.Canceled("Request timed out!").Err()
+var utResp = rkgrpcerr.Canceled("Request timed out!").Err()
 
 func TestWithEntryNameAndType(t *testing.T) {
 	set := newOptionSet(
