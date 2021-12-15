@@ -367,7 +367,20 @@ func (entry *CommonServiceEntry) Sys(ctx context.Context, request *api.SysReques
 
 // Helper function for Req call
 func doReq(ctx context.Context) *rkentry.ReqResponse {
+	metricsSet := rkgrpcmetrics.GetMetricsSet(ctx)
+	if metricsSet == nil {
+		return &rkentry.ReqResponse{
+			Metrics: make([]*rkentry.ReqMetricsRK, 0),
+		}
+	}
+
 	vector := rkgrpcmetrics.GetMetricsSet(ctx).GetSummary(rkgrpcmetrics.ElapsedNano)
+	if vector == nil {
+		return &rkentry.ReqResponse{
+			Metrics: make([]*rkentry.ReqMetricsRK, 0),
+		}
+	}
+
 	reqMetrics := rkentry.NewPromMetricsInfo(vector)
 
 	// Fill missed metrics
