@@ -375,13 +375,13 @@ func doReq(ctx context.Context) *rkentry.ReqResponse {
 	}
 
 	vector := rkgrpcmetrics.GetMetricsSet(ctx).GetSummary(rkgrpcmetrics.ElapsedNano)
-	reqMetrics := rkentry.NewPromMetricsInfo(vector)
-
-	if reqMetrics == nil {
+	if vector == nil {
 		return &rkentry.ReqResponse{
 			Metrics: make([]*rkentry.ReqMetricsRK, 0),
 		}
 	}
+
+	reqMetrics := rkentry.NewPromMetricsInfo(vector)
 
 	// Fill missed metrics
 	type innerGrpcInfo struct {
