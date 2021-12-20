@@ -236,9 +236,19 @@ func WithCookieHTTPOnly(val bool) Option {
 
 // WithCookieSameSite indicates SameSite mode of the CSRF cookie.
 // Optional. Default value SameSiteDefaultMode.
-func WithCookieSameSite(val http.SameSite) Option {
+func WithCookieSameSite(val string) Option {
 	return func(opt *optionSet) {
-		opt.CookieSameSite = val
+		val = strings.ToLower(val)
+		switch val {
+		case "lax":
+			opt.CookieSameSite = http.SameSiteLaxMode
+		case "strict":
+			opt.CookieSameSite = http.SameSiteStrictMode
+		case "none":
+			opt.CookieSameSite = http.SameSiteNoneMode
+		default:
+			opt.CookieSameSite = http.SameSiteDefaultMode
+		}
 	}
 }
 
