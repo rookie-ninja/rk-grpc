@@ -41,7 +41,7 @@ func TestNewOptionSet(t *testing.T) {
 		WithCookiePath("ut-path"),
 		WithCookieMaxAge(10),
 		WithCookieHTTPOnly(true),
-		WithCookieSameSite(http.SameSiteDefaultMode),
+		WithCookieSameSite("default"),
 	)
 	assert.Equal(t, "ut-entry", set.EntryName)
 	assert.Equal(t, "ut-type", set.EntryType)

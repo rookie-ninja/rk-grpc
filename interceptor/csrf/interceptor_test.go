@@ -110,7 +110,7 @@ func TestInterceptor(t *testing.T) {
 
 	// match 4.3
 	handler = Interceptor(userHandler,
-		WithCookieSameSite(http.SameSiteStrictMode))
+		WithCookieSameSite("strict"))
 	w, r = getReqAndResp(http.MethodGet)
 	handler.ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)

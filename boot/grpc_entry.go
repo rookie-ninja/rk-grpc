@@ -713,6 +713,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				rkgrpccsrf.WithCookiePath(element.Interceptors.Csrf.CookiePath),
 				rkgrpccsrf.WithCookieMaxAge(element.Interceptors.Csrf.CookieMaxAge),
 				rkgrpccsrf.WithCookieHTTPOnly(element.Interceptors.Csrf.CookieHttpOnly),
+				rkgrpccsrf.WithCookieSameSite(element.Interceptors.Csrf.CookieSameSite),
 				rkgrpccsrf.WithIgnorePrefix(element.Interceptors.Csrf.IgnorePrefix...),
 			}
 
