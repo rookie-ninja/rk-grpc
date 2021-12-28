@@ -8,7 +8,7 @@ Interceptor & bootstrapper designed for [gRPC](https://grpc.io/docs/languages/go
 
 This belongs to [rk-boot](https://github.com/rookie-ninja/rk-boot) family. We suggest use this lib from [rk-boot](https://github.com/rookie-ninja/rk-boot).
 
-![image](img/boot-arch.png)
+![image](docs/img/boot-arch.png)
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -64,7 +64,7 @@ This belongs to [rk-boot](https://github.com/rookie-ninja/rk-boot) family. We su
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Architecture
-![image](img/grpc-arch.png)
+![image](docs/img/grpc-arch.png)
 
 ## Supported bootstrap
 | Bootstrap | Description |
@@ -515,7 +515,7 @@ Prometheus client will automatically register into [grpc-gateway](https://github
 
 Access [http://localhost:8080/metrics](http://localhost:8080/metrics)
 
-![image](img/prom-inter.png)
+![image](docs/img/prom-inter.png)
 
 ## YAML options
 User can start multiple [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) instances at the same time. Please make sure use different port and name.
