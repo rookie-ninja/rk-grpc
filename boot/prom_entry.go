@@ -11,8 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-prom"
-	"github.com/rookie-ninja/rk-query"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -67,12 +65,12 @@ type BootConfigProm struct {
 // 7: Registerer        Prometheus registerer
 // 8: Gatherer          Prometheus gatherer
 type PromEntry struct {
-	Pusher           *rkprom.PushGatewayPusher `json:"pushGateWayPusher" yaml:"pushGateWayPusher"`
+	Pusher           *rkprom.PushGatewayPusher `json:"-" yaml:"-"`
 	EntryName        string                    `json:"entryName" yaml:"entryName"`
 	EntryType        string                    `json:"entryType" yaml:"entryType"`
-	EntryDescription string                    `json:"entryDescription" yaml:"entryDescription"`
-	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
-	EventLoggerEntry *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	EntryDescription string                    `json:"-" yaml:"-"`
+	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"-" yaml:"-"`
+	EventLoggerEntry *rkentry.EventLoggerEntry `json:"-" yaml:"-"`
 	Port             uint64                    `json:"port" yaml:"port"`
 	Path             string                    `json:"path" yaml:"path"`
 	Registry         *prometheus.Registry      `json:"-" yaml:"-"`
@@ -182,53 +180,17 @@ func NewPromEntry(opts ...PromEntryOption) *PromEntry {
 
 // Bootstrap Start prometheus client
 func (entry *PromEntry) Bootstrap(ctx context.Context) {
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"bootstrap",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-
-	logger := entry.ZapLoggerEntry.GetLogger()
-
-	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
-		event.SetEventId(raw.(string))
-		logger = logger.With(zap.String("eventId", event.GetEventId()))
-	}
-
-	entry.logBasicInfo(event)
-
-	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
-
 	// start pusher
 	if entry.Pusher != nil {
 		entry.Pusher.Start()
 	}
-
-	logger.Info("Bootstrapping promEntry.", event.ListPayloads()...)
 }
 
 // Interrupt Shutdown prometheus client
 func (entry *PromEntry) Interrupt(ctx context.Context) {
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"interrupt",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-
-	logger := entry.ZapLoggerEntry.GetLogger()
-
-	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
-		event.SetEventId(raw.(string))
-		logger = logger.With(zap.String("eventId", event.GetEventId()))
-	}
-
-	entry.logBasicInfo(event)
-
-	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
-
 	if entry.Pusher != nil {
 		entry.Pusher.Stop()
 	}
-
-	logger.Info("Interrupting promEntry.", event.ListPayloads()...)
 }
 
 // GetName Return name of prom entry
@@ -271,24 +233,6 @@ func (entry *PromEntry) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON Unmarshal entry
 func (entry *PromEntry) UnmarshalJSON(b []byte) error {
 	return nil
-}
-
-// Log basic info into event
-func (entry *PromEntry) logBasicInfo(event rkquery.Event) {
-	event.AddPayloads(
-		zap.String("entryName", entry.EntryName),
-		zap.String("entryType", entry.EntryType),
-		zap.String("path", entry.Path),
-		zap.Uint64("port", entry.Port),
-	)
-
-	if entry.Pusher != nil {
-		event.AddPayloads(
-			zap.String("pusherRemoteAddr", entry.Pusher.RemoteAddress),
-			zap.Duration("pusherIntervalMs", entry.Pusher.IntervalMs),
-			zap.String("pusherJobName", entry.Pusher.JobName),
-		)
-	}
 }
 
 // RegisterCollectors Register collectors in default registry

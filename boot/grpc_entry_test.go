@@ -185,8 +185,7 @@ grpc:
 	assert.True(t, len(entry.StreamInterceptors) > 0)
 
 	// Bootstrap
-	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
-	entry.Bootstrap(ctx)
+	entry.Bootstrap(context.TODO())
 
 	bytes, err := entry.MarshalJSON()
 	assert.NotEmpty(t, bytes)

@@ -32,8 +32,7 @@ func TestTvEntry_Bootstrap(t *testing.T) {
 		WithEventLoggerEntryTv(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryTv(rkentry.NoopZapLoggerEntry()))
 
-	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
-	entry.Bootstrap(ctx)
+	entry.Bootstrap(context.TODO())
 }
 
 func TestTvEntry_Interrupt(t *testing.T) {
@@ -41,8 +40,7 @@ func TestTvEntry_Interrupt(t *testing.T) {
 		WithEventLoggerEntryTv(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryTv(rkentry.NoopZapLoggerEntry()))
 
-	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
-	entry.Interrupt(ctx)
+	entry.Interrupt(context.TODO())
 }
 
 func TestTvEntry_TV(t *testing.T) {

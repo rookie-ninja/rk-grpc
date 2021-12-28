@@ -14,8 +14,6 @@ import (
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
-	"github.com/rookie-ninja/rk-query"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/encoding"
@@ -262,9 +260,9 @@ func (r *rule) GetDirector() Director {
 type ProxyEntry struct {
 	EntryName        string                    `json:"entryName" yaml:"entryName"`
 	EntryType        string                    `json:"entryType" yaml:"entryType"`
-	EntryDescription string                    `json:"entryDescription" yaml:"entryDescription"`
-	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
-	EventLoggerEntry *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	EntryDescription string                    `json:"-" yaml:"-"`
+	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"-" yaml:"-"`
+	EventLoggerEntry *rkentry.EventLoggerEntry `json:"-" yaml:"-"`
 	r                *rule                     `json:"-" yaml:"-"`
 }
 
@@ -326,44 +324,12 @@ func NewProxyEntry(opts ...ProxyEntryOption) *ProxyEntry {
 
 // Bootstrap Start prometheus client
 func (entry *ProxyEntry) Bootstrap(ctx context.Context) {
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"bootstrap",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-
-	logger := entry.ZapLoggerEntry.GetLogger()
-
-	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
-		event.SetEventId(raw.(string))
-		logger = logger.With(zap.String("eventId", event.GetEventId()))
-	}
-
-	entry.logBasicInfo(event)
-
-	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
-
-	logger.Info("Bootstrapping proxyEntry.", event.ListPayloads()...)
+	// Noop
 }
 
 // Interrupt Shutdown prometheus client
 func (entry *ProxyEntry) Interrupt(ctx context.Context) {
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"interrupt",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-
-	logger := entry.ZapLoggerEntry.GetLogger()
-
-	if raw := ctx.Value(bootstrapEventIdKey); raw != nil {
-		event.SetEventId(raw.(string))
-		logger = logger.With(zap.String("eventId", event.GetEventId()))
-	}
-
-	entry.logBasicInfo(event)
-
-	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
-
-	logger.Info("Interrupting proxyEntry.", event.ListPayloads()...)
+	// Noop
 }
 
 // GetName Return name of proxy entry
@@ -403,14 +369,6 @@ func (entry *ProxyEntry) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON Unmarshal entry
 func (entry *ProxyEntry) UnmarshalJSON(b []byte) error {
 	return nil
-}
-
-// Log basic info into event
-func (entry *ProxyEntry) logBasicInfo(event rkquery.Event) {
-	event.AddPayloads(
-		zap.String("entryName", entry.EntryName),
-		zap.String("entryType", entry.EntryType),
-	)
 }
 
 // *************************************

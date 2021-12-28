@@ -1,0 +1,24 @@
+version: v1beta1
+plugins:
+  # protoc-gen-go needs to be installed, generate go files based on proto files
+  - name: go
+    out: api/gen
+    opt:
+     - paths=source_relative
+  # protoc-gen-go-grpc needs to be installed, generate grpc go files based on proto files
+  - name: go-grpc
+    out: api/gen
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+  # protoc-gen-grpc-gateway needs to be installed, generate grpc-gateway go files based on proto files
+  - name: grpc-gateway
+    out: api/gen
+    opt:
+      - paths=source_relative
+      - grpc_api_configuration=api/v1/gw_mapping.yaml
+  # protoc-gen-openapiv2 needs to be installed, generate swagger config files based on proto files
+  - name: openapiv2
+    out: api/gen
+    opt:
+      - grpc_api_configuration=api/v1/gw_mapping.yaml

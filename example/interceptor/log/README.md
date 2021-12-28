@@ -259,8 +259,8 @@ EOE
 ```
 
 #### Code
-- [greeter-server.go](greeter-server.go)
-- [greeter-client.go](greeter-client.go)
+- [greeter-server.go](greeter-server/greeter-server.go)
+- [greeter-client.go](greeter-client/greeter-client.go)
 
 ### Stream
 Create a simple stream server and client with bellow protocol buffer files.
@@ -348,6 +348,6 @@ EOE
 ```
 
 #### Code
-- [chat-server.go](chat-server.go)
-- [chat-client.go](chat-client.go)
+- [chat-server.go](chat-server/chat-server.go)
+- [chat-client.go](chat-client/chat-client.go)
 
