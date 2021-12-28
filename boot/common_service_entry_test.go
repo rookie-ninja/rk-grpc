@@ -123,8 +123,7 @@ func TestCommonServiceEntry_Bootstrap_HappyCase(t *testing.T) {
 		WithEventLoggerEntryCommonService(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryCommonService(rkentry.NoopZapLoggerEntry()))
 
-	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
-	entry.Bootstrap(ctx)
+	entry.Bootstrap(context.TODO())
 }
 
 func TestCommonServiceEntry_Interrupt_HappyCase(t *testing.T) {
@@ -134,8 +133,7 @@ func TestCommonServiceEntry_Interrupt_HappyCase(t *testing.T) {
 		WithEventLoggerEntryCommonService(rkentry.NoopEventLoggerEntry()),
 		WithZapLoggerEntryCommonService(rkentry.NoopZapLoggerEntry()))
 
-	ctx := context.WithValue(context.Background(), bootstrapEventIdKey, "ut")
-	entry.Interrupt(ctx)
+	entry.Interrupt(context.TODO())
 }
 
 func TestCommonServiceEntry_GetName_HappyCase(t *testing.T) {
@@ -182,15 +180,6 @@ func TestCommonServiceEntry_UnmarshalJSON_HappyCase(t *testing.T) {
 func TestCommonServiceEntry_GetDescription_HappyCase(t *testing.T) {
 	entry := NewCommonServiceEntry()
 	assert.Equal(t, CommonServiceEntryDescription, entry.GetDescription())
-}
-
-func TestCommonServiceEntry_logBasicInfo(t *testing.T) {
-	entry := NewCommonServiceEntry()
-
-	event := rkentry.NoopEventLoggerEntry().GetEventFactory().CreateEvent()
-	entry.logBasicInfo(event)
-
-	assert.Len(t, event.ListPayloads(), 2)
 }
 
 func TestCommonServiceEntry_doHealthy_HappyCase(t *testing.T) {

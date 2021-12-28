@@ -8,9 +8,9 @@ package rkgrpcctx
 import (
 	"context"
 	"errors"
-	rkgrpcinter "github.com/rookie-ninja/rk-grpc/interceptor"
-	rklogger "github.com/rookie-ninja/rk-logger"
-	rkquery "github.com/rookie-ninja/rk-query"
+	"github.com/rookie-ninja/rk-grpc/interceptor"
+	"github.com/rookie-ninja/rk-logger"
+	"github.com/rookie-ninja/rk-query"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc/metadata"

@@ -70,10 +70,6 @@ const (
 	GrpcEntryDescription = "Internal RK entry which helps to bootstrap with Grpc framework."
 )
 
-var bootstrapEventIdKey = eventIdKey{}
-
-type eventIdKey struct{}
-
 // GwRegFunc Registration function grpc gateway.
 type GwRegFunc func(context.Context, *gwruntime.ServeMux, string, []grpc.DialOption) error
 
@@ -306,9 +302,9 @@ type BootConfigGrpc struct {
 type GrpcEntry struct {
 	EntryName         string                    `json:"entryName" yaml:"entryName"`
 	EntryType         string                    `json:"entryType" yaml:"entryType"`
-	EntryDescription  string                    `json:"entryDescription" yaml:"entryDescription"`
-	ZapLoggerEntry    *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
-	EventLoggerEntry  *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	EntryDescription  string                    `json:"-" yaml:"-"`
+	ZapLoggerEntry    *rkentry.ZapLoggerEntry   `json:"-" yaml:"-"`
+	EventLoggerEntry  *rkentry.EventLoggerEntry `json:"-" yaml:"-"`
 	Port              uint64                    `json:"port" yaml:"port"`
 	TlsConfig         *tls.Config               `json:"-" yaml:"-"`
 	TlsConfigInsecure *tls.Config               `json:"-" yaml:"-"`
@@ -332,13 +328,13 @@ type GrpcEntry struct {
 	gwSecureOptions     []rkgrpcsec.Option         `json:"-" yaml:"-"`
 	gwCsrfOptions       []rkgrpccsrf.Option        `json:"-" yaml:"-"`
 	// Utility related
-	SwEntry            *SwEntry                `json:"swEntry" yaml:"swEntry"`
-	TvEntry            *TvEntry                `json:"tvEntry" yaml:"tvEntry"`
-	ProxyEntry         *ProxyEntry             `json:"proxyEntry" yaml:"proxyEntry"`
-	PromEntry          *PromEntry              `json:"promEntry" yaml:"promEntry"`
-	StaticFileEntry    *StaticFileHandlerEntry `json:"staticFileHandlerEntry" yaml:"staticFileHandlerEntry"`
-	CommonServiceEntry *CommonServiceEntry     `json:"commonServiceEntry" yaml:"commonServiceEntry"`
-	CertEntry          *rkentry.CertEntry      `json:"certEntry" yaml:"certEntry"`
+	SwEntry            *SwEntry                `json:"-" yaml:"-"`
+	TvEntry            *TvEntry                `json:"-" yaml:"-"`
+	ProxyEntry         *ProxyEntry             `json:"-" yaml:"-"`
+	PromEntry          *PromEntry              `json:"-" yaml:"-"`
+	StaticFileEntry    *StaticFileHandlerEntry `json:"-" yaml:"-"`
+	CommonServiceEntry *CommonServiceEntry     `json:"-" yaml:"-"`
+	CertEntry          *rkentry.CertEntry      `json:"-" yaml:"-"`
 }
 
 // GrpcRegFunc Grpc registration func.
@@ -1128,16 +1124,7 @@ func (entry *GrpcEntry) GetDescription() string {
 
 // Bootstrap GrpcEntry.
 func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
-	// 1: Create event with current bootstrap call
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"bootstrap",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-	ctx = context.WithValue(context.Background(), bootstrapEventIdKey, event.GetEventId())
-	logger := entry.ZapLoggerEntry.GetLogger().With(zap.String("eventId", event.GetEventId()))
-
-	// 2: Record current GrpcEntry information into Event
-	entry.logBasicInfo(event)
+	event, logger := entry.logBasicInfo("Bootstrap")
 
 	// 3: Parse gateway mapping file paths, this will record http to grpc path map into a map
 	// which will be used for /apis call in CommonServiceEntry
@@ -1247,7 +1234,6 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	}
 
 	// 7: Start http server
-	logger.Info("Bootstrapping grpcEntry.", event.ListPayloads()...)
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 	go func(*GrpcEntry) {
 		// Create inner listener
@@ -1326,16 +1312,7 @@ func (entry *GrpcEntry) startHttpServer(lis net.Listener, logger *zap.Logger) {
 
 // Interrupt GrpcEntry.
 func (entry *GrpcEntry) Interrupt(ctx context.Context) {
-	// 1: Create event with current bootstrap call
-	event := entry.EventLoggerEntry.GetEventHelper().Start(
-		"interrupt",
-		rkquery.WithEntryName(entry.EntryName),
-		rkquery.WithEntryType(entry.EntryType))
-	ctx = context.WithValue(context.Background(), bootstrapEventIdKey, event.GetEventId())
-	logger := entry.ZapLoggerEntry.GetLogger().With(zap.String("eventId", event.GetEventId()))
-
-	// 2: Record current GrpcEntry information into Event
-	entry.logBasicInfo(event)
+	event, logger := entry.logBasicInfo("Interrupt")
 
 	// 3: Interrupt CommonServiceEntry, SwEntry, TvEntry, PromEntry
 	if entry.IsCommonServiceEnabled() {
@@ -1353,8 +1330,6 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Interrupt(ctx)
 	}
-
-	logger.Info("Interrupting grpcEntry.", event.ListPayloads()...)
 
 	if entry.HttpServer != nil {
 		if err := entry.HttpServer.Shutdown(context.Background()); err != nil {
@@ -1475,28 +1450,71 @@ func (entry *GrpcEntry) IsPromEnabled() bool {
 }
 
 // Add basic fields into event.
-func (entry *GrpcEntry) logBasicInfo(event rkquery.Event) {
-	event.AddPayloads(
-		zap.String("entryName", entry.EntryName),
-		zap.String("entryType", entry.EntryType),
-		zap.Uint64("port", entry.Port),
-		zap.Bool("swEnabled", entry.IsSwEnabled()),
-		zap.Bool("tvEnabled", entry.IsTvEnabled()),
-		zap.Bool("promEnabled", entry.IsPromEnabled()),
-		zap.Bool("commonServiceEnabled", entry.IsCommonServiceEnabled()),
-		zap.Bool("tlsEnabled", entry.IsTlsEnabled()),
-		zap.Bool("reflectionEnabled", entry.EnableReflection))
+func (entry *GrpcEntry) logBasicInfo(operation string) (rkquery.Event, *zap.Logger) {
+	event := entry.EventLoggerEntry.GetEventHelper().Start(
+		operation,
+		rkquery.WithEntryName(entry.GetName()),
+		rkquery.WithEntryType(entry.GetType()))
+	logger := entry.ZapLoggerEntry.GetLogger().With(
+		zap.String("eventId", event.GetEventId()),
+		zap.String("entryName", entry.EntryName))
 
+	// add general info
+	event.AddPayloads(
+		zap.Uint64("grpcPort", entry.Port),
+		zap.Uint64("gwPort", entry.Port))
+
+	// add SwEntry info
 	if entry.IsSwEnabled() {
 		event.AddPayloads(
-			zap.String("swPath", entry.SwEntry.Path),
-			zap.Any("headers", entry.SwEntry.Headers))
+			zap.Bool("swEnabled", true),
+			zap.String("swPath", entry.SwEntry.Path))
 	}
 
+	// add CommonServiceEntry info
+	if entry.IsCommonServiceEnabled() {
+		event.AddPayloads(
+			zap.Bool("commonServiceEnabled", true),
+			zap.String("commonServicePathPrefix", "/rk/v1/"))
+	}
+
+	// add TvEntry info
 	if entry.IsTvEnabled() {
 		event.AddPayloads(
-			zap.String("tvPath", "/rk/v1/tv"))
+			zap.Bool("tvEnabled", true),
+			zap.String("tvPath", "/rk/v1/tv/"))
 	}
+
+	// add PromEntry info
+	if entry.IsPromEnabled() {
+		event.AddPayloads(
+			zap.Bool("promEnabled", true),
+			zap.Uint64("promPort", entry.PromEntry.Port),
+			zap.String("promPath", entry.PromEntry.Path))
+	}
+
+	// add StaticFileHandlerEntry info
+	if entry.IsStaticFileHandlerEnabled() {
+		event.AddPayloads(
+			zap.Bool("staticFileHandlerEnabled", true),
+			zap.String("staticFileHandlerPath", entry.StaticFileEntry.Path))
+	}
+
+	// add tls info
+	if entry.IsTlsEnabled() {
+		event.AddPayloads(
+			zap.Bool("tlsEnabled", true))
+	}
+
+	// add proxy info
+	if entry.IsProxyEnabled() {
+		event.AddPayloads(
+			zap.Bool("grpcProxyEnabled", true))
+	}
+
+	logger.Info(fmt.Sprintf("%s grpcEntry", operation))
+
+	return event, logger
 }
 
 // Parse gw mapping file

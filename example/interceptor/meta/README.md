@@ -253,5 +253,5 @@ EOE
 ```
 
 #### Code
-- [greeter-server.go](greeter-server.go)
-- [greeter-client.go](greeter-client.go)
+- [greeter-server.go](server/greeter-server.go)
+- [greeter-client.go](client/greeter-client.go)
