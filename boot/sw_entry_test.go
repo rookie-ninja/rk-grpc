@@ -183,16 +183,6 @@ func TestSwEntry_UnmarshalJSON_HappyCase(t *testing.T) {
 	assert.Nil(t, entry.UnmarshalJSON(nil))
 }
 
-func TestSwEntry_logBasicInfo_HappyCase(t *testing.T) {
-	entry := NewSwEntry()
-	event := rkentry.NoopEventLoggerEntry().GetEventFactory().CreateEvent()
-
-	entry.logBasicInfo(event)
-	fields := event.ListPayloads()
-
-	assert.Len(t, fields, 4)
-}
-
 func TestSwEntry_initSwaggerConfig_HappyCase(t *testing.T) {
 	entry := SwEntry{
 		EntryName:           SwEntryNameDefault,

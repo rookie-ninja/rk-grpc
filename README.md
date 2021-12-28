@@ -4,60 +4,50 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/rookie-ninja/rk-grpc)](https://goreportcard.com/report/github.com/rookie-ninja/rk-grpc)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Interceptor & bootstrapper designed for grpc. Currently, supports bellow functionalities.
+Interceptor & bootstrapper designed for [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). [Documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/).
 
-| Name | Description |
-| ---- | ---- |
-| Start from YAML | Start service from YAML config. |
-| Start from code | Start service from code. |
-| gRPC Service | gRPC service defined with protocol buffer. |
-| gRPC Gateway Service | gRPC Gateway service with same port. |
-| Swagger Service | Swagger UI with same port as gRPC Gateway. |
-| Common Service | List of common API available on gRPC, gRPC Gateway and swagger. |
-| TV Service | A Web UI shows application and environment information. |
-| Static file handler | A Web UI shows files could be downloaded from server, currently support source of local and pkger. |
-| Metrics interceptor | Collect RPC metrics and export as prometheus client with same port of gRPC gateway. |
-| Log interceptor | Log every RPC requests as event with rk-query. |
-| Trace interceptor | Collect RPC trace and export it to stdout, file or jaeger. |
-| Panic interceptor | Recover from panic for RPC requests and log it. |
-| Meta interceptor | Send application metadata as header to client and gRPC Gateway. |
-| Auth interceptor | Support [Basic Auth] and [API Key] authorization types. |
-| RateLimit interceptor | Limit request rate from interceptor. |
-| Timeout interceptor | Timing out request by configuration. |
-| CORS interceptor | CORS interceptor for grpc-gateway. |
-| JWT interceptor | JWT interceptor on server side. |
-| Secure interceptor | Secure interceptor for grpc-gateway. |
-| CSRF interceptor | CSRF interceptor for grpc-gateway. |
+This belongs to [rk-boot](https://github.com/rookie-ninja/rk-boot) family. We suggest use this lib from [rk-boot](https://github.com/rookie-ninja/rk-boot).
+
+![image](img/boot-arch.png)
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [Architecture](#architecture)
+- [Supported bootstrap](#supported-bootstrap)
+- [Supported instances](#supported-instances)
+- [Supported middlewares](#supported-middlewares)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-  - [Start gRPC Service](#start-grpc-service)
-  - [Output](#output)
-    - [gRPC Service](#grpc-service)
-    - [gRPC Gateway Service](#grpc-gateway-service)
-    - [Swagger Service](#swagger-service)
-    - [Common Service](#common-service)
-    - [TV Service](#tv-service)
-    - [Metrics](#metrics)
-    - [Logging](#logging)
-    - [Meta](#meta)
-- [YAML Config](#yaml-config)
-  - [gRPC Service](#grpc-service-1)
+  - [1.Prepare .proto files](#1prepare-proto-files)
+  - [2.Generate .pb.go files with buf](#2generate-pbgo-files-with-buf)
+  - [3.Create boot.yaml](#3create-bootyaml)
+  - [4.Create main.go](#4create-maingo)
+  - [5.Start server](#5start-server)
+  - [6.Validation](#6validation)
+    - [6.1 gRPC & grpc-gateway server](#61-grpc--grpc-gateway-server)
+    - [6.2 Swagger UI](#62-swagger-ui)
+    - [6.3 TV](#63-tv)
+    - [6.4 Prometheus Metrics](#64-prometheus-metrics)
+    - [6.5 Logging](#65-logging)
+    - [6.6 Meta](#66-meta)
+    - [6.7 Send request](#67-send-request)
+    - [6.8 RPC logs](#68-rpc-logs)
+    - [6.9 RPC prometheus metrics](#69-rpc-prometheus-metrics)
+- [YAML options](#yaml-options)
+  - [gRPC Service](#grpc-service)
   - [gRPC gateway options](#grpc-gateway-options)
-  - [Common Service](#common-service-1)
+  - [Common Service](#common-service)
   - [Prom Client](#prom-client)
-  - [TV Service](#tv-service-1)
-  - [Swagger Service](#swagger-service-1)
+  - [TV Service](#tv-service)
+  - [Swagger Service](#swagger-service)
   - [Static file handler Service](#static-file-handler-service)
   - [Interceptors](#interceptors)
     - [Log](#log)
-    - [Metrics](#metrics-1)
+    - [Metrics](#metrics)
     - [Auth](#auth)
-    - [Meta](#meta-1)
+    - [Meta](#meta)
     - [Tracing](#tracing)
     - [RateLimit](#ratelimit)
     - [Timeout](#timeout)
@@ -65,90 +55,280 @@ Interceptor & bootstrapper designed for grpc. Currently, supports bellow functio
     - [JWT](#jwt)
     - [Secure](#secure)
     - [CSRF](#csrf)
+  - [Full YAML](#full-yaml)
 - [Development Status: Stable](#development-status-stable)
 - [Build instruction](#build-instruction)
 - [Test instruction](#test-instruction)
-- [Dependencies](#dependencies)
 - [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Architecture
+![image](img/grpc-arch.png)
+
+## Supported bootstrap
+| Bootstrap | Description |
+| --- | --- |
+| YAML based | Start [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) microservice from YAML |
+| Code based | Start [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) microservice from code |
+
+## Supported instances
+All instances could be configured via YAML or Code.
+
+**User can enable anyone of those as needed! No mandatory binding!**
+
+| Instance | Description |
+| --- | --- |
+| [gRPC](https://grpc.io/docs/languages/go/) | [gRPC](https://grpc.io/docs/languages/go/) defined with protocol buffer. |
+| [gRPC](https://grpc.io/docs/languages/go/) proxy | Proxy gRPC request to another gRPC server. |
+| [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) | [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) service with same port. |
+| [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) options | Well defined [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) options. |
+| Config | Configure [spf13/viper](https://github.com/spf13/viper) as config instance and reference it from YAML |
+| Logger | Configure [uber-go/zap](https://github.com/uber-go/zap) logger configuration and reference it from YAML |
+| EventLogger | Configure logging of RPC with [rk-query](https://github.com/rookie-ninja/rk-query) and reference it from YAML |
+| Credential | Fetch credentials from remote datastore like ETCD. |
+| Cert | Fetch TLS/SSL certificates from remote datastore like ETCD and start microservice. |
+| Prometheus | Start prometheus client at client side and push metrics to [pushgateway](https://github.com/prometheus/pushgateway) as needed. |
+| Swagger | Builtin swagger UI handler. |
+| CommonService | List of common APIs. |
+| TV | A Web UI shows microservice and environment information. |
+| StaticFileHandler | A Web UI shows files could be downloaded from server, currently support source of local and pkger. |
+
+## Supported middlewares
+All middlewares could be configured via YAML or Code.
+
+**User can enable anyone of those as needed! No mandatory binding!**
+
+| Middleware | Description |
+| --- | --- |
+| Metrics | Collect RPC metrics and export to [prometheus](https://github.com/prometheus/client_golang) client. |
+| Log | Log every RPC requests as event with [rk-query](https://github.com/rookie-ninja/rk-query). |
+| Trace | Collect RPC trace and export it to stdout, file or jaeger with [open-telemetry/opentelemetry-go](https://github.com/open-telemetry/opentelemetry-go). |
+| Panic | Recover from panic for RPC requests and log it. |
+| Meta | Send micsroservice metadata as header to client. |
+| Auth | Support [Basic Auth] and [API Key] authorization types. |
+| RateLimit | Limiting RPC rate globally or per path. |
+| Timeout | Timing out request by configuration. |
+| CORS | Server side CORS validation. |
+| JWT | Server side JWT validation. |
+| Secure | Server side secure validation. |
+| CSRF | Server side csrf validation. |
 
 ## Installation
 `go get github.com/rookie-ninja/rk-grpc`
 
 ## Quick Start
-Bootstrapper can be used with YAML config. In the bellow example, we will start bellow services automatically.
-- gRPC Service
-- gRPC Server Reflection
-- gRPC Gateway Service(By default, gateway is always open)
-- Swagger Service
-- Common Service
-- TV Service
-- Metrics
-- Logging
-- Meta
+In the bellow example, we will start microservice with bellow functionality and middlewares enabled via YAML.
+
+- [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) server
+- [gRPC](https://grpc.io/docs/languages/go/) server reflection
+- Swagger UI
+- CommonService
+- TV
+- Prometheus Metrics (middleware)
+- Logging (middleware)
+- Meta (middleware)
 
 Please refer example at [example/boot/simple](example/boot/simple).
 
-### Start gRPC Service
-- [boot.yaml](example/boot/simple/boot.yaml)
+### 1.Prepare .proto files
+- api/v1/greeter.proto
 
+```protobuf
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "api/v1/greeter";
+
+service Greeter {
+  rpc Greeter (GreeterRequest) returns (GreeterResponse) {}
+}
+
+message GreeterRequest {
+  bytes msg = 1;
+}
+
+message GreeterResponse {}
+```
+
+- api/v1/gw_mapping.yaml
+
+```yaml
+type: google.api.Service
+config_version: 3
+
+# Please refer google.api.Http in https://github.com/googleapis/googleapis/blob/master/google/api/http.proto file for details.
+http:
+  rules:
+    - selector: api.v1.Greeter.Greeter
+      get: /v1/greeter
+```
+
+- buf.yaml
+
+```yaml
+version: v1beta1
+name: github.com/rk-dev/rk-boot
+build:
+  roots:
+    - api
+```
+
+- buf.gen.yaml
+
+```yaml
+version: v1beta1
+plugins:
+  # protoc-gen-go needs to be installed, generate go files based on proto files
+  - name: go
+    out: api/gen
+    opt:
+     - paths=source_relative
+  # protoc-gen-go-grpc needs to be installed, generate grpc go files based on proto files
+  - name: go-grpc
+    out: api/gen
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+  # protoc-gen-grpc-gateway needs to be installed, generate grpc-gateway go files based on proto files
+  - name: grpc-gateway
+    out: api/gen
+    opt:
+      - paths=source_relative
+      - grpc_api_configuration=api/v1/gw_mapping.yaml
+  # protoc-gen-openapiv2 needs to be installed, generate swagger config files based on proto files
+  - name: openapiv2
+    out: api/gen
+    opt:
+      - grpc_api_configuration=api/v1/gw_mapping.yaml
+```
+
+### 2.Generate .pb.go files with [buf](https://docs.buf.build/introduction)
+```
+$ buf generate --path api/v1
+```
+
+- directory hierarchy
+
+```
+.
+├── api
+│   ├── gen
+│   │   └── v1
+│   │       ├── greeter.pb.go
+│   │       ├── greeter.pb.gw.go
+│   │       ├── greeter.swagger.json
+│   │       └── greeter_grpc.pb.go
+│   └── v1
+│       ├── greeter.proto
+│       └── gw_mapping.yaml
+├── boot.yaml
+├── buf.gen.yaml
+├── buf.yaml
+├── go.mod
+├── go.sum
+└── main.go
+```
+
+### 3.Create boot.yaml
 ```yaml
 ---
 grpc:
-  - name: greeter
-    enabled: true
-    port: 8080
-    enableReflection: true
-    enableRkGwOption: true
+  - name: greeter                     # Required
+    port: 8080                        # Required
+    enabled: true                     # Required
+    enableReflection: true            # Optional, default: false
+    enableRkGwOption: true            # Optional, default: false
     commonService:
-      enabled: true
+      enabled: true                   # Optional, default: false
     tv:
-      enabled: true
+      enabled: true                   # Optional, default: false
     sw:
-      enabled: true
+      enabled: true                   # Optional, default: false
     prom:
-      enabled: true
-#    interceptors:
-#      loggingZap:
-#        enabled: true
-#      metricsProm:
-#        enabled: true
-#      meta:
-#        enabled: true
+      enabled: true                   # Optional, default: false
+    interceptors:
+      loggingZap:
+        enabled: true                 # Optional, default: false
+      metricsProm:
+        enabled: true                 # Optional, default: false
+      meta:
+        enabled: true                 # Optional, default: false
 ```
-- [main.go](example/boot/simple/main.go)
+
+### 4.Create main.go
 
 ```go
+// Copyright (c) 2021 rookie-ninja
+//
+// Use of this source code is governed by an Apache-style
+// license that can be found in the LICENSE file.
+package main
+
+import (
+	"context"
+	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-grpc/boot"
+	proto "github.com/rookie-ninja/rk-grpc/example/boot/simple/api/gen/v1"
+	"google.golang.org/grpc"
+)
+
 func main() {
-    // Bootstrap basic entries from boot config.
-    rkentry.RegisterInternalEntriesFromConfig("example/boot/simple/boot.yaml")
+	// Bootstrap basic entries from boot config.
+	rkentry.RegisterInternalEntriesFromConfig("example/boot/simple/boot.yaml")
 
-    // Bootstrap grpc entry from boot config
-    res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/simple/boot.yaml")
+	// Bootstrap grpc entry from boot config
+	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/simple/boot.yaml")
 
-    // Bootstrap gin entry
-    res["greeter"].Bootstrap(context.Background())
+	// Get GrpcEntry
+	grpcEntry := res["greeter"].(*rkgrpc.GrpcEntry)
+	// Register gRPC server
+	grpcEntry.AddRegFuncGrpc(func(server *grpc.Server) {
+		proto.RegisterGreeterServer(server, &GreeterServer{})
+	})
+	// Register grpc-gateway func
+	grpcEntry.AddRegFuncGw(proto.RegisterGreeterHandlerFromEndpoint)
 
-    // Wait for shutdown signal
-    rkentry.GlobalAppCtx.WaitForShutdownSig()
+	// Bootstrap grpc entry
+	grpcEntry.Bootstrap(context.Background())
 
-    // Interrupt gin entry
-    res["greeter"].Interrupt(context.Background())
+	// Wait for shutdown signal
+	rkentry.GlobalAppCtx.WaitForShutdownSig()
+
+	// Interrupt gin entry
+	grpcEntry.Interrupt(context.Background())
+}
+
+// GreeterServer Implementation of GreeterServer.
+type GreeterServer struct{}
+
+// SayHello Handle SayHello method.
+func (server *GreeterServer) Greeter(context.Context, *proto.GreeterRequest) (*proto.GreeterResponse, error) {
+	return &proto.GreeterResponse{}, nil
 }
 ```
 
-```go
+### 5.Start server
+```
 $ go run main.go
 ```
 
-### Output
-#### gRPC Service
-Try to test gRPC Service with [grpcurl](https://github.com/fullstorydev/grpcurl)
+### 6.Validation
+#### 6.1 gRPC & grpc-gateway server
+Try to test [gRPC](https://grpc.io/docs/languages/go/) & [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) Service with [curl](https://curl.se/) & [grpcurl](https://github.com/fullstorydev/grpcurl)
+
+```shell script
+# Curl to common service
+$ curl localhost:8080/rk/v1/healthy
+{"healthy":true}
+```
+
 ```shell script
 # List grpc services at port 8080 without TLS
 # Expect RkCommonService since we enabled common services.
 $ grpcurl -plaintext localhost:8080 list                           
+api.v1.Greeter
 grpc.reflection.v1alpha.ServerReflection
 rk.api.v1.RkCommonService
 
@@ -177,120 +357,182 @@ $ grpcurl -plaintext localhost:8080 rk.api.v1.RkCommonService.Healthy
 }
 ```
 
-#### gRPC Gateway Service
-Gateway and gRPC will open at the same port. rk-grpc will automatically determine connection type between http and grpc
-requests.
- 
-We will try to send request to common service API.
+#### 6.2 Swagger UI
+Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/swagger-ui/) for details of configuration.
 
-Gateway to gRPC mapping defined at [gw-mapping](boot/api/v1/gw_mapping.yaml)
-```shell script
-$ curl localhost:8080/rk/v1/healthy
-{"healthy":true}
-```
-
-#### Swagger Service
 By default, we could access swagger UI at [/sw].
 - http://localhost:8080/sw
 
 ![sw](docs/img/simple-sw.png)
 
-#### Common Service
-We can access common service both from Gateway and gRPC.
+#### 6.3 TV
+Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/tv/) for details of configuration.
 
-![cs](docs/img/simple-cs.png)
-
-#### TV Service
 By default, we could access TV at [/tv].
 
 ![tv](docs/img/simple-tv.png)
 
-#### Metrics
+#### 6.4 Prometheus Metrics
+Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/middleware-metrics/) for details of configuration.
+
 By default, we could access prometheus client at [/metrics]
 - http://localhost:8080/metrics
 
 ![prom](docs/img/simple-prom.png)
 
-#### Logging
-By default, we enable zap logger and event logger with console encoding type.
+#### 6.5 Logging
+Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/middleware-logging/) for details of configuration.
+
+By default, we enable zap logger and event logger with encoding type of [console]. Encoding type of [json] is also supported.
+
 ```shell script
-2021-09-11T04:43:23.216+0800    INFO    boot/common_service_entry.go:133        Bootstrapping CommonServiceEntry.       {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcCommonServiceEntry"}
-2021-09-11T04:43:23.217+0800    INFO    boot/sw_entry.go:208    Bootstrapping SwEntry.  {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcSwEntry", "swPath": "/sw/", "headers": {}}
-2021-09-11T04:43:23.217+0800    INFO    boot/prom_entry.go:206  Bootstrapping promEntry.        {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcPromEntry", "path": "/metrics", "port": 8080}
-2021-09-11T04:43:23.217+0800    INFO    boot/tv_entry.go:178    Bootstrapping TvEntry.  {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcTvEntry"}
-2021-09-11T04:43:23.219+0800    INFO    boot/grpc_entry.go:829  Bootstrapping grpcEntry.        {"eventId": "2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce", "entryName": "greeter", "entryType": "GrpcEntry", "port": 8080, "swEnabled": true, "tvEnabled": true, "promEnabled": true, "commonServiceEnabled": true, "tlsEnabled": false, "reflectionEnabled": true, "swPath": "/sw/", "headers": {}, "tvPath": "/rk/v1/tv"}
-```
-```shell script
+2021-12-28T05:36:21.561+0800    INFO    boot/grpc_entry.go:1515 Bootstrap grpcEntry     {"eventId": "db2c977c-e0ff-4b21-bc0d-5966f1cad093", "entryName": "greeter"}
 ------------------------------------------------------------------------
-endTime=2021-09-11T04:43:23.217002+08:00
-startTime=2021-09-11T04:43:23.216935+08:00
-elapsedNano=67240
+endTime=2021-12-28T05:36:21.563575+08:00
+startTime=2021-12-28T05:36:21.561362+08:00
+elapsedNano=2213846
 timezone=CST
-ids={"eventId":"2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce"}
-app={"appName":"rk-grpc","appVersion":"master-bd63f29","entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
-payloads={"entryName":"greeter","entryType":"GrpcCommonServiceEntry"}
+ids={"eventId":"db2c977c-e0ff-4b21-bc0d-5966f1cad093"}
+app={"appName":"rk","appVersion":"","entryName":"greeter","entryType":"GrpcEntry"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"commonServiceEnabled":true,"commonServicePathPrefix":"/rk/v1/","grpcPort":8080,"gwPort":8080,"promEnabled":true,"promPath":"/metrics","promPort":8080,"swEnabled":true,"swPath":"/sw/","tvEnabled":true,"tvPath":"/rk/v1/tv/"}
 error={}
 counters={}
 pairs={}
 timing={}
 remoteAddr=localhost
-operation=bootstrap
-resCode=OK
-eventStatus=Ended
-EOE
-...
-------------------------------------------------------------------------
-endTime=2021-09-11T04:43:23.217156+08:00
-startTime=2021-09-11T04:43:23.217145+08:00
-elapsedNano=11496
-timezone=CST
-ids={"eventId":"2df7fa50-3d1f-44cb-9db6-c4c26d9a29ce"}
-app={"appName":"rk-grpc","appVersion":"master-bd63f29","entryName":"greeter","entryType":"GrpcPromEntry"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.6","os":"darwin","realm":"*","region":"*"}
-payloads={"entryName":"greeter","entryType":"GrpcPromEntry","path":"/metrics","port":8080}
-error={}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost
-operation=bootstrap
+operation=Bootstrap
 resCode=OK
 eventStatus=Ended
 EOE
 ```
 
-#### Meta
-By default, we will send back some metadata to client including gateway with headers.
+#### 6.6 Meta
+Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/middleware-meta/) for details of configuration.
+
+By default, we will send back some metadata to client with headers.
+
 ```shell script
 $ curl -vs localhost:8080/rk/v1/healthy
 ...
 < HTTP/1.1 200 OK
 < Content-Type: application/json
-< X-Request-Id: cb615712-74dc-4e62-afb9-2fc6599bf452
-< X-Rk-App-Name: rk-grpc
-< X-Rk-App-Unix-Time: 2021-06-24T05:29:09.481073+08:00
-< X-Rk-App-Version: master-xxx
-< X-Rk-Received-Time: 2021-06-24T05:29:09.481073+08:00
-< Date: Wed, 23 Jun 2021 21:29:09 GMT
+< X-Request-Id: 7e4f5ac5-3369-485f-89f7-55551cc4a9a1
+< X-Rk-App-Name: rk
+< X-Rk-App-Unix-Time: 2021-12-28T05:39:50.508328+08:00
+< X-Rk-App-Version: 
+< X-Rk-Received-Time: 2021-12-28T05:39:50.508328+08:00
+< Date: Mon, 27 Dec 2021 21:39:50 GMT
 ...
 ```
 
-## YAML Config
-Available configuration
-User can start multiple grpc servers at the same time. Please make sure use different port and name.
+#### 6.7 Send request
+We registered /v1/greeter API in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) server and let's validate it!
+
+```shell script
+$ curl -vs localhost:8080/v1/greeter             
+*   Trying ::1...
+* TCP_NODELAY set
+* Connection failed
+* connect to ::1 port 8080 failed: Connection refused
+*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /v1/greeter HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+< X-Request-Id: 07b0fbf6-cebf-40ac-84a2-533bbd4b8958
+< X-Rk-App-Name: rk
+< X-Rk-App-Unix-Time: 2021-12-28T05:41:04.653652+08:00
+< X-Rk-App-Version: 
+< X-Rk-Received-Time: 2021-12-28T05:41:04.653652+08:00
+< Date: Mon, 27 Dec 2021 21:41:04 GMT
+< Content-Length: 2
+< 
+* Connection #0 to host localhost left intact
+{}
+```
+
+We registered api.v1.Greeter.Greeter API in [gRPC](https://grpc.io/docs/languages/go/) server and let's validate it!
+
+```shell script
+$ grpcurl -plaintext localhost:8080 api.v1.Greeter.Greeter 
+{
+  
+}
+```
+
+#### 6.8 RPC logs
+Bellow logs would be printed in stdout.
+
+The first block of log is from [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) request.
+
+The second block of log is from [gRPC](https://grpc.io/docs/languages/go/) request.
+
+```
+------------------------------------------------------------------------
+endTime=2021-12-28T05:45:52.986041+08:00
+startTime=2021-12-28T05:45:52.985956+08:00
+elapsedNano=85065
+timezone=CST
+ids={"eventId":"88362f69-7eda-4f03-bdbe-7ef667d06bac","requestId":"88362f69-7eda-4f03-bdbe-7ef667d06bac"}
+app={"appName":"rk","appVersion":"","entryName":"greeter","entryType":"GrpcEntry"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"grpcMethod":"Greeter","grpcService":"api.v1.Greeter","grpcType":"unaryServer","gwMethod":"GET","gwPath":"/v1/greeter","gwScheme":"http","gwUserAgent":"curl/7.64.1"}
+error={}
+counters={}
+pairs={}
+timing={}
+remoteAddr=127.0.0.1:61520
+operation=/api.v1.Greeter/Greeter
+resCode=OK
+eventStatus=Ended
+EOE
+------------------------------------------------------------------------
+endTime=2021-12-28T05:44:45.686734+08:00
+startTime=2021-12-28T05:44:45.686592+08:00
+elapsedNano=141716
+timezone=CST
+ids={"eventId":"7765862c-9e83-443a-a6e5-bb28f17f8ea0","requestId":"7765862c-9e83-443a-a6e5-bb28f17f8ea0"}
+app={"appName":"rk","appVersion":"","entryName":"greeter","entryType":"GrpcEntry"}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"grpcMethod":"Greeter","grpcService":"api.v1.Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+error={}
+counters={}
+pairs={}
+timing={}
+remoteAddr=127.0.0.1:57149
+operation=/api.v1.Greeter/Greeter
+resCode=OK
+eventStatus=Ended
+EOE
+```
+
+#### 6.9 RPC prometheus metrics
+Prometheus client will automatically register into [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) instance at /metrics.
+
+Access [http://localhost:8080/metrics](http://localhost:8080/metrics)
+
+![image](img/prom-inter.png)
+
+## YAML options
+User can start multiple [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) instances at the same time. Please make sure use different port and name.
 
 ### gRPC Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.name | The name of grpc server | string | N/A |
-| grpc.enabled | Enable grpc entry | bool | false |
-| grpc.port | The port of grpc server | integer | nil, server won't start |
-| grpc.description | Description of grpc entry. | string | "" |
-| grpc.enableReflection | Enable grpc server reflection | boolean | false |
-| grpc.enableRkGwOption | Enable RK style gateway server options. [detail](boot/gw_server_options.go) | false |
-| grpc.noRecvMsgSizeLimit | Disable grpc server side receive message size limit | false |
-| grpc.gwMappingFilePaths | The grpc gateway mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
+| grpc.name | The name of [gRPC](https://grpc.io/docs/languages/go/) server | string | N/A |
+| grpc.enabled | Enable [gRPC](https://grpc.io/docs/languages/go/) entry | bool | false |
+| grpc.port | The port of [gRPC](https://grpc.io/docs/languages/go/) server | integer | nil, server won't start |
+| grpc.description | Description of [gRPC](https://grpc.io/docs/languages/go/) entry. | string | "" |
+| grpc.enableReflection | Enable [gRPC](https://grpc.io/docs/languages/go/) server reflection | boolean | false |
+| grpc.enableRkGwOption | Enable RK style [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) server options. [detail](boot/gw_server_options.go) | false |
+| grpc.noRecvMsgSizeLimit | Disable [gRPC](https://grpc.io/docs/languages/go/) server side receive message size limit | false |
+| grpc.gwMappingFilePaths | The grpc [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
 | grpc.cert.ref | Reference of cert entry declared in [cert entry](https://github.com/rookie-ninja/rk-entry#certentry) | string | "" |
 | grpc.logger.zapLogger.ref | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
 | grpc.logger.eventLogger.ref | Reference of eventLoggerEntry declared in [eventLoggerEntry](https://github.com/rookie-ninja/rk-entry#eventloggerentry) | string | "" |
@@ -302,14 +544,14 @@ Please refer to bellow repository for detailed explanations.
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.gwOption.marshal.multiline | Enable multiline in grpc-gateway marshaller | bool | false |
-| grpc.gwOption.marshal.emitUnpopulated | Enable emitUnpopulated in grpc-gateway marshaller | bool | false |
-| grpc.gwOption.marshal.indent | Set indent in grpc-gateway marshaller | string | "  " |
-| grpc.gwOption.marshal.allowPartial | Enable allowPartial in grpc-gateway marshaller | bool | false |
-| grpc.gwOption.marshal.useProtoNames | Enable useProtoNames in grpc-gateway marshaller | bool | false |
-| grpc.gwOption.marshal.useEnumNumbers | Enable useEnumNumbers in grpc-gateway marshaller | bool | false |
-| grpc.gwOption.unmarshal.allowPartial | Enable allowPartial in grpc-gateway unmarshaler | bool | false |
-| grpc.gwOption.unmarshal.discardUnknown | Enable discardUnknown in grpc-gateway unmarshaler | bool | false |
+| grpc.gwOption.marshal.multiline | Enable multiline in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | bool | false |
+| grpc.gwOption.marshal.emitUnpopulated | Enable emitUnpopulated in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | bool | false |
+| grpc.gwOption.marshal.indent | Set indent in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | string | "  " |
+| grpc.gwOption.marshal.allowPartial | Enable allowPartial in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | bool | false |
+| grpc.gwOption.marshal.useProtoNames | Enable useProtoNames in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | bool | false |
+| grpc.gwOption.marshal.useEnumNumbers | Enable useEnumNumbers in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) marshaller | bool | false |
+| grpc.gwOption.unmarshal.allowPartial | Enable allowPartial in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) unmarshaler | bool | false |
+| grpc.gwOption.unmarshal.discardUnknown | Enable discardUnknown in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) unmarshaler | bool | false |
 
 ### Common Service
 ```yaml
@@ -357,10 +599,10 @@ http:
 | grpc.prom.enabled | Enable prometheus | boolean | false |
 | grpc.prom.path | Path of prometheus | string | /metrics |
 | grpc.prom.pusher.enabled | Enable prometheus pusher | bool | false |
-| grpc.prom.pusher.jobName | Job name would be attached as label while pushing to remote pushgateway | string | "" |
-| grpc.prom.pusher.remoteAddress | PushGateWay address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
+| grpc.prom.pusher.jobName | Job name would be attached as label while pushing to remote [pushgateway](https://github.com/prometheus/pushgateway) | string | "" |
+| grpc.prom.pusher.remoteAddress | [pushgateway](https://github.com/prometheus/pushgateway) address, could be form of http://x.x.x.x or x.x.x.x | string | "" |
 | grpc.prom.pusher.intervalMs | Push interval in milliseconds | string | 1000 |
-| grpc.prom.pusher.basicAuth | Basic auth used to interact with remote pushgateway, form of [user:pass] | string | "" |
+| grpc.prom.pusher.basicAuth | Basic auth used to interact with remote [pushgateway](https://github.com/prometheus/pushgateway), form of [user:pass] | string | "" |
 | grpc.prom.pusher.cert.ref | Reference of rkentry.CertEntry | string | "" |
 
 ### TV Service
@@ -371,7 +613,7 @@ http:
 ### Swagger Service
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
-| grpc.sw.enabled | Enable swagger service over gRpc server | boolean | false |
+| grpc.sw.enabled | Enable swagger service over [gRPC](https://grpc.io/docs/languages/go/) server | boolean | false |
 | grpc.sw.path | The path access swagger service from web | string | /sw |
 | grpc.sw.jsonPath | Where the swagger.json files are stored locally | string | "" |
 | grpc.sw.headers | Headers would be sent to caller as scheme of [key:value] | []string | [] |
@@ -467,7 +709,7 @@ Enable the server side auth. codes.Unauthenticated would be returned to client i
 | grpc.interceptors.auth.ignorePrefix | The paths of prefix that will be ignored by interceptor | []string | [] |
 
 #### Meta
-Send application metadata as header to client and GRPC Gateway.
+Send application metadata as header to client and [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -494,8 +736,8 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.rateLimit.enabled | Enable rate limit interceptor | boolean | false |
 | grpc.interceptors.rateLimit.algorithm | Provide algorithm, tokenBucket and leakyBucket are available options | string | tokenBucket |
 | grpc.interceptors.rateLimit.reqPerSec | Request per second globally | int | 0 |
-| grpc.interceptors.rateLimit.paths.path | gRPC full name | string | "" |
-| grpc.interceptors.rateLimit.paths.reqPerSec | Request per second by gRPC full method name | int | 0 |
+| grpc.interceptors.rateLimit.paths.path | [gRPC](https://grpc.io/docs/languages/go/) full name | string | "" |
+| grpc.interceptors.rateLimit.paths.reqPerSec | Request per second by [gRPC](https://grpc.io/docs/languages/go/) full method name | int | 0 |
 
 #### Timeout
 | name | description | type | default value |
@@ -506,7 +748,7 @@ Send application metadata as header to client and GRPC Gateway.
 | grpc.interceptors.timeout.paths.timeoutMs | Timeout in milliseconds by full path | int | 5000 |
 
 #### CORS
-Interceptor for grpc-gateway.
+Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -540,7 +782,7 @@ The supported scheme of **tokenLookup**
 ```
 
 #### Secure
-Interceptor for grpc-gateway.
+Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -557,7 +799,7 @@ Interceptor for grpc-gateway.
 | grpc.interceptors.secure.ignorePrefix | Ignoring path prefix. | []string | [] |
 
 #### CSRF
-Interceptor for grpc-gateway.
+Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -571,6 +813,211 @@ Interceptor for grpc-gateway.
 | grpc.interceptors.csrf.cookieHttpOnly | Indicates if CSRF cookie is HTTP only. | bool | false |
 | grpc.interceptors.csrf.cookieSameSite | Indicates SameSite mode of the CSRF cookie. Options: lax, strict, none, default | string | default |
 | grpc.interceptors.csrf.ignorePrefix | Ignoring path prefix. | []string | [] |
+
+### Full YAML
+```yaml
+---
+#app:
+#  description: "this is description"                      # Optional, default: ""
+#  keywords: ["rk", "golang"]                              # Optional, default: []
+#  homeUrl: "http://example.com"                           # Optional, default: ""
+#  iconUrl: "http://example.com"                           # Optional, default: ""
+#  docsUrl: ["http://example.com"]                         # Optional, default: []
+#  maintainers: ["rk-dev"]                                 # Optional, default: []
+#zapLogger:
+#  - name: zap-logger                                      # Required
+#    description: "Description of entry"                   # Optional
+#    zap:
+#      level: info                                         # Optional, default: info, options: [debug, DEBUG, info, INFO, warn, WARN, dpanic, DPANIC, panic, PANIC, fatal, FATAL]
+#      development: true                                   # Optional, default: true
+#      disableCaller: false                                # Optional, default: false
+#      disableStacktrace: true                             # Optional, default: true
+#      sampling:
+#        initial: 0                                        # Optional, default: 0
+#        thereafter: 0                                     # Optional, default: 0
+#      encoding: console                                   # Optional, default: "console", options: [console, json]
+#      encoderConfig:
+#        messageKey: "msg"                                 # Optional, default: "msg"
+#        levelKey: "level"                                 # Optional, default: "level"
+#        timeKey: "ts"                                     # Optional, default: "ts"
+#        nameKey: "logger"                                 # Optional, default: "logger"
+#        callerKey: "caller"                               # Optional, default: "caller"
+#        functionKey: ""                                   # Optional, default: ""
+#        stacktraceKey: "msg"                              # Optional, default: "msg"
+#        lineEnding: "\n"                                  # Optional, default: "\n"
+#        levelEncoder: "capitalColor"                      # Optional, default: "capitalColor", options: [capital, capitalColor, color, lowercase]
+#        timeEncoder: "iso8601"                            # Optional, default: "iso8601", options: [rfc3339nano, RFC3339Nano, rfc3339, RFC3339, iso8601, ISO8601, millis, nanos]
+#        durationEncoder: "string"                         # Optional, default: "string", options: [string, nanos, ms]
+#        callerEncoder: ""                                 # Optional, default: ""
+#        nameEncoder: ""                                   # Optional, default: ""
+#        consoleSeparator: ""                              # Optional, default: ""
+#      outputPaths: [ "stdout" ]                           # Optional, default: ["stdout"], stdout would be replaced if specified
+#      errorOutputPaths: [ "stderr" ]                      # Optional, default: ["stderr"], stderr would be replaced if specified
+#      initialFields:                                      # Optional, default: empty map
+#        key: "value"
+#    lumberjack:
+#      filename: "rkapp.log"                               # Optional, default: It uses <processname>-lumberjack.log in os.TempDir() if empty.
+#      maxsize: 1024                                       # Optional, default: 1024 (MB)
+#      maxage: 7                                           # Optional, default: 7 (days)
+#      maxbackups: 3                                       # Optional, default: 3 (days)
+#      localtime: true                                     # Optional, default: true
+#      compress: true                                      # Optional, default: true
+#eventLogger:
+#  - name: event-logger                                    # Required
+#    encoding: "json"                                      # Optional, default: console, options: [json, console]
+#    outputPaths: []                                       # Optional, default: ["stdout"], stdout would be replaced if specified
+#    lumberjack:
+#      filename: "rkapp.log"                               # Optional, default: It uses <processname>-lumberjack.log in os.TempDir() if empty.
+#      maxsize: 1024                                       # Optional, default: 1024 (MB)
+#      maxage: 7                                           # Optional, default: 7 (days)
+#      maxbackups: 3                                       # Optional, default: 3 (days)
+#      localtime: true                                     # Optional, default: true
+#      compress: true                                      # Optional, default: true
+#cred:
+#  - name: "local-cred"                                    # Required
+#    description: "Description of entry"                   # Optional
+#    provider: "localFs"                                   # Required, etcd, consul, localFs, remoteFs are supported options
+#    locale: "*::*::*::*"                                  # Required, default: ""
+#    paths:                                                # Optional
+#      - "example/boot/full/cred.yaml"
+#cert:                                                     # Optional
+#  - name: "local-cert"                                    # Required
+#    provider: "localFs"                                   # Required, etcd, consul, localFs, remoteFs are supported options
+#    locale: "*::*::*::*"                                  # Required, default: ""
+#    description: "Description of entry"                   # Optional
+#    serverCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
+#    serverKeyPath: "example/boot/full/server-key.pem"     # Optional, default: "", path of certificate on local FS
+#    clientCertPath: "example/boot/full/server.pem"        # Optional, default: "", path of certificate on local FS
+#config:
+#  - name: rk-main                                         # Required
+#    path: "example/boot/full/config.yaml"                 # Required
+#    locale: "*::*::*::*"                                  # Required, default: ""
+#    description: "Description of entry"                   # Optional
+grpc:
+  - name: greeter                                          # Required
+    enabled: true                                          # Required
+    port: 8080                                             # Required
+#    description: "greeter server"                         # Optional, default: ""
+#    enableReflection: true                                # Optional, default: false
+#    enableRkGwOption: true                                # Optional, default: false
+#    gwOption:                                             # Optional, default: nil
+#      marshal:                                            # Optional, default: nil
+#        multiline: false                                  # Optional, default: false
+#        emitUnpopulated: false                            # Optional, default: false
+#        indent: ""                                        # Optional, default: false
+#        allowPartial: false                               # Optional, default: false
+#        useProtoNames: false                              # Optional, default: false
+#        useEnumNumbers: false                             # Optional, default: false
+#      unmarshal:                                          # Optional, default: nil
+#        allowPartial: false                               # Optional, default: false
+#        discardUnknown: false                             # Optional, default: false
+#    noRecvMsgSizeLimit: true                              # Optional, default: false
+#    gwMappingFilePaths: []                                # Optional
+#    cert:
+#      ref: "local-cert"                                   # Optional, default: "", reference of cert entry declared above
+#    sw:
+#      enabled: true                                       # Optional, default: false
+#      path: "sw"                                          # Optional, default: "sw"
+#      jsonPath: ""                                        # Optional
+#      headers: ["sw:rk"]                                  # Optional, default: []
+#    commonService:
+#      enabled: true                                       # Optional, default: false
+#    static:
+#      enabled: true                                       # Optional, default: false
+#      path: "/rk/v1/static"                               # Optional, default: /rk/v1/static
+#      sourceType: local                                   # Required, options: pkger, local
+#      sourcePath: "."                                     # Required, full path of source directory
+#    tv:
+#      enabled:  true                                      # Optional, default: false
+#    prom:
+#      enabled: true                                       # Optional, default: false
+#      path: ""                                            # Optional, default: "metrics"
+#      pusher:
+#        enabled: false                                    # Optional, default: false
+#        jobName: "greeter-pusher"                         # Required
+#        remoteAddress: "localhost:9091"                   # Required
+#        basicAuth: "user:pass"                            # Optional, default: ""
+#        intervalMs: 10000                                 # Optional, default: 1000
+#        cert:                                             # Optional
+#          ref: "local-test"                               # Optional, default: "", reference of cert entry declared above
+#    logger:
+#      zapLogger:
+#        ref: zap-logger                                   # Optional, default: logger of STDOUT, reference of logger entry declared above
+#      eventLogger:
+#        ref: event-logger                                 # Optional, default: logger of STDOUT, reference of logger entry declared above
+#    interceptors:
+#      loggingZap:
+#        enabled: true                                     # Optional, default: false
+#        zapLoggerEncoding: "json"                         # Optional, default: "console"
+#        zapLoggerOutputPaths: ["logs/app.log"]            # Optional, default: ["stdout"]
+#        eventLoggerEncoding: "json"                       # Optional, default: "console"
+#        eventLoggerOutputPaths: ["logs/event.log"]        # Optional, default: ["stdout"]
+#      metricsProm:
+#        enabled: true                                     # Optional, default: false
+#      auth:
+#        enabled: true                                     # Optional, default: false
+#        basic:
+#          - "user:pass"                                   # Optional, default: []
+#        ignorePrefix:
+#          - "/rk/v1"                                      # Optional, default: []
+#        apiKey:
+#          - "keys"                                        # Optional, default: []
+#      meta:
+#        enabled: true                                     # Optional, default: false
+#        prefix: "rk"                                      # Optional, default: "rk"
+#      tracingTelemetry:
+#        enabled: true                                     # Optional, default: false
+#        exporter:                                         # Optional, default will create a stdout exporter
+#          file:
+#            enabled: true                                 # Optional, default: false
+#            outputPath: "logs/trace.log"                  # Optional, default: stdout
+#          jaeger:
+#            agent:
+#              enabled: false                              # Optional, default: false
+#              host: ""                                    # Optional, default: localhost
+#              port: 0                                     # Optional, default: 6831
+#            collector:
+#              enabled: true                               # Optional, default: false
+#              endpoint: ""                                # Optional, default: http://localhost:14268/api/traces
+#              username: ""                                # Optional, default: ""
+#              password: ""                                # Optional, default: ""
+#      rateLimit:
+#        enabled: false                                    # Optional, default: false
+#        algorithm: "leakyBucket"                          # Optional, default: "tokenBucket"
+#        reqPerSec: 100                                    # Optional, default: 1000000
+#        paths:
+#          - path: "/rk.api.v1.RkCommonService/Healthy"    # Optional, default: ""
+#            reqPerSec: 0                                  # Optional, default: 1000000
+#      timeout:
+#        enabled: false                                    # Optional, default: false
+#        timeoutMs: 5000                                   # Optional, default: 5000
+#        paths:
+#          - path: "/rk.api.v1.RkCommonService/Healthy"    # Optional, default: ""
+#            timeoutMs: 1000                               # Optional, default: 5000
+#      jwt:
+#        enabled: true                                     # Optional, default: false
+#        signingKey: "my-secret"                           # Required
+#        ignorePrefix:                                     # Optional, default: []
+#          - "/rk/v1/tv"
+#          - "/sw"
+#          - "/rk/v1/assets"
+#        signingKeys:                                      # Optional
+#          - "key:value"
+#        signingAlgo: ""                                   # Optional, default: "HS256"
+#        tokenLookup: "header:<name>"                      # Optional, default: "header:Authorization"
+#        authScheme: "Bearer"                              # Optional, default: "Bearer"
+#      csrf:
+#        enabled: true
+#        tokenLength: 32                                   # Optional, default: 32
+#        tokenLookup: "header:X-CSRF-Token"                # Optional, default: "header:X-CSRF-Token"
+#        cookieName: "_csrf"                               # Optional, default: _csrf
+#        cookieDomain: ""                                  # Optional, default: ""
+#        cookiePath: ""                                    # Optional, default: ""
+#        cookieMaxAge: 86400                               # Optional, default: 86400
+#        cookieHttpOnly: false                             # Optional, default: false
+#        cookieSameSite: "default"                         # Optional, default: "default", options: lax, strict, none, default
+#        ignorePrefix: []                                  # Optional, default: []
+```
 
 ## Development Status: Stable
 
@@ -594,44 +1041,6 @@ Run unit test with **make test** command.
 
 github workflow will automatically run unit test and golangci-lint for testing and lint validation.
 
-## Dependencies
-```
-module github.com/rookie-ninja/rk-grpc
-
-go 1.14
-
-require (
-	github.com/ghodss/yaml v1.0.0
-	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang/protobuf v1.5.2
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
-	github.com/juju/ratelimit v1.0.1
-	github.com/markbates/pkger v0.17.1
-	github.com/prometheus/client_golang v1.10.0
-	github.com/rookie-ninja/rk-common v1.2.1
-	github.com/rookie-ninja/rk-entry v1.0.3
-	github.com/rookie-ninja/rk-logger v1.2.3
-	github.com/rookie-ninja/rk-prom v1.1.3
-	github.com/rookie-ninja/rk-query v1.2.4
-	github.com/soheilhy/cmux v0.1.5
-	github.com/stretchr/testify v1.7.0
-	go.opentelemetry.io/contrib v1.2.0
-	go.opentelemetry.io/otel v1.2.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.2.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.2.0
-	go.opentelemetry.io/otel/sdk v1.2.0
-	go.opentelemetry.io/otel/trace v1.2.0
-	go.uber.org/ratelimit v0.2.0
-	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
-	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced
-	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-)
-```
-
 ## Contributing
 We encourage and support an active, healthy community of contributors &mdash;
 including you! Details are in the [contribution guide](CONTRIBUTING.md) and
@@ -639,7 +1048,5 @@ the [code of conduct](CODE_OF_CONDUCT.md). The rk maintainers keep an eye on
 issues and pull requests, but you can also report any negative conduct to
 lark@rkdev.info.
 
-<hr>
-
-Released under the [MIT License](LICENSE).
+Released under the [Apache 2.0 License](LICENSE).
 

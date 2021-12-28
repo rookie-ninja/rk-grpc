@@ -224,10 +224,6 @@ func TestProxyEntry_Bootstrap(t *testing.T) {
 	// without event id in context
 	entry := NewProxyEntry()
 	entry.Bootstrap(context.TODO())
-
-	// with event id in context
-	ctx := context.WithValue(context.TODO(), bootstrapEventIdKey, "ut-event")
-	entry.Bootstrap(ctx)
 }
 
 func TestProxyEntry_Interrupt(t *testing.T) {
@@ -236,10 +232,6 @@ func TestProxyEntry_Interrupt(t *testing.T) {
 	// without event id in context
 	entry := NewProxyEntry()
 	entry.Interrupt(context.TODO())
-
-	// with event id in context
-	ctx := context.WithValue(context.TODO(), bootstrapEventIdKey, "ut-event")
-	entry.Interrupt(ctx)
 }
 
 func TestProxyEntry_String(t *testing.T) {
