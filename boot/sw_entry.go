@@ -343,16 +343,16 @@ func (entry *SwEntry) ConfigFileHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	switch p {
-	case "/sw":
+	case strings.TrimSuffix(entry.Path, "/"):
 		if file, err := pkger.Open("/boot/assets/sw/index.html"); err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		} else {
 			http.ServeContent(w, r, "index.html", time.Now(), file)
 		}
-	case "/sw/swagger-config.json":
+	case path.Join(entry.Path, "swagger-config.json"):
 		http.ServeContent(w, r, "swagger-config.json", time.Now(), strings.NewReader(swConfigFileContents))
 	default:
-		p = strings.TrimPrefix(p, "/sw/")
+		p = strings.TrimPrefix(p, entry.Path)
 		value, ok := swaggerJsonFiles[p]
 
 		if ok {
