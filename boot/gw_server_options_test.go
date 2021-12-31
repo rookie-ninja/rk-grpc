@@ -78,7 +78,12 @@ func TestOutgoingHeaderMatcher(t *testing.T) {
 func TestIncomingHeaderMatcher(t *testing.T) {
 	key, ok := IncomingHeaderMatcher("ut")
 	assert.True(t, ok)
-	assert.Equal(t, "ut", key)
+	assert.Equal(t, "Ut", key)
+
+	// forbidden header
+	key, ok = IncomingHeaderMatcher("Connection")
+	assert.False(t, ok)
+	assert.Empty(t, key)
 }
 
 func TestToMarshalOptions(t *testing.T) {
