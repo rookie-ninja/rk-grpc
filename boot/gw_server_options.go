@@ -178,7 +178,7 @@ func NewRkGwServerMuxOptions(mOptIn *protojson.MarshalOptions, uOptIn *protojson
 				"x-forwarded-path", req.URL.Path,
 				"x-forwarded-scheme", scheme,
 				"x-forwarded-user-agent", req.UserAgent(),
-				"x-forwarded-remote-addr", req.RemoteAddr)
+				"x-forwarded-user-agent", req.UserAgent())
 		}),
 		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher),
 		runtime.WithIncomingHeaderMatcher(IncomingHeaderMatcher),
@@ -259,5 +259,21 @@ func OutgoingHeaderMatcher(key string) (string, bool) {
 
 // IncomingHeaderMatcher Pass out all metadata in http header to grpc metadata.
 func IncomingHeaderMatcher(key string) (string, bool) {
+	key = textproto.CanonicalMIMEHeaderKey(key)
+
+	if isForbiddenHeader(key) {
+		return "", false
+	}
+
 	return key, true
+}
+
+// isForbiddenHeader checks whether hdr belongs to the list of
+// forbidden headers by gRPC
+func isForbiddenHeader(hdr string) bool {
+	switch hdr {
+	case "Connection":
+		return true
+	}
+	return false
 }
