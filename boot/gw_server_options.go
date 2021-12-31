@@ -177,7 +177,7 @@ func NewRkGwServerMuxOptions(mOptIn *protojson.MarshalOptions, uOptIn *protojson
 				"x-forwarded-method", req.Method,
 				"x-forwarded-path", req.URL.Path,
 				"x-forwarded-scheme", scheme,
-				"x-forwarded-user-agent", req.UserAgent(),
+				"x-forwarded-remote-addr", req.RemoteAddr,
 				"x-forwarded-user-agent", req.UserAgent())
 		}),
 		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher),
