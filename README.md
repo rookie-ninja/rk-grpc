@@ -987,12 +987,6 @@ Run unit-test, golangci-lint, doctoc and gofmt.
 
 - make buf
 
-Compile internal protocol buffer files.
-
-- make pkger
-
-If proto or files in boot/assets were modified, then we need to run it.
-
 ## Test instruction
 Run unit test with **make test** command.
 
