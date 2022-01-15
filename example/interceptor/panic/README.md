@@ -59,34 +59,6 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
             rkgrpcpanic.StreamServerInterceptor(),
         ),
     }
-
-    // ************************************
-    // ********** Unary Client ************
-    // ************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainUnaryInterceptor(
-            // Add panic interceptor at the last.
-            // Please make sure panic interceptor added in the last since panic will recover() from panic
-            // and add required information into logs.
-            rkgrpcpanic.UnaryClientInterceptor(),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
-    }
-
-    // *************************************
-    // ********** Stream Client ************
-    // *************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainStreamInterceptor(
-            // Add panic interceptor at the last.
-            // Please make sure panic interceptor added in the last since panic will recover() from panic
-            // and add required information into logs.
-            rkgrpcpanic.StreamClientInterceptor(),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
-    }
 ```
 
 ## Suggested panic action
@@ -110,57 +82,36 @@ $ go run greeter-client.go
 ### Output
 - Server side log (zap & event)
 ```shell script
-2021-06-23T02:03:18.170+0800    ERROR   panic/interceptor.go:79 panic occurs:
-goroutine 9 [running]:
-...
-main.(*GreeterServer).SayHello(0x50c9aa0, 0x4b77140, 0xc0003d6270, 0xc000328000, 0x50c9aa0, 0x0, 0x4a6a2ad)
-        /Users/dongxuny/workspace/rk/rk-grpc/example/interceptor/panic/greeter-server.go:51 +0x8a
+2022-01-15T21:42:00.897+0800    ERROR   panic/interceptor.go:44 panic occurs:
+goroutine 11 [running]:
 ...
         {"error": "rpc error: code = Internal desc = Panic manually!"}
-```
-```shell script
 ------------------------------------------------------------------------
-endTime=2021-06-23T02:03:18.171482+08:00
-startTime=2021-06-23T02:03:18.170654+08:00
-elapsedNano=828415
+endTime=2022-01-15T21:42:00.898434+08:00
+startTime=2022-01-15T21:42:00.897632+08:00
+elapsedNano=802167
 timezone=CST
-ids={"eventId":"7002dd70-ccd8-440d-b392-03cd47569363"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"5d04c004-65d4-4b13-b913-f293e8ffa84f"}
+app={"appName":"rk","appVersion":"","entryName":"c7hcu93d0cvkv039gghg","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
-error={"rpc error: code = Internal desc = Panic manually!":1}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
+error={}
 counters={"panic":1}
 pairs={}
 timing={}
-remoteAddr=localhost:49274
+remoteAddr=127.0.0.1:63002
 operation=/Greeter/SayHello
 resCode=Internal
 eventStatus=Ended
 EOE
 ```
-- Client side log (zap & event)
+- Client side log
 ```shell script
-2021-06-23T02:03:18.172+0800    FATAL   panic/greeter-client.go:43      Failed to send request to server.       {"error": "rpc error: code = Internal desc = Panic manually!"}
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-23T02:03:18.172056+08:00
-startTime=2021-06-23T02:03:18.168054+08:00
-elapsedNano=4001971
-timezone=CST
-ids={"eventId":"b0b5c858-934d-49ae-9e04-f6985912c3b1"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={"rpc error: code = Internal desc = Panic manually!":1}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=Internal
-eventStatus=Ended
-EOE
+2022-01-15T21:42:00.899+0800    FATAL   client/greeter-client.go:31     Failed to send request to server.       {"error": "rpc error: code = Internal desc = Panic manually!"}
+main.main
+        /Users/dongxuny/workspace/dongxuny/rk-grpc/example/interceptor/panic/client/greeter-client.go:31
+runtime.main
+        /usr/local/Cellar/go/1.16.3/libexec/src/runtime/proc.go:225
 ```
 
 ### Code

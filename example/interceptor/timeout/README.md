@@ -37,7 +37,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/timeout"
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             rkgrpctimeout.UnaryServerInterceptor(
-                rkgrpctimeout.WithTimeoutAndResp(time.Second, nil),
+                rkmidtimeout.WithTimeout(time.Second),
             ),
         ),
     }
@@ -48,7 +48,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/timeout"
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
             rkgrpctimeout.StreamServerInterceptor(
-                rkgrpctimeout.WithTimeoutAndResp(time.Second, nil),
+                rkmidtimeout.WithTimeout(time.Second),
             ),
         ),
     }
@@ -57,9 +57,9 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/timeout"
 ## Options
 | Name | Default | Description |
 | ---- | ---- | ---- |
-| WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
-| WithTimeoutAndResp(time.Duration, error) | 5*time.Second, codes.Canceled | Set timeout interceptor with all methods. |
-| WithTimeoutAndRespByPath(method string, time.Duration, error) | "", 5*time.Second, codes.Canceled | Set timeout interceptor with specified method. |
+| rkmidtimeout.WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
+| rkmidtimeout.WithTimeout(time.Duration) | 5*time.Second | Set timeout interceptor with all methods. |
+| rkmidtimeout.WithTimeoutByPath(method string, time.Duration) | "", 5*time.Second, codes.Canceled | Set timeout interceptor with specified method. |
 
 ### Context Usage
 | Name | Functionality |
@@ -87,19 +87,19 @@ $ go run greeter-client.go
 - Server side (event)
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-10-30T00:15:14.386439+08:00
-startTime=2021-10-30T00:15:13.383453+08:00
-elapsedNano=1002992959
+endTime=2022-01-15T21:56:49.450899+08:00
+startTime=2022-01-15T21:56:48.44827+08:00
+elapsedNano=1002634202
 timezone=CST
-ids={"eventId":"a607b956-b9e4-43fc-b707-74e343684855"}
-app={"appName":"rk","appVersion":"","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"192.168.101.5","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
-error={"rpc error: code = Canceled desc = Request timed out!":1}
+ids={"eventId":"41e67c41-4bf3-400b-8caf-4aecc5f78b96"}
+app={"appName":"rk","appVersion":"","entryName":"c7hd4nbd0cvl0eqv0n90","entryType":""}
+env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
+error={}
 counters={"timeout":1}
 pairs={}
 timing={}
-remoteAddr=127.0.0.1:61786
+remoteAddr=127.0.0.1:63074
 operation=/Greeter/SayHello
 resCode=Canceled
 eventStatus=Ended
@@ -108,28 +108,13 @@ EOE
 
 - Client side (zap & event)
 ```shell script
-2021-10-30T00:15:14.387+0800    FATAL   client/greeter-client.go:40     Failed to send request to server.       {"error": "rpc error: code = Canceled desc = Request timed out!"}
+2022-01-15T21:56:49.453+0800    FATAL   client/greeter-client.go:31     Failed to send request to server.       {"error": "rpc error: code = Canceled desc = Request timed out!"}
+main.main
+        /Users/dongxuny/workspace/dongxuny/rk-grpc/example/interceptor/timeout/client/greeter-client.go:31
+runtime.main
+        /usr/local/Cellar/go/1.16.3/libexec/src/runtime/proc.go:225
 ```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-10-30T00:15:14.387264+08:00
-startTime=2021-10-30T00:15:13.382787+08:00
-elapsedNano=1004483920
-timezone=CST
-ids={"eventId":"1e176aa9-46a5-44a0-8507-9b69120cd600"}
-app={"appName":"rk","appVersion":"","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"192.168.101.5","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={"rpc error: code = Canceled desc = Request timed out!":1}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=Canceled
-eventStatus=Ended
-EOE
-```
+
 
 #### Code
 - [greeter-server.go](server/greeter-server.go)

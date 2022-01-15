@@ -7,191 +7,96 @@ package rkgrpcjwt
 
 import (
 	"context"
-	"errors"
-	"github.com/golang-jwt/jwt/v4"
+	rkerror "github.com/rookie-ninja/rk-common/error"
+	rkmidjwt "github.com/rookie-ninja/rk-entry/middleware/jwt"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"strings"
 	"testing"
 )
 
-var (
-	fakeRequest  = &FakeRequest{}
-	fakeResponse = &FakeResponse{}
-	fakeServer   = &FakeServer{}
-)
-
-type FakeRequest struct{}
-
-type FakeResponse struct{}
-
-type FakeServer struct{}
-
-type FakeServerStream struct {
-	ctx context.Context
-}
-
-func (f FakeServerStream) SetHeader(md metadata.MD) error {
-	return nil
-}
-
-func (f FakeServerStream) SendHeader(md metadata.MD) error {
-	return nil
-}
-
-func (f FakeServerStream) SetTrailer(md metadata.MD) {
-	return
-}
-
-func (f FakeServerStream) Context() context.Context {
-	return f.ctx
-}
-
-func (f FakeServerStream) SendMsg(m interface{}) error {
-	return nil
-}
-
-func (f FakeServerStream) RecvMsg(m interface{}) error {
-	return nil
-}
-
 func TestUnaryServerInterceptor(t *testing.T) {
-	defer assertNotPanic(t)
+	beforeCtx := rkmidjwt.NewBeforeCtx()
+	mock := rkmidjwt.NewOptionSetMock(beforeCtx)
+	inter := UnaryServerInterceptor(rkmidjwt.WithMockOptionSet(mock))
 
-	// with skipper
-	inter := UnaryServerInterceptor(
-		WithSkipper(func(string) bool {
-			return true
-		}))
-	info := &grpc.UnaryServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return FakeResponse{}, nil
-	}
-	res, err := inter(context.TODO(), fakeRequest, info, handler)
-	assert.NotNil(t, res)
+	// case 1: with error response
+	beforeCtx.Output.ErrResp = rkerror.New()
+	_, err := inter(NewUnaryServerInput())
+	assert.NotNil(t, err)
+
+	// case 2: happy case
+	beforeCtx.Output.ErrResp = nil
+	_, err = inter(NewUnaryServerInput())
 	assert.Nil(t, err)
-
-	// without options
-	inter = UnaryServerInterceptor()
-	info = &grpc.UnaryServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(ctx context.Context, req interface{}) (interface{}, error) {
-		return FakeResponse{}, nil
-	}
-	res, err = inter(context.TODO(), fakeRequest, info, handler)
-	assert.Nil(t, res)
-	assert.NotNil(t, err)
-
-	// with parse token error
-	parseTokenErrFunc := func(auth string, c context.Context) (*jwt.Token, error) {
-		return nil, errors.New("ut-error")
-	}
-	inter = UnaryServerInterceptor(WithParseTokenFunc(parseTokenErrFunc))
-	info = &grpc.UnaryServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(ctx context.Context, req interface{}) (interface{}, error) {
-		return FakeResponse{}, nil
-	}
-	ctx := context.WithValue(context.TODO(), headerAuthorization, strings.Join([]string{"Bearer", "ut-auth"}, " "))
-	res, err = inter(ctx, fakeRequest, info, handler)
-	assert.Nil(t, res)
-	assert.NotNil(t, err)
-
-	// happy case
-	parseTokenErrFunc = func(auth string, c context.Context) (*jwt.Token, error) {
-		return &jwt.Token{}, nil
-	}
-	inter = UnaryServerInterceptor(WithParseTokenFunc(parseTokenErrFunc))
-	info = &grpc.UnaryServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(ctx context.Context, req interface{}) (interface{}, error) {
-		return FakeResponse{}, nil
-	}
-	ctx = context.WithValue(context.TODO(), headerAuthorization, strings.Join([]string{"Bearer", "ut-auth"}, " "))
-	res, err = inter(ctx, fakeRequest, info, handler)
-	assert.Nil(t, res)
-	assert.NotNil(t, err)
 }
 
 func TestStreamServerInterceptor(t *testing.T) {
-	defer assertNotPanic(t)
+	beforeCtx := rkmidjwt.NewBeforeCtx()
+	mock := rkmidjwt.NewOptionSetMock(beforeCtx)
+	inter := StreamServerInterceptor(rkmidjwt.WithMockOptionSet(mock))
 
-	// with skipper
-	inter := StreamServerInterceptor(
-		WithSkipper(func(string) bool {
-			return true
-		}))
+	// case 1: with error response
+	beforeCtx.Output.ErrResp = rkerror.New()
+	err := inter(NewStreamServerInput())
+	assert.NotNil(t, err)
+
+	// case 2: happy case
+	beforeCtx.Output.ErrResp = nil
+	err = inter(NewStreamServerInput())
+	assert.Nil(t, err)
+}
+
+// ************ Test utility ************
+
+type ServerStreamMock struct {
+	ctx context.Context
+}
+
+func (f ServerStreamMock) SetHeader(md metadata.MD) error {
+	return nil
+}
+
+func (f ServerStreamMock) SendHeader(md metadata.MD) error {
+	return nil
+}
+
+func (f ServerStreamMock) SetTrailer(md metadata.MD) {
+	return
+}
+
+func (f ServerStreamMock) Context() context.Context {
+	return f.ctx
+}
+
+func (f ServerStreamMock) SendMsg(m interface{}) error {
+	return nil
+}
+
+func (f ServerStreamMock) RecvMsg(m interface{}) error {
+	return nil
+}
+
+func NewUnaryServerInput() (context.Context, interface{}, *grpc.UnaryServerInfo, grpc.UnaryHandler) {
+	ctx := context.TODO()
+	info := &grpc.UnaryServerInfo{
+		FullMethod: "ut-method",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return nil, nil
+	}
+
+	return ctx, nil, info, handler
+}
+
+func NewStreamServerInput() (interface{}, grpc.ServerStream, *grpc.StreamServerInfo, grpc.StreamHandler) {
+	serverStream := &ServerStreamMock{ctx: context.TODO()}
 	info := &grpc.StreamServerInfo{
-		FullMethod: "/ut-method",
+		FullMethod: "ut-method",
 	}
 	handler := func(srv interface{}, stream grpc.ServerStream) error {
 		return nil
 	}
-	err := inter(fakeServer, &FakeServerStream{
-		ctx: context.TODO(),
-	}, info, handler)
-	assert.Nil(t, err)
 
-	// without options
-	inter = StreamServerInterceptor()
-	info = &grpc.StreamServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(srv interface{}, stream grpc.ServerStream) error {
-		return nil
-	}
-	err = inter(fakeServer, &FakeServerStream{
-		ctx: context.TODO(),
-	}, info, handler)
-	assert.NotNil(t, err)
-
-	// with parse token error
-	parseTokenErrFunc := func(auth string, c context.Context) (*jwt.Token, error) {
-		return nil, errors.New("ut-error")
-	}
-	inter = StreamServerInterceptor(WithParseTokenFunc(parseTokenErrFunc))
-	info = &grpc.StreamServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(srv interface{}, stream grpc.ServerStream) error {
-		return nil
-	}
-	ctx := context.WithValue(context.TODO(), headerAuthorization, strings.Join([]string{"Bearer", "ut-auth"}, " "))
-	err = inter(fakeServer, &FakeServerStream{
-		ctx: ctx,
-	}, info, handler)
-	assert.NotNil(t, err)
-
-	// happy case
-	parseTokenErrFunc = func(auth string, c context.Context) (*jwt.Token, error) {
-		return &jwt.Token{}, nil
-	}
-	inter = StreamServerInterceptor(WithParseTokenFunc(parseTokenErrFunc))
-	info = &grpc.StreamServerInfo{
-		FullMethod: "/ut-method",
-	}
-	handler = func(srv interface{}, stream grpc.ServerStream) error {
-		return nil
-	}
-	ctx = context.WithValue(context.TODO(), headerAuthorization, strings.Join([]string{"Bearer", "ut-auth"}, " "))
-	err = inter(fakeServer, &FakeServerStream{
-		ctx: ctx,
-	}, info, handler)
-	assert.NotNil(t, err)
-}
-
-func assertNotPanic(t *testing.T) {
-	if r := recover(); r != nil {
-		// Expect panic to be called with non nil error
-		assert.True(t, false)
-	} else {
-		// This should never be called in case of a bug
-		assert.True(t, true)
-	}
+	return nil, serverStream, info, handler
 }

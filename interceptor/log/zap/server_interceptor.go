@@ -6,135 +6,117 @@
 package rkgrpclog
 
 import (
-	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-entry/middleware"
+	"github.com/rookie-ninja/rk-entry/middleware/log"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
-	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 // UnaryServerInterceptor Create new unary server interceptor.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+func UnaryServerInterceptor(opts ...rkmidlog.Option) grpc.UnaryServerInterceptor {
+	set := rkmidlog.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
 
-		// Before invoking
-		ctx = serverBefore(ctx, set, info.FullMethod, rkgrpcinter.RpcTypeUnaryServer)
+		// call before
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
 
-		// Invoking
+		// remote address
+		remoteIp, remotePort, _ := rkgrpcinter.GetRemoteAddressSet(ctx)
+		beforeCtx.Input.RemoteAddr = remoteIp + ":" + remotePort
+
+		// grpc and grpc-gateway fields
+		grpcService, grpcMethod := rkgrpcinter.GetGrpcInfo(info.FullMethod)
+		gwMethod, gwPath, gwScheme, gwUserAgent := rkgrpcinter.GetGwInfo(rkgrpcctx.GetIncomingHeaders(ctx))
+		beforeCtx.Input.Fields = append(beforeCtx.Input.Fields, []zap.Field{
+			zap.String("grpcService", grpcService),
+			zap.String("grpcMethod", grpcMethod),
+			zap.String("grpcType", "UnaryServer"),
+			zap.String("gwMethod", gwMethod),
+			zap.String("gwPath", gwPath),
+			zap.String("gwScheme", gwScheme),
+			zap.String("gwUserAgent", gwUserAgent),
+		}...)
+
+		set.Before(beforeCtx)
+
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EventKey, beforeCtx.Output.Event)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.LoggerKey, beforeCtx.Output.Logger)
+
+		// call user handler
 		resp, err := handler(ctx, req)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcErrorKey, err)
 
-		// After invoking
-		serverAfter(ctx, set, err)
+		// add error if exists
+		//rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.GrpcErrorKey, err)
+
+		// call after
+		afterCtx := set.AfterCtx(
+			rkgrpcctx.GetRequestId(ctx),
+			rkgrpcctx.GetTraceId(ctx),
+			status.Code(err).String())
+		set.After(beforeCtx, afterCtx)
 
 		return resp, err
 	}
 }
 
 // StreamServerInterceptor Create new stream server interceptor.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidlog.Option) grpc.StreamServerInterceptor {
+	set := rkmidlog.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
 
-		wrappedStream.WrappedContext = serverBefore(wrappedStream.WrappedContext, set, info.FullMethod, rkgrpcinter.RpcTypeStreamServer)
+		// call before
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
 
-		// Invoking
+		// remote address
+		remoteIp, remotePort, _ := rkgrpcinter.GetRemoteAddressSet(wrappedStream.WrappedContext)
+		beforeCtx.Input.RemoteAddr = remoteIp + ":" + remotePort
+
+		// grpc and grpc-gateway fields
+		grpcService, grpcMethod := rkgrpcinter.GetGrpcInfo(info.FullMethod)
+		gwMethod, gwPath, gwScheme, gwUserAgent := rkgrpcinter.GetGwInfo(rkgrpcctx.GetIncomingHeaders(wrappedStream.WrappedContext))
+		beforeCtx.Input.Fields = append(beforeCtx.Input.Fields, []zap.Field{
+			zap.String("grpcService", grpcService),
+			zap.String("grpcMethod", grpcMethod),
+			zap.String("grpcType", "StreamServer"),
+			zap.String("gwMethod", gwMethod),
+			zap.String("gwPath", gwPath),
+			zap.String("gwScheme", gwScheme),
+			zap.String("gwUserAgent", gwUserAgent),
+		}...)
+
+		set.Before(beforeCtx)
+
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EventKey, beforeCtx.Output.Event)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.LoggerKey, beforeCtx.Output.Logger)
+
+		// call user handler
 		err := handler(srv, wrappedStream)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcErrorKey, err)
 
-		// After invoking
-		serverAfter(wrappedStream.WrappedContext, set, err)
+		// add error if exists
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.GrpcErrorKey, err)
+
+		// call after
+		afterCtx := set.AfterCtx(
+			rkgrpcctx.GetRequestId(wrappedStream.WrappedContext),
+			rkgrpcctx.GetTraceId(wrappedStream.WrappedContext),
+			status.Code(err).String())
+		set.After(beforeCtx, afterCtx)
 
 		return err
 	}
-}
-
-// Handle logic before handle requests.
-func serverBefore(ctx context.Context, set *optionSet, method, grpcType string) context.Context {
-	event := set.eventLoggerEntry.GetEventFactory().CreateEvent(
-		rkquery.WithZapLogger(set.eventLoggerOverride),
-		rkquery.WithEncoding(set.eventLoggerEncoding),
-		rkquery.WithAppName(rkentry.GlobalAppCtx.GetAppInfoEntry().AppName),
-		rkquery.WithAppVersion(rkentry.GlobalAppCtx.GetAppInfoEntry().Version),
-		rkquery.WithEntryName(set.EntryName),
-		rkquery.WithEntryType(set.EntryType))
-
-	event.SetStartTime(time.Now())
-
-	incomingHeaders := rkgrpcctx.GetIncomingHeaders(ctx)
-
-	remoteIp, remotePort, _ := rkgrpcinter.GetRemoteAddressSet(ctx)
-	grpcService, grpcMethod := rkgrpcinter.GetGrpcInfo(method)
-	gwMethod, gwPath, gwScheme, gwUserAgent := rkgrpcinter.GetGwInfo(incomingHeaders)
-
-	payloads := []zap.Field{
-		zap.String("grpcService", grpcService),
-		zap.String("grpcMethod", grpcMethod),
-		zap.String("grpcType", grpcType),
-		zap.String("gwMethod", gwMethod),
-		zap.String("gwPath", gwPath),
-		zap.String("gwScheme", gwScheme),
-		zap.String("gwUserAgent", gwUserAgent),
-	}
-
-	// handle payloads
-	event.AddPayloads(payloads...)
-
-	// handle remote address
-	event.SetRemoteAddr(remoteIp + ":" + remotePort)
-
-	// handle operation
-	event.SetOperation(method)
-
-	if _, ok := ctx.Deadline(); ok {
-		event.AddErr(ctx.Err())
-	}
-
-	// insert logger and event
-	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEventKey, event)
-	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcLoggerKey, set.ZapLogger)
-
-	return ctx
-}
-
-// Handle logic after handle requests.
-func serverAfter(ctx context.Context, options *optionSet, err error) {
-	event := rkgrpcctx.GetEvent(ctx)
-	event.AddErr(err)
-	code := status.Code(err)
-	endTime := time.Now()
-
-	// check whether context is cancelled from client
-	select {
-	case <-ctx.Done():
-		event.AddErr(ctx.Err())
-	default:
-		break
-	}
-
-	if requestId := rkgrpcctx.GetRequestId(ctx); len(requestId) > 0 {
-		event.SetRequestId(requestId)
-		event.SetEventId(requestId)
-	}
-
-	if traceId := rkgrpcctx.GetTraceId(ctx); len(traceId) > 0 {
-		event.SetTraceId(traceId)
-	}
-	event.SetResCode(code.String())
-	event.SetEndTime(endTime)
-	event.Finish()
 }

@@ -144,28 +144,6 @@ func TestWrapContextForServer(t *testing.T) {
 	assert.Equal(t, ctx, WrapContextForServer(ctx))
 }
 
-func TestGetIncomingHeadersOfClient(t *testing.T) {
-	// Without client payload in context
-	assert.NotNil(t, GetIncomingHeadersOfClient(context.TODO()))
-
-	// Happy case
-	payload := NewClientPayload()
-	ctx := context.WithValue(context.TODO(), GetClientPayloadKey(), payload)
-	assert.NotNil(t, ctx)
-	assert.Equal(t, payload.incomingHeaders, GetIncomingHeadersOfClient(ctx))
-}
-
-func TestGetOutgoingHeadersOfClient(t *testing.T) {
-	// Without client payload in context
-	assert.NotNil(t, GetOutgoingHeadersOfClient(context.TODO()))
-
-	// Happy case
-	payload := NewClientPayload()
-	ctx := context.WithValue(context.TODO(), GetClientPayloadKey(), payload)
-	assert.NotNil(t, ctx)
-	assert.Equal(t, payload.outgoingHeaders, GetOutgoingHeadersOfClient(ctx))
-}
-
 func TestGetServerContextPayload(t *testing.T) {
 	// With nil context
 	assert.NotNil(t, GetServerContextPayload(nil))
@@ -190,42 +168,6 @@ func TestAddToServerContextPayload(t *testing.T) {
 	assert.Equal(t, "value", GetServerContextPayload(ctx)["key"])
 }
 
-func TestGetClientContextPayload(t *testing.T) {
-	// With nil context
-	assert.NotNil(t, GetClientContextPayload(nil))
-
-	// Without payload in server context
-	assert.NotNil(t, GetClientContextPayload(nil))
-
-	// With payload in context
-	payload := NewClientPayload()
-	ctx := context.WithValue(context.TODO(), GetClientPayloadKey(), payload)
-	assert.Equal(t, payload.m, GetClientContextPayload(ctx))
-}
-
-func TestAddToClientContextPayload(t *testing.T) {
-	defer assertNotPanic(t)
-
-	// With nil value
-	AddToClientContextPayload(context.TODO(), "key", nil)
-
-	// Happy case
-	payload := NewClientPayload()
-	ctx := context.WithValue(context.TODO(), GetClientPayloadKey(), payload)
-	AddToClientContextPayload(ctx, "key", "value")
-	assert.Equal(t, "value", GetClientContextPayload(ctx)["key"])
-}
-
-func TestContainsClientPayload(t *testing.T) {
-	// Expect true
-	payload := NewClientPayload()
-	ctx := context.WithValue(context.TODO(), GetClientPayloadKey(), payload)
-	assert.True(t, ContainsClientPayload(ctx))
-
-	// Expect false
-	assert.False(t, ContainsClientPayload(context.TODO()))
-}
-
 func TestContainsServerPayload(t *testing.T) {
 	// Expect true
 	ctx := WrapContextForServer(context.TODO())
@@ -233,17 +175,6 @@ func TestContainsServerPayload(t *testing.T) {
 
 	// Expect false
 	assert.False(t, ContainsServerPayload(context.TODO()))
-}
-
-func TestNewClientPayload(t *testing.T) {
-	payload := NewClientPayload()
-	assert.NotNil(t, payload.incomingHeaders)
-	assert.NotNil(t, payload.outgoingHeaders)
-	assert.NotNil(t, payload.m)
-}
-
-func TestGetClientPayloadKey(t *testing.T) {
-	assert.NotNil(t, GetClientPayloadKey())
 }
 
 func TestGetServerPayloadKey(t *testing.T) {

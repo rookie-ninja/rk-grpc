@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-entry/middleware/jwt"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/jwt"
@@ -28,7 +29,7 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpcjwt.UnaryServerInterceptor(
-				rkgrpcjwt.WithSigningKey([]byte("my-secret")),
+				rkmidjwt.WithSigningKey([]byte("my-secret")),
 			),
 		),
 	}

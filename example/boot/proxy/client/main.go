@@ -7,14 +7,14 @@ package main
 import (
 	"context"
 	"fmt"
-	api "github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
-	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	testdata "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"log"
 )
+
+var logger, _ = zap.NewDevelopment()
 
 // In this example, we will create a simple gRpc client and enable RK style logging interceptor.
 func main() {
@@ -22,31 +22,26 @@ func main() {
 	// ********** Enable interceptors *************
 	// ********************************************
 	opts := []grpc.DialOption{
-		grpc.WithChainUnaryInterceptor(
-			rkgrpclog.UnaryClientInterceptor(),
-		),
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	}
 
 	// 1: Create grpc client
-	conn, client := createCommonServiceClient(opts...)
+	conn, client := createClient(opts...)
 	defer conn.Close()
 
-	// 2: Wrap context, this is required in order to use bellow features easily.
-	ctx := rkgrpcctx.WrapContext(context.Background())
-	// Add header to make proxy request to test server
-	ctx = metadata.AppendToOutgoingContext(ctx, "domain", "test")
+	// 2: Add header
+	ctx := metadata.NewOutgoingContext(context.TODO(), metadata.Pairs("domain", "test"))
 
-	// 3: Call server
-	if resp, err := client.Healthy(ctx, &api.HealthyRequest{}); err != nil {
-		rkgrpcctx.GetLogger(ctx).Fatal("Failed to send request to server.", zap.Error(err))
+	// 2: Call server
+	if resp, err := client.SayHello(ctx, &testdata.HelloRequest{}); err != nil {
+		logger.Fatal("Failed to send request to server.", zap.Error(err))
 	} else {
-		rkgrpcctx.GetLogger(ctx).Info(fmt.Sprintf("[Message]: %s", resp.String()))
+		logger.Info(fmt.Sprintf("[Message]: %s", resp.String()))
 	}
 }
 
-func createCommonServiceClient(opts ...grpc.DialOption) (*grpc.ClientConn, api.RkCommonServiceClient) {
+func createClient(opts ...grpc.DialOption) (*grpc.ClientConn, testdata.GreeterClient) {
 	// 1: Set up a connection to the server.
 	conn, err := grpc.DialContext(context.Background(), "localhost:8080", opts...)
 	if err != nil {
@@ -54,7 +49,7 @@ func createCommonServiceClient(opts ...grpc.DialOption) (*grpc.ClientConn, api.R
 	}
 
 	// 2: Create grpc client
-	client := api.NewRkCommonServiceClient(conn)
+	client := testdata.NewGreeterClient(conn)
 
 	return conn, client
 }

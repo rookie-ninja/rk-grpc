@@ -279,3 +279,25 @@ func TestNewRkGwServerMuxOptions(t *testing.T) {
 	assert.NotNil(t, opts)
 	assert.Len(t, opts, 5)
 }
+
+// ************ Test utility ************
+
+func assertNotPanic(t *testing.T) {
+	if r := recover(); r != nil {
+		// Expect panic to be called with non nil error
+		assert.True(t, false)
+	} else {
+		// This should never be called in case of a bug
+		assert.True(t, true)
+	}
+}
+
+func assertPanic(t *testing.T) {
+	if r := recover(); r != nil {
+		// Expect panic to be called with non nil error
+		assert.True(t, true)
+	} else {
+		// This should never be called in case of a bug
+		assert.True(t, false)
+	}
+}

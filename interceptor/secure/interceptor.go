@@ -7,58 +7,20 @@
 package rkgrpcsec
 
 import (
-	"fmt"
+	"github.com/rookie-ninja/rk-entry/middleware/secure"
 	"net/http"
 )
 
-func Interceptor(h http.Handler, opts ...Option) http.Handler {
-	set := newOptionSet(opts...)
+func Interceptor(h http.Handler, opts ...rkmidsec.Option) http.Handler {
+	set := rkmidsec.NewOptionSet(opts...)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if set.Skipper(req) {
-			h.ServeHTTP(w, req)
-			return
-		}
+		// case 1: return to user if error occur
+		beforeCtx := set.BeforeCtx(req)
+		set.Before(beforeCtx)
 
-		// Add X-XSS-Protection header
-		if set.XSSProtection != "" {
-			w.Header().Set(headerXXSSProtection, set.XSSProtection)
-		}
-
-		// Add X-Content-Type-Options header
-		if set.ContentTypeNosniff != "" {
-			w.Header().Set(headerXContentTypeOptions, set.ContentTypeNosniff)
-		}
-
-		// Add X-Frame-Options header
-		if set.XFrameOptions != "" {
-			w.Header().Set(headerXFrameOptions, set.XFrameOptions)
-		}
-
-		// Add Strict-Transport-Security header
-		if (req.TLS != nil || (req.Header.Get(headerXForwardedProto) == "https")) && set.HSTSMaxAge != 0 {
-			subdomains := ""
-			if !set.HSTSExcludeSubdomains {
-				subdomains = "; includeSubdomains"
-			}
-			if set.HSTSPreloadEnabled {
-				subdomains = fmt.Sprintf("%s; preload", subdomains)
-			}
-			w.Header().Set(headerStrictTransportSecurity, fmt.Sprintf("max-age=%d%s", set.HSTSMaxAge, subdomains))
-		}
-
-		// Add Content-Security-Policy-Report-Only or Content-Security-Policy header
-		if set.ContentSecurityPolicy != "" {
-			if set.CSPReportOnly {
-				w.Header().Set(headerContentSecurityPolicyReportOnly, set.ContentSecurityPolicy)
-			} else {
-				w.Header().Set(headerContentSecurityPolicy, set.ContentSecurityPolicy)
-			}
-		}
-
-		// Add Referrer-Policy header
-		if set.ReferrerPolicy != "" {
-			w.Header().Set(headerReferrerPolicy, set.ReferrerPolicy)
+		for k, v := range beforeCtx.Output.HeadersToReturn {
+			w.Header().Set(k, v)
 		}
 
 		h.ServeHTTP(w, req)

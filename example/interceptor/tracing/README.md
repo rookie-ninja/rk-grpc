@@ -45,19 +45,19 @@ go get -u github.com/rookie-ninja/rk-grpc
             // Add trace interceptor
             rkgrpctrace.UnaryServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidtrace.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // Provide an exporter.
-                // rkgrpctrace.WithExporter(exporter),
+                // rkmidtrace.WithExporter(exporter),
                 //
                 // Provide propagation.TextMapPropagator
-                // rkgrpctrace.WithPropagator(<propagator>),
+                // rkmidtrace.WithPropagator(<propagator>),
                 // 
                 // Provide SpanProcessor
-                // rkgrpctrace.WithSpanProcessor(<span processor>),
+                // rkmidtrace.WithSpanProcessor(<span processor>),
                 // 
                 // Provide TracerProvider
-                // rkgrpctrace.WithTracerProvider(<trace provider>),
+                // rkmidtrace.WithTracerProvider(<trace provider>),
             ),
         ),
     }
@@ -70,75 +70,21 @@ go get -u github.com/rookie-ninja/rk-grpc
             // Add trace interceptor
             rkgrpctrace.StreamServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidtrace.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // Provide an exporter.
-                // rkgrpctrace.WithExporter(exporter),
+                // rkmidtrace.WithExporter(exporter),
                 //
                 // Provide propagation.TextMapPropagator
-                // rkgrpctrace.WithPropagator(<propagator>),
+                // rkmidtrace.WithPropagator(<propagator>),
                 // 
                 // Provide SpanProcessor
-                // rkgrpctrace.WithSpanProcessor(<span processor>),
+                // rkmidtrace.WithSpanProcessor(<span processor>),
                 // 
                 // Provide TracerProvider
-                // rkgrpctrace.WithTracerProvider(<trace provider>),
+                // rkmidtrace.WithTracerProvider(<trace provider>),
             ),
         ),
-    }
-
-    // ************************************
-    // ********** Unary Client ************
-    // ************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainUnaryInterceptor(
-            // Add trace interceptor
-            rkgrpctrace.UnaryClientInterceptor(
-                // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
-                //
-                // Provide an exporter.
-                // rkgrpctrace.WithExporter(exporter),
-                //
-                // Provide propagation.TextMapPropagator
-                // rkgrpctrace.WithPropagator(<propagator>),
-                // 
-                // Provide SpanProcessor
-                // rkgrpctrace.WithSpanProcessor(<span processor>),
-                // 
-                // Provide TracerProvider
-                // rkgrpctrace.WithTracerProvider(<trace provider>),
-            ),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
-    }
-
-    // *************************************
-    // ********** Stream Client ************
-    // *************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainStreamInterceptor(
-            // Add trace interceptor
-            rkgrpctrace.StreamClientInterceptor(
-                // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
-                //
-                // Provide an exporter.
-                // rkgrpctrace.WithExporter(exporter),
-                //
-                // Provide propagation.TextMapPropagator
-                // rkgrpctrace.WithPropagator(<propagator>),
-                // 
-                // Provide SpanProcessor
-                // rkgrpctrace.WithSpanProcessor(<span processor>),
-                // 
-                // Provide TracerProvider
-                // rkgrpctrace.WithTracerProvider(<trace provider>),
-            ),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
     }
 ```
 
@@ -148,10 +94,10 @@ then server will use the same traceId.
 
 | Name | Description | Default |
 | ---- | ---- | ---- |
-| WithEntryNameAndType(entryName, entryType string) | Provide entryName and entryType, recommended. | entryName=grpc, entryType=grpc |
-| WithExporter(exporter sdktrace.SpanExporter) | User defined exporter. | [Stdout exporter](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/stdout) with pretty print and disabled metrics |
-| WithSpanProcessor(processor sdktrace.SpanProcessor) | User defined span processor. | [NewBatchSpanProcessor](https://pkg.go.dev/go.opentelemetry.io/otel/sdk/trace#NewBatchSpanProcessor) |
-| WithPropagator(propagator propagation.TextMapPropagator) | User defined propagator. | [NewCompositeTextMapPropagator](https://pkg.go.dev/go.opentelemetry.io/otel/propagation#TextMapPropagator) |
+| rkmidtrace.WithEntryNameAndType(entryName, entryType string) | Provide entryName and entryType, recommended. | entryName=grpc, entryType=grpc |
+| rkmidtrace.WithExporter(exporter sdktrace.SpanExporter) | User defined exporter. | [Stdout exporter](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/stdout) with pretty print and disabled metrics |
+| rkmidtrace.WithSpanProcessor(processor sdktrace.SpanProcessor) | User defined span processor. | [NewBatchSpanProcessor](https://pkg.go.dev/go.opentelemetry.io/otel/sdk/trace#NewBatchSpanProcessor) |
+| rkmidtrace.WithPropagator(propagator propagation.TextMapPropagator) | User defined propagator. | [NewCompositeTextMapPropagator](https://pkg.go.dev/go.opentelemetry.io/otel/propagation#TextMapPropagator) |
 
 ![server-arch](img/server-arch.png)
 ![client-arch](img/client-arch.png)
@@ -169,7 +115,7 @@ then server will use the same traceId.
     // set.Exporter, _ = stdout.NewExporter(
     //     stdout.WithPrettyPrint(),
     //     stdout.WithoutMetricExport())
-    exporter := rkgrpctrace.CreateFileExporter("stdout")
+    exporter := rkmidtrace.NewFileExporter("stdout")
 
     // Users can define own stdout exporter by themselves.
     exporter, _ := stdout.NewExporter(stdout.WithPrettyPrint(), stdout.WithoutMetricExport())
@@ -182,7 +128,7 @@ then server will use the same traceId.
     // ****************************************
 
     // Export trace to local file system
-    exporter := rkgrpctrace.CreateFileExporter("logs/trace.log")
+    exporter := rkmidtrace.NewFileExporter("logs/trace.log")
 ```
 
 #### Jaeger exporter
@@ -192,7 +138,7 @@ then server will use the same traceId.
     // ****************************************
 
     // Export trace to jaeger collector
-    exporter := rkgrpctrace.CreateJaegerExporter("localhost:14368", "", "")
+    exporter := rkmidtrace.NewJaegerExporter("localhost:14368", "", "")
 ```
 
 ## Example
@@ -224,23 +170,21 @@ If logger interceptor enabled, then traceId would be attached to event and zap l
 
 - Server side log (zap & event)
 ```shell script
-2021-06-23T16:53:21.669+0800    INFO    tracing/greeter-server.go:59    Received client request!        {"traceId": "898ad20ad69998dc0bef2707ce5332d5"}
-```
-```shell script
+2022-01-15T22:14:33.298+0800    INFO    server/greeter-server.go:79     Received client request!        {"requestId": "a5babb17-bb5e-4990-888d-ad6a7023f8d2", "traceId": "e491fe5d177eb9e2ec4849de923aeffc"}
 ------------------------------------------------------------------------
-endTime=2021-06-23T16:53:21.669385+08:00
-startTime=2021-06-23T16:53:21.669175+08:00
-elapsedNano=210152
+endTime=2022-01-15T22:14:33.29883+08:00
+startTime=2022-01-15T22:14:33.298553+08:00
+elapsedNano=277842
 timezone=CST
-ids={"eventId":"5425933f-3a41-4e2a-80df-6261c4d7aaaf","traceId":"898ad20ad69998dc0bef2707ce5332d5"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"a5babb17-bb5e-4990-888d-ad6a7023f8d2","requestId":"a5babb17-bb5e-4990-888d-ad6a7023f8d2","traceId":"e491fe5d177eb9e2ec4849de923aeffc"}
+app={"appName":"rk","appVersion":"","entryName":"greeter","entryType":"grpc"}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
 error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:51192
+remoteAddr=127.0.0.1:63188
 operation=/Greeter/SayHello
 resCode=OK
 eventStatus=Ended
@@ -250,40 +194,20 @@ EOE
 - Client side trace log
 ```shell script
 [
-        {
-                "SpanContext": {
-                        "TraceID": "898ad20ad69998dc0bef2707ce5332d5",
-                        "SpanID": "c040f9e3771ab5fc",
-                        "TraceFlags": "01",
-                        "TraceState": null,
-                        "Remote": false
-                },
-                ...
+    {
+        "SpanContext": {
+                "TraceID": "e491fe5d177eb9e2ec4849de923aeffc",
+                "SpanID": "aedfcb573dbc5d97",
+                "TraceFlags": "01",
+                "TraceState": "",
+                "Remote": false
+        },
+        ...
 ```
 
 - Client side log (zap & event)
 ```shell script
-2021-06-23T16:53:21.670+0800    INFO    tracing/greeter-client.go:58    [Message]: Hello rk-dev!        {"traceId": "898ad20ad69998dc0bef2707ce5332d5"}
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-23T16:53:21.670053+08:00
-startTime=2021-06-23T16:53:21.667635+08:00
-elapsedNano=2418516
-timezone=CST
-ids={"eventId":"351b9e71-7cc4-4631-8050-a876a8dd0809","traceId":"898ad20ad69998dc0bef2707ce5332d5"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=OK
-eventStatus=Ended
-EOE
+2022-01-15T22:14:33.299+0800    INFO    client/greeter-client.go:46     [Message]: Hello rk-dev!
 ```
 
 #### Jaeger exporter

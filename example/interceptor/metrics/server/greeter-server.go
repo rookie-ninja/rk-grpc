@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkmidmetrics "github.com/rookie-ninja/rk-entry/middleware/metrics"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-prom"
@@ -26,12 +27,12 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			// Add metrics interceptor
 			rkgrpcmetrics.UnaryServerInterceptor(
-			// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-			// rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
+				// Entry name and entry type will be used for distinguishing interceptors. Recommended.
+				rkmidmetrics.WithEntryNameAndType("greeter", "grpc"),
 			//
 			// Provide new prometheus registerer.
 			// Default value is prometheus.DefaultRegisterer
-			// rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()),
+			// rkmidmetrics.WithRegisterer(prometheus.NewRegistry()),
 			),
 		),
 	}

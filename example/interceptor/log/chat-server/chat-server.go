@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
 	api "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
-	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	rkgrpclog "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net"
 )
+
+var logger, _ = zap.NewDevelopment()
 
 // In this example, we will create a simple grpc server and enable log interceptor.
 // Then, we will try to send requests to server and monitor what kinds of logging we would get.
@@ -26,19 +28,19 @@ func main() {
 		grpc.ChainStreamInterceptor(
 			rkgrpclog.StreamServerInterceptor(
 			// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-			// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+			// rkmidlog.WithEntryNameAndType("greeter", "grpc"),
 			//
 			// Zap logger would be logged as JSON format.
-			// rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON),
+			// rkmidlog.WithZapLoggerEncoding("json"),
 			//
 			// Event logger would be logged as JSON format.
-			// rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON),
+			// rkmidlog.WithEventLoggerEncoding("json"),
 			//
 			// Zap logger would be logged to specified path.
-			// rkgrpclog.WithZapLoggerOutputPaths("logs/server-zap.log"),
+			// rkmidlog.WithZapLoggerOutputPaths("logs/server-zap.log"),
 			//
 			// Event logger would be logged to specified path.
-			// rkgrpclog.WithEventLoggerOutputPaths("logs/server-event.log"),
+			// rkmidlog.WithEventLoggerOutputPaths("logs/server-event.log"),
 			),
 		),
 	}
@@ -92,7 +94,7 @@ func (server *ChatServer) Say(stream api.Chat_SayServer) error {
 			return err
 		}
 
-		rkgrpcctx.GetLogger(stream.Context()).Info(fmt.Sprintf("[From client]: %s", in.Message))
+		logger.Info(fmt.Sprintf("[From client]: %s", in.Message))
 	}
 }
 

@@ -8,28 +8,16 @@ import (
 	"context"
 	"fmt"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
-	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
-	"github.com/rookie-ninja/rk-grpc/interceptor/context"
-	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"log"
 )
 
+var logger, _ = zap.NewDevelopment()
+
 // In this example, we will create a simple grpc client and enable auth interceptor.
 func main() {
-	// ********************************************
-	// ********** Enable interceptors *************
-	// ********************************************
 	opts := []grpc.DialOption{
-		grpc.WithChainUnaryInterceptor(
-			rkgrpclog.UnaryClientInterceptor(),
-			rkgrpcauth.UnaryClientInterceptor(
-				// With invalid password
-				rkgrpcauth.WithBasicAuth("rk-user:rk-invalid-pass"),
-				//rkgrpcauth.WithApiKeyAuth("rk-api-key"),
-			),
-		),
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	}
@@ -38,14 +26,11 @@ func main() {
 	conn, client := createGreeterClient(opts...)
 	defer conn.Close()
 
-	// 2: Wrap context, this is required in order to use bellow features easily.
-	ctx := rkgrpcctx.WrapContext(context.Background())
-
-	// 3: Call server
-	if resp, err := client.SayHello(ctx, &proto.HelloRequest{Name: "rk-dev"}); err != nil {
-		rkgrpcctx.GetLogger(ctx).Fatal("Failed to send request to server.", zap.Error(err))
+	// 2: Call server
+	if resp, err := client.SayHello(context.TODO(), &proto.HelloRequest{Name: "rk-dev"}); err != nil {
+		logger.Fatal("Failed to send request to server.", zap.Error(err))
 	} else {
-		rkgrpcctx.GetLogger(ctx).Info(fmt.Sprintf("[Message]: %s", resp.Message))
+		logger.Info(fmt.Sprintf("[Message]: %s", resp.Message))
 	}
 }
 

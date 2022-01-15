@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkmidlimit "github.com/rookie-ninja/rk-entry/middleware/ratelimit"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	rkgrpclog "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
@@ -27,28 +28,28 @@ func main() {
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpclimit.UnaryServerInterceptor(
 				// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-				// rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
+				// rkmidlimit.WithEntryNameAndType("greeter", "grpc"),
 				//
-				// Provide algorithm, rkgrpclimit.LeakyBucket and rkgrpclimit.TokenBucket was available, default is TokenBucket.
-				rkgrpclimit.WithAlgorithm(rkgrpclimit.LeakyBucket),
+				// Provide algorithm, rkmidlimit.LeakyBucket and rkmidlimit.TokenBucket was available, default is TokenBucket.
+				rkmidlimit.WithAlgorithm(rkmidlimit.LeakyBucket),
 				//
 				// Provide request per second, if provide value of zero, then no requests will be pass through and user will receive an error with
 				// resource exhausted.
-				rkgrpclimit.WithReqPerSec(0),
+				rkmidlimit.WithReqPerSec(0),
 				//
 				// Provide request per second with path name.
 				// The name should be gRPC full method name. if provide value of zero,
 				// then no requests will be pass through and user will receive an error with resource exhausted.
-				// rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
+				// rkmidlimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
 				//
 				// Provide user function of limiter
-				// rkgrpclimit.WithGlobalLimiter(func(ctx context.Context) error {
-				// 	 return nil
-				// }),
+				//rkmidlimit.WithGlobalLimiter(func() error {
+				//	 return nil
+				//}),
 				//
 				// Provide user function of limiter by path name.
 				// The name should be gRPC full method name.
-				// rkgrpclimit.WithLimiterByPath("/Greeter/SayHello", func(ctx context.Context) error {
+				// rkmidlimit.WithLimiterByPath("/Greeter/SayHello", func() error {
 				//	 return nil
 				// }),
 			),

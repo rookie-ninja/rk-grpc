@@ -8,8 +8,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkmidlog "github.com/rookie-ninja/rk-entry/middleware/log"
+	rkmidtrace "github.com/rookie-ninja/rk-entry/middleware/tracing"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
+	rkgrpcctx "github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
+	rkgrpcmeta "github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
 	"google.golang.org/grpc"
 	"log"
@@ -24,35 +28,37 @@ func main() {
 	// ****************************************
 
 	// Export trace to stdout
-	exporter := rkgrpctrace.CreateFileExporter("stdout")
+	exporter := rkmidtrace.NewFileExporter("stdout")
 
 	// Export trace to local file system
-	// exporter := rkgrpctrace.CreateFileExporter("logs/trace.log")
+	// exporter := rkmidtrace.NewFileExporter("logs/trace.log")
 
 	// Export trace to jaeger agent by default
-	// exporter := rkgrpctrace.CreateJaegerExporter(jaeger.WithAgentEndpoint())
+	// exporter := rkmidtrace.NewJaegerExporter(jaeger.WithAgentEndpoint())
 
 	// ********************************************
 	// ********** Enable interceptors *************
 	// ********************************************
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			rkgrpclog.UnaryServerInterceptor(),
+			rkgrpclog.UnaryServerInterceptor(
+				rkmidlog.WithEntryNameAndType("greeter", "grpc")),
+			rkgrpcmeta.UnaryServerInterceptor(),
 			rkgrpctrace.UnaryServerInterceptor(
 				// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-				// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+				rkmidtrace.WithEntryNameAndType("greeter", "grpc"),
 				//
 				// Provide an exporter.
-				rkgrpctrace.WithExporter(exporter),
-			//
-			// Provide propagation.TextMapPropagator
-			// rkgrpctrace.WithPropagator(<propagator>),
-			//
-			// Provide SpanProcessor
-			// rkgrpctrace.WithSpanProcessor(<span processor>),
-			//
-			// Provide TracerProvider
-			// rkgrpctrace.WithTracerProvider(<trace provider>),
+				rkmidtrace.WithExporter(exporter),
+				//
+				// Provide propagation.TextMapPropagator
+				// rkmidtrace.WithPropagator(<propagator>),
+				//
+				// Provide SpanProcessor
+				// rkmidtrace.WithSpanProcessor(<span processor>),
+				//
+				// Provide TracerProvider
+				// rkmidtrace.WithTracerProvider(<trace provider>),
 			),
 		),
 	}
@@ -70,6 +76,8 @@ type GreeterServer struct{}
 
 // SayHello Handle SayHello method.
 func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloResponse, error) {
+	rkgrpcctx.GetLogger(ctx).Info("Received client request!")
+
 	return &proto.HelloResponse{
 		Message: fmt.Sprintf("Hello %s!", request.GetName()),
 	}, nil

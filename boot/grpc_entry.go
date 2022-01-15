@@ -13,48 +13,56 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-common/common"
 	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
+	"github.com/rookie-ninja/rk-entry/middleware"
+	"github.com/rookie-ninja/rk-entry/middleware/auth"
+	"github.com/rookie-ninja/rk-entry/middleware/cors"
+	"github.com/rookie-ninja/rk-entry/middleware/csrf"
+	"github.com/rookie-ninja/rk-entry/middleware/jwt"
+	"github.com/rookie-ninja/rk-entry/middleware/log"
+	"github.com/rookie-ninja/rk-entry/middleware/meta"
+	"github.com/rookie-ninja/rk-entry/middleware/metrics"
+	"github.com/rookie-ninja/rk-entry/middleware/panic"
+	"github.com/rookie-ninja/rk-entry/middleware/ratelimit"
+	"github.com/rookie-ninja/rk-entry/middleware/secure"
+	"github.com/rookie-ninja/rk-entry/middleware/timeout"
+	"github.com/rookie-ninja/rk-entry/middleware/tracing"
+	apiutil "github.com/rookie-ninja/rk-grpc/boot/api/third_party/gen/v1"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
-	rkgrpccors "github.com/rookie-ninja/rk-grpc/interceptor/cors"
-	rkgrpccsrf "github.com/rookie-ninja/rk-grpc/interceptor/csrf"
-	rkgrpcjwt "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
+	"github.com/rookie-ninja/rk-grpc/interceptor/cors"
+	"github.com/rookie-ninja/rk-grpc/interceptor/csrf"
+	"github.com/rookie-ninja/rk-grpc/interceptor/jwt"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
 	"github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
 	"github.com/rookie-ninja/rk-grpc/interceptor/panic"
 	"github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
-	rkgrpcsec "github.com/rookie-ninja/rk-grpc/interceptor/secure"
+	"github.com/rookie-ninja/rk-grpc/interceptor/secure"
 	"github.com/rookie-ninja/rk-grpc/interceptor/timeout"
 	"github.com/rookie-ninja/rk-grpc/interceptor/tracing/telemetry"
-	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
 	"github.com/soheilhy/cmux"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/genproto/googleapis/api/annotations"
+	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/encoding/protojson"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // This must be declared in order to register registration function into rk context
@@ -65,79 +73,13 @@ func init() {
 
 const (
 	// GrpcEntryType default entry type
-	GrpcEntryType = "GrpcEntry"
+	GrpcEntryType = "gRPC"
 	// GrpcEntryDescription default entry description
 	GrpcEntryDescription = "Internal RK entry which helps to bootstrap with Grpc framework."
 )
 
-// GwRegFunc Registration function grpc gateway.
-type GwRegFunc func(context.Context, *gwruntime.ServeMux, string, []grpc.DialOption) error
-
-type gwRule struct {
-	Method  string `json:"method" yaml:"method"`
-	Pattern string `json:"pattern" yaml:"pattern"`
-}
-
-// BootConfigGrpc Boot config which is for grpc entry.
-//
-// 1: Grpc.Name: Name of entry, should be unique globally.
-// 2: Grpc.Description: Description of entry.
-// 3: Grpc.Enabled: Enable GrpcEntry.
-// 4: Grpc.Port: Port of entry.
-// 5: Grpc.EnableReflection: Enable gRPC reflection or not.
-// 6: Grpc.Cert.Ref: Reference of rkentry.CertEntry.
-// 7: Grpc.CommonService.Enabled: Reference of CommonService.
-// 8: Grpc.Sw.Enabled: Enable SwEntry.
-// 9: Grpc.Sw.Path: Swagger UI path.
-// 10: Grpc.Sw.JsonPath: Swagger JSON config file path.
-// 11: Grpc.Sw.Headers: Http headers which would be forwarded to user.
-// 12: Grpc.Tv.Enabled: Enable TvEntry.
-// 13: Grpc.Prom.Pusher.Enabled: Enable prometheus pushgateway pusher.
-// 14: Grpc.Prom.Pusher.IntervalMs: Interval in milliseconds while pushing metrics to remote pushGateway.
-// 15: Grpc.Prom.Pusher.JobName: Name of pushGateway pusher job.
-// 16: Grpc.Prom.Pusher.RemoteAddress: Remote address of pushGateway server.
-// 17: Grpc.Prom.Pusher.BasicAuth: Basic auth credential of pushGateway server.
-// 18: Grpc.Prom.Pusher.Cert.Ref: Reference of rkentry.CertEntry.
-// 19: Grpc.Prom.Cert.Ref: Reference of rkentry.CertEntry.
-// 20: Grpc.Interceptors.LoggingZap.Enabled: Enable zap logger interceptor.
-// 21: Grpc.Interceptors.LoggingZap.ZapLoggerEncoding: json or console.
-// 22: Grpc.Interceptors.LoggingZap.ZapLoggerOutputPaths: Output paths, stdout is supported.
-// 23: Grpc.Interceptors.LoggingZap.EventLoggerEncoding: json or console.
-// 24: Grpc.Interceptors.LoggingZap.EventLoggerOutputPaths: Output paths, stdout is supported.
-// 25: Grpc.Interceptors.MetricsProm.Enabled: Enable prometheus metrics interceptor.
-// 26: Grpc.Interceptors.Auth.Enabled: Enable basic auth interceptor.
-// 27: Grpc.Interceptors.Auth.Basic: Basic auth credentials as scheme of <user:pass>.
-// 28: Grpc.Interceptors.Auth.ApiKey: API key auth type.
-// 29: Grpc.Interceptors.Auth.IgnorePrefix: The prefix that ignoring auth.
-// 30: Grpc.Interceptors.Meta.Enabled: Meta interceptor which attach meta headers to response.
-// 31: Grpc.Interceptors.Meta.Prefix: Meta interceptor which attach meta headers to response with prefix.
-// 32: Grpc.Interceptors.Meta.TracingTelemetry.Enabled: Tracing interceptor.
-// 33: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.Enabled: Tracing interceptor with file as exporter.
-// 34: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.File.OutputPath: Exporter output paths.
-// 35: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.Enabled: Tracing interceptor with jaeger as exporter.
-// 36: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorEndpoint: Jaeger collector endpoint.
-// 37: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorUsername: Jaeger collector user name.
-// 38: Grpc.Interceptors.Meta.TracingTelemetry.Exporter.Jaeger.CollectorPassword: Jaeger collector password.
-// 39: Grpc.Interceptors.RateLimit.Enabled: Enable rate limit interceptor.
-// 40: Grpc.Interceptors.RateLimit.Algorithm: Algorithm of rate limiter.
-// 41: Grpc.Interceptors.RateLimit.ReqPerSec: Request per second.
-// 42: Grpc.Interceptors.RateLimit.Paths.Path: Name of gRPC full method.
-// 43: Grpc.Interceptors.RateLimit.Paths.ReqPerSec: Request per second by method.
-// 44: Grpc.Interceptors.Timeout.Enabled: Enable timeout interceptor.
-// 45: Grpc.Interceptors.Timeout.TimeoutMs: Timeout in milliseconds.
-// 46: Grpc.Interceptors.Timeout.Paths.path: Name of full path.
-// 47: Grpc.Interceptors.Timeout.Paths.TimeoutMs: Timeout in milliseconds by path.
-// 48: Grpc.Logger.ZapLogger.Ref: Zap logger reference, see rkentry.ZapLoggerEntry for details.
-// 49: Grpc.Logger.EventLogger.Ref: Event logger reference, see rkentry.EventLoggerEntry for details.
-// 50: Grpc.GwOption.Marshal.Multiline: Enable multiline in gateway option.
-// 51: Grpc.GwOption.Marshal.EmitUnpopulated: Enable emitUnpopulated in gateway option.
-// 52: Grpc.GwOption.Marshal.Indent: Set indent in gateway option.
-// 53: Grpc.GwOption.Marshal.AllowPartial: Enable allowPartial in gateway option.
-// 54: Grpc.GwOption.Marshal.UseProtoNames: Enable useProtoNames in gateway option.
-// 55: Grpc.GwOption.Marshal.UseEnumNumbers: Enable useEnumNumbers in gateway option.
-// 56: Grpc.GwOption.Unmarshal.AllowPartial: Enable allowPartial in gateway option.
-// 57: Grpc.GwOption.Unmarshal.DiscardUnknown: Enable discardUnknown in gateway option.
-type BootConfigGrpc struct {
+// BootConfig Boot config which is for grpc entry.
+type BootConfig struct {
 	Grpc []struct {
 		Name               string `yaml:"name" json:"name"`
 		Description        string `yaml:"description" json:"description"`
@@ -148,118 +90,27 @@ type BootConfigGrpc struct {
 		Cert               struct {
 			Ref string `yaml:"ref" json:"ref"`
 		} `yaml:"cert" json:"cert"`
-		CommonService      BootConfigCommonService `yaml:"commonService" json:"commonService"`
-		Sw                 BootConfigSw            `yaml:"sw" json:"sw"`
-		Tv                 BootConfigTv            `yaml:"tv" json:"tv"`
-		Prom               BootConfigProm          `yaml:"prom" json:"prom"`
-		Static             BootConfigStaticHandler `yaml:"static" json:"static"`
-		Proxy              BootConfigProxy         `yaml:"proxy" json:"proxy"`
-		EnableRkGwOption   bool                    `yaml:"enableRkGwOption" json:"enableRkGwOption"`
-		GwOption           *gwOption               `yaml:"gwOption" json:"gwOption"`
-		GwMappingFilePaths []string                `yaml:"gwMappingFilePaths" json:"gwMappingFilePaths"`
+		CommonService      rkentry.BootConfigCommonService `yaml:"commonService" json:"commonService"`
+		Sw                 rkentry.BootConfigSw            `yaml:"sw" json:"sw"`
+		Tv                 rkentry.BootConfigTv            `yaml:"tv" json:"tv"`
+		Prom               rkentry.BootConfigProm          `yaml:"prom" json:"prom"`
+		Static             rkentry.BootConfigStaticHandler `yaml:"static" json:"static"`
+		Proxy              BootConfigProxy                 `yaml:"proxy" json:"proxy"`
+		EnableRkGwOption   bool                            `yaml:"enableRkGwOption" json:"enableRkGwOption"`
+		GwOption           *gwOption                       `yaml:"gwOption" json:"gwOption"`
+		GwMappingFilePaths []string                        `yaml:"gwMappingFilePaths" json:"gwMappingFilePaths"`
 		Interceptors       struct {
-			LoggingZap struct {
-				Enabled                bool     `yaml:"enabled" json:"enabled"`
-				ZapLoggerEncoding      string   `yaml:"zapLoggerEncoding" json:"zapLoggerEncoding"`
-				ZapLoggerOutputPaths   []string `yaml:"zapLoggerOutputPaths" json:"zapLoggerOutputPaths"`
-				EventLoggerEncoding    string   `yaml:"eventLoggerEncoding" json:"eventLoggerEncoding"`
-				EventLoggerOutputPaths []string `yaml:"eventLoggerOutputPaths" json:"eventLoggerOutputPaths"`
-			} `yaml:"loggingZap" json:"loggingZap"`
-			MetricsProm struct {
-				Enabled bool `yaml:"enabled" json:"enabled"`
-			} `yaml:"metricsProm" json:"metricsProm"`
-			Auth struct {
-				Enabled      bool     `yaml:"enabled" json:"enabled"`
-				IgnorePrefix []string `yaml:"ignorePrefix" json:"ignorePrefix"`
-				Basic        []string `yaml:"basic" json:"basic"`
-				ApiKey       []string `yaml:"apiKey" json:"apiKey"`
-			} `yaml:"auth" json:"auth"`
-			Cors struct {
-				Enabled          bool     `yaml:"enabled" json:"enabled"`
-				AllowOrigins     []string `yaml:"allowOrigins" json:"allowOrigins"`
-				AllowCredentials bool     `yaml:"allowCredentials" json:"allowCredentials"`
-				AllowHeaders     []string `yaml:"allowHeaders" json:"allowHeaders"`
-				AllowMethods     []string `yaml:"allowMethods" json:"allowMethods"`
-				ExposeHeaders    []string `yaml:"exposeHeaders" json:"exposeHeaders"`
-				MaxAge           int      `yaml:"maxAge" json:"maxAge"`
-			} `yaml:"cors" json:"cors"`
-			Secure struct {
-				Enabled               bool     `yaml:"enabled" json:"enabled"`
-				IgnorePrefix          []string `yaml:"ignorePrefix" json:"ignorePrefix"`
-				XssProtection         string   `yaml:"xssProtection" json:"xssProtection"`
-				ContentTypeNosniff    string   `yaml:"contentTypeNosniff" json:"contentTypeNosniff"`
-				XFrameOptions         string   `yaml:"xFrameOptions" json:"xFrameOptions"`
-				HstsMaxAge            int      `yaml:"hstsMaxAge" json:"hstsMaxAge"`
-				HstsExcludeSubdomains bool     `yaml:"hstsExcludeSubdomains" json:"hstsExcludeSubdomains"`
-				HstsPreloadEnabled    bool     `yaml:"hstsPreloadEnabled" json:"hstsPreloadEnabled"`
-				ContentSecurityPolicy string   `yaml:"contentSecurityPolicy" json:"contentSecurityPolicy"`
-				CspReportOnly         bool     `yaml:"cspReportOnly" json:"cspReportOnly"`
-				ReferrerPolicy        string   `yaml:"referrerPolicy" json:"referrerPolicy"`
-			} `yaml:"secure" json:"secure"`
-			Meta struct {
-				Enabled bool   `yaml:"enabled" json:"enabled"`
-				Prefix  string `yaml:"prefix" json:"prefix"`
-			} `yaml:"meta" json:"meta"`
-			Jwt struct {
-				Enabled      bool     `yaml:"enabled" json:"enabled"`
-				IgnorePrefix []string `yaml:"ignorePrefix" json:"ignorePrefix"`
-				SigningKey   string   `yaml:"signingKey" json:"signingKey"`
-				SigningKeys  []string `yaml:"signingKeys" json:"signingKeys"`
-				SigningAlgo  string   `yaml:"signingAlgo" json:"signingAlgo"`
-				TokenLookup  string   `yaml:"tokenLookup" json:"tokenLookup"`
-				AuthScheme   string   `yaml:"authScheme" json:"authScheme"`
-			} `yaml:"jwt" json:"jwt"`
-			Csrf struct {
-				Enabled        bool     `yaml:"enabled" json:"enabled"`
-				IgnorePrefix   []string `yaml:"ignorePrefix" json:"ignorePrefix"`
-				TokenLength    int      `yaml:"tokenLength" json:"tokenLength"`
-				TokenLookup    string   `yaml:"tokenLookup" json:"tokenLookup"`
-				CookieName     string   `yaml:"cookieName" json:"cookieName"`
-				CookieDomain   string   `yaml:"cookieDomain" json:"cookieDomain"`
-				CookiePath     string   `yaml:"cookiePath" json:"cookiePath"`
-				CookieMaxAge   int      `yaml:"cookieMaxAge" json:"cookieMaxAge"`
-				CookieHttpOnly bool     `yaml:"cookieHttpOnly" json:"cookieHttpOnly"`
-				CookieSameSite string   `yaml:"cookieSameSite" json:"cookieSameSite"`
-			} `yaml:"csrf" yaml:"csrf"`
-			RateLimit struct {
-				Enabled   bool   `yaml:"enabled" json:"enabled"`
-				Algorithm string `yaml:"algorithm" json:"algorithm"`
-				ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
-				Paths     []struct {
-					Path      string `yaml:"path" json:"path"`
-					ReqPerSec int    `yaml:"reqPerSec" json:"reqPerSec"`
-				} `yaml:"paths" json:"paths"`
-			} `yaml:"rateLimit" json:"rateLimit"`
-			Timeout struct {
-				Enabled   bool `yaml:"enabled" json:"enabled"`
-				TimeoutMs int  `yaml:"timeoutMs" json:"timeoutMs"`
-				Paths     []struct {
-					Path      string `yaml:"path" json:"path"`
-					TimeoutMs int    `yaml:"timeoutMs" json:"timeoutMs"`
-				} `yaml:"paths" json:"paths"`
-			} `yaml:"timeout" json:"timeout"`
-			TracingTelemetry struct {
-				Enabled  bool `yaml:"enabled" json:"enabled"`
-				Exporter struct {
-					File struct {
-						Enabled    bool   `yaml:"enabled" json:"enabled"`
-						OutputPath string `yaml:"outputPath" json:"outputPath"`
-					} `yaml:"file" json:"file"`
-					Jaeger struct {
-						Agent struct {
-							Enabled bool   `yaml:"enabled" json:"enabled"`
-							Host    string `yaml:"host" json:"host"`
-							Port    int    `yaml:"port" json:"port"`
-						} `yaml:"agent" json:"agent"`
-						Collector struct {
-							Enabled  bool   `yaml:"enabled" json:"enabled"`
-							Endpoint string `yaml:"endpoint" json:"endpoint"`
-							Username string `yaml:"username" json:"username"`
-							Password string `yaml:"password" json:"password"`
-						} `yaml:"collector" json:"collector"`
-					} `yaml:"jaeger" json:"jaeger"`
-				} `yaml:"exporter" json:"exporter"`
-			} `yaml:"tracingTelemetry" json:"tracingTelemetry"`
+			LoggingZap       rkmidlog.BootConfig     `yaml:"loggingZap" json:"loggingZap"`
+			MetricsProm      rkmidmetrics.BootConfig `yaml:"metricsProm" json:"metricsProm"`
+			Auth             rkmidauth.BootConfig    `yaml:"auth" json:"auth"`
+			Cors             rkmidcors.BootConfig    `yaml:"cors" json:"cors"`
+			Secure           rkmidsec.BootConfig     `yaml:"secure" json:"secure"`
+			Meta             rkmidmeta.BootConfig    `yaml:"meta" json:"meta"`
+			Jwt              rkmidjwt.BootConfig     `yaml:"jwt" json:"jwt"`
+			Csrf             rkmidcsrf.BootConfig    `yaml:"csrf" yaml:"csrf"`
+			RateLimit        rkmidlimit.BootConfig   `yaml:"rateLimit" json:"rateLimit"`
+			Timeout          rkmidtimeout.BootConfig `yaml:"timeout" json:"timeout"`
+			TracingTelemetry rkmidtrace.BootConfig   `yaml:"tracingTelemetry" json:"tracingTelemetry"`
 		} `yaml:"interceptors" json:"interceptors"`
 		Logger struct {
 			ZapLogger struct {
@@ -273,32 +124,6 @@ type BootConfigGrpc struct {
 }
 
 // GrpcEntry implements rkentry.Entry interface.
-//
-// 1: EntryName: Name of entry
-// 2: EntryType: Type of entry
-// 3: EntryDescription: Description of entry
-// 4: ZapLoggerEntry: See rkentry.ZapLoggerEntry for details.
-// 5: EventLoggerEntry: See rkentry.EventLoggerEntry for details.
-// 6: Port: http/https port server listen to.
-// 7: TlsConfig: TLS config for http and grpc server
-// 8: TlsConfigInsecure: TLS config for grpc client of gateway
-// 9: Server: gRPC server created while bootstrapping.
-// 10: ServerOpts: Server options for grpc server.
-// 11: UnaryInterceptors: Interceptors user enabled.
-// 12: StreamInterceptors: Interceptors user enabled.
-// 13: GrpcRegF: gRPC registration functions.
-// 14: HttpMux: http mux for overall http server
-// 15: HttpServer: http server over grpc server
-// 16: GwMux: gRPC gateway mux only routes http requests over grpc
-// 17: GwMuxOptions: gRPC gateway mux options.
-// 18: GwRegF: gRPC gateway registration function which generated from protocol buffer
-// 19: GwMappingFilePaths: gRPC gateway to grpc method mapping file paths.
-// 20: GwHttpToGrpcMapping: gRPC gateway to grpc method mapping.
-// 21: SwEntry: Swagger entry.
-// 22: TvEntry: RK tv entry.
-// 23: PromEntry: Prometheus client entry.
-// 24: CommonServiceEntry: CommonService entry.
-// 25: CertEntry: See CertEntry for details.
 type GrpcEntry struct {
 	EntryName         string                    `json:"entryName" yaml:"entryName"`
 	EntryType         string                    `json:"entryType" yaml:"entryType"`
@@ -324,24 +149,18 @@ type GrpcEntry struct {
 	GwMappingFilePaths  []string                   `json:"gwMappingFilePaths" yaml:"gwMappingFilePaths"`
 	GwDialOptions       []grpc.DialOption          `json:"-" yaml:"-"`
 	GwHttpToGrpcMapping map[string]*gwRule         `json:"gwMapping" yaml:"gwMapping"`
-	gwCorsOptions       []rkgrpccors.Option        `json:"-" yaml:"-"`
-	gwSecureOptions     []rkgrpcsec.Option         `json:"-" yaml:"-"`
-	gwCsrfOptions       []rkgrpccsrf.Option        `json:"-" yaml:"-"`
+	gwCorsOptions       []rkmidcors.Option         `json:"-" yaml:"-"`
+	gwSecureOptions     []rkmidsec.Option          `json:"-" yaml:"-"`
+	gwCsrfOptions       []rkmidcsrf.Option         `json:"-" yaml:"-"`
 	// Utility related
-	SwEntry            *SwEntry                `json:"-" yaml:"-"`
-	TvEntry            *TvEntry                `json:"-" yaml:"-"`
-	ProxyEntry         *ProxyEntry             `json:"-" yaml:"-"`
-	PromEntry          *PromEntry              `json:"-" yaml:"-"`
-	StaticFileEntry    *StaticFileHandlerEntry `json:"-" yaml:"-"`
-	CommonServiceEntry *CommonServiceEntry     `json:"-" yaml:"-"`
-	CertEntry          *rkentry.CertEntry      `json:"-" yaml:"-"`
+	SwEntry            *rkentry.SwEntry                `json:"-" yaml:"-"`
+	TvEntry            *rkentry.TvEntry                `json:"-" yaml:"-"`
+	ProxyEntry         *ProxyEntry                     `json:"-" yaml:"-"`
+	PromEntry          *rkentry.PromEntry              `json:"-" yaml:"-"`
+	StaticFileEntry    *rkentry.StaticFileHandlerEntry `json:"-" yaml:"-"`
+	CommonServiceEntry *rkentry.CommonServiceEntry     `json:"-" yaml:"-"`
+	CertEntry          *rkentry.CertEntry              `json:"-" yaml:"-"`
 }
-
-// GrpcRegFunc Grpc registration func.
-type GrpcRegFunc func(server *grpc.Server)
-
-// GrpcEntryOption GrpcEntry option.
-type GrpcEntryOption func(*GrpcEntry)
 
 // RegisterGrpcEntriesWithConfig Register grpc entries with provided config file (Must YAML file).
 //
@@ -365,7 +184,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 	res := make(map[string]rkentry.Entry)
 
 	// 1: decode config map into boot config struct
-	config := &BootConfigGrpc{}
+	config := &BootConfig{}
 	rkcommon.UnmarshalBootConfig(configFilePath, config)
 
 	for i := range config.Grpc {
@@ -384,70 +203,21 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			eventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
 		}
 
-		var commonService *CommonServiceEntry
-		// Did we enable common service?
-		if element.CommonService.Enabled {
-			commonService = NewCommonServiceEntry(
-				WithNameCommonService(element.Name),
-				WithEventLoggerEntryCommonService(eventLoggerEntry),
-				WithZapLoggerEntryCommonService(zapLoggerEntry))
-		}
+		// Register common service entry
+		commonServiceEntry := rkentry.RegisterCommonServiceEntryWithConfig(&element.CommonService, element.Name,
+			zapLoggerEntry, eventLoggerEntry)
 
-		// Did we enabled swagger?
-		var sw *SwEntry
-		if element.Sw.Enabled {
-			// init swagger custom headers from config
-			headers := make(map[string]string, 0)
-			for i := range element.Sw.Headers {
-				header := element.Sw.Headers[i]
-				tokens := strings.Split(header, ":")
-				if len(tokens) == 2 {
-					headers[tokens[0]] = tokens[1]
-				}
-			}
+		// Register swagger entry
+		swEntry := rkentry.RegisterSwEntryWithConfig(&element.Sw, element.Name, element.Port,
+			zapLoggerEntry, eventLoggerEntry, element.CommonService.Enabled)
 
-			sw = NewSwEntry(
-				WithNameSw(element.Name),
-				WithPortSw(element.Port),
-				WithPathSw(element.Sw.Path),
-				WithJsonPathSw(element.Sw.JsonPath),
-				WithHeadersSw(headers),
-				WithZapLoggerEntrySw(zapLoggerEntry),
-				WithEventLoggerEntrySw(eventLoggerEntry),
-				WithEnableCommonServiceSw(element.CommonService.Enabled))
-		}
+		// Register TV entry
+		tvEntry := rkentry.RegisterTvEntryWithConfig(&element.Tv, element.Name,
+			zapLoggerEntry, eventLoggerEntry)
 
-		// Did we enable tv?
-		var tv *TvEntry
-		if element.Tv.Enabled {
-			tv = NewTvEntry(
-				WithNameTv(element.Name),
-				WithEventLoggerEntryTv(eventLoggerEntry),
-				WithZapLoggerEntryTv(zapLoggerEntry))
-		}
-
-		// Did we enabled static file handler?
-		var staticEntry *StaticFileHandlerEntry
-		if element.Static.Enabled {
-			var fs http.FileSystem
-			switch element.Static.SourceType {
-			case "pkger":
-				fs = pkger.Dir(element.Static.SourcePath)
-			case "local":
-				if !filepath.IsAbs(element.Static.SourcePath) {
-					wd, _ := os.Getwd()
-					element.Static.SourcePath = path.Join(wd, element.Static.SourcePath)
-				}
-				fs = http.Dir(element.Static.SourcePath)
-			}
-
-			staticEntry = NewStaticFileHandlerEntry(
-				WithZapLoggerEntryStatic(zapLoggerEntry),
-				WithEventLoggerEntryStatic(eventLoggerEntry),
-				WithNameStatic(fmt.Sprintf("%s-static", element.Name)),
-				WithPathStatic(element.Static.Path),
-				WithFileSystemStatic(fs))
-		}
+		// Register static file handler
+		staticEntry := rkentry.RegisterStaticFileHandlerEntryWithConfig(&element.Static, element.Name,
+			zapLoggerEntry, eventLoggerEntry)
 
 		// Did we enabled proxy?
 		var proxy *ProxyEntry
@@ -492,40 +262,10 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithRuleProxy(NewRule(opts...)))
 		}
 
-		// Did we enable prom?
-		var prom *PromEntry
-		var promRegistry *prometheus.Registry
-		if element.Prom.Enabled {
-			var pusher *rkprom.PushGatewayPusher
-
-			if element.Prom.Pusher.Enabled {
-				var certStore *rkentry.CertStore
-
-				if certEntry := rkentry.GlobalAppCtx.GetCertEntry(element.Prom.Pusher.Cert.Ref); certEntry != nil {
-					certStore = certEntry.Store
-				}
-
-				pusher, _ = rkprom.NewPushGatewayPusher(
-					rkprom.WithIntervalMSPusher(time.Duration(element.Prom.Pusher.IntervalMs)*time.Millisecond),
-					rkprom.WithRemoteAddressPusher(element.Prom.Pusher.RemoteAddress),
-					rkprom.WithJobNamePusher(element.Prom.Pusher.JobName),
-					rkprom.WithBasicAuthPusher(element.Prom.Pusher.BasicAuth),
-					rkprom.WithZapLoggerEntryPusher(zapLoggerEntry),
-					rkprom.WithEventLoggerEntryPusher(eventLoggerEntry),
-					rkprom.WithCertStorePusher(certStore))
-			}
-
-			promRegistry = prometheus.NewRegistry()
-			promRegistry.Register(prometheus.NewGoCollector())
-			prom = NewPromEntry(
-				WithNameProm(element.Name),
-				WithPortProm(element.Port),
-				WithPathProm(element.Prom.Path),
-				WithZapLoggerEntryProm(zapLoggerEntry),
-				WithEventLoggerEntryProm(eventLoggerEntry),
-				WithPromRegistryProm(promRegistry),
-				WithPusherProm(pusher))
-		}
+		// Register prometheus entry
+		promRegistry := prometheus.NewRegistry()
+		promEntry := rkentry.RegisterPromEntryWithConfig(&element.Prom, element.Name, element.Port,
+			zapLoggerEntry, eventLoggerEntry, promRegistry)
 
 		var grpcDialOptions = make([]grpc.DialOption, 0)
 		var gwMuxOpts = make([]gwruntime.ServeMuxOption, 0)
@@ -541,22 +281,22 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 		}
 
 		entry := RegisterGrpcEntry(
-			WithNameGrpc(element.Name),
-			WithDescriptionGrpc(element.Description),
-			WithZapLoggerEntryGrpc(zapLoggerEntry),
-			WithEventLoggerEntryGrpc(eventLoggerEntry),
-			WithPortGrpc(element.Port),
-			WithGrpcDialOptionsGrpc(grpcDialOptions...),
-			WithSwEntryGrpc(sw),
-			WithTvEntryGrpc(tv),
-			WithPromEntryGrpc(prom),
-			WithProxyEntryGrpc(proxy),
-			WithGwMuxOptionsGrpc(gwMuxOpts...),
-			WithCommonServiceEntryGrpc(commonService),
-			WithStaticFileHandlerEntryGrpc(staticEntry),
-			WithEnableReflectionGrpc(element.EnableReflection),
-			WithGwMappingFilePathsGrpc(element.GwMappingFilePaths...),
-			WithCertEntryGrpc(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
+			WithName(element.Name),
+			WithDescription(element.Description),
+			WithZapLoggerEntry(zapLoggerEntry),
+			WithEventLoggerEntry(eventLoggerEntry),
+			WithPort(element.Port),
+			WithGrpcDialOptions(grpcDialOptions...),
+			WithSwEntry(swEntry),
+			WithTvEntry(tvEntry),
+			WithPromEntry(promEntry),
+			WithProxyEntry(proxy),
+			WithGwMuxOptions(gwMuxOpts...),
+			WithCommonServiceEntry(commonServiceEntry),
+			WithStaticFileHandlerEntry(staticEntry),
+			WithEnableReflection(element.EnableReflection),
+			WithGwMappingFilePaths(element.GwMappingFilePaths...),
+			WithCertEntry(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
 
 		// Did we disabled message size for receiving?
 		if element.NoRecvMsgSizeLimit {
@@ -566,386 +306,95 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				grpc.MaxCallRecvMsgSize(math.MaxInt64)))
 		}
 
-		// did we enabled logging interceptor?
+		// logging middleware
 		if element.Interceptors.LoggingZap.Enabled {
-			opts := make([]rkgrpclog.Option, 0)
-			opts = append(opts,
-				rkgrpclog.WithEventLoggerEntry(eventLoggerEntry),
-				rkgrpclog.WithZapLoggerEntry(zapLoggerEntry),
-				rkgrpclog.WithEntryNameAndType(element.Name, GrpcEntryType))
-
-			if strings.ToLower(element.Interceptors.LoggingZap.ZapLoggerEncoding) == "json" {
-				opts = append(opts, rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON))
-			}
-
-			if strings.ToLower(element.Interceptors.LoggingZap.EventLoggerEncoding) == "json" {
-				opts = append(opts, rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON))
-			}
-
-			if len(element.Interceptors.LoggingZap.ZapLoggerOutputPaths) > 0 {
-				opts = append(opts, rkgrpclog.WithZapLoggerOutputPaths(element.Interceptors.LoggingZap.ZapLoggerOutputPaths...))
-			}
-
-			if len(element.Interceptors.LoggingZap.EventLoggerOutputPaths) > 0 {
-				opts = append(opts, rkgrpclog.WithEventLoggerOutputPaths(element.Interceptors.LoggingZap.EventLoggerOutputPaths...))
-			}
-
-			entry.AddUnaryInterceptors(rkgrpclog.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpclog.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpclog.UnaryServerInterceptor(
+				rkmidlog.ToOptions(&element.Interceptors.LoggingZap, element.Name, GrpcEntryType,
+					zapLoggerEntry, eventLoggerEntry)...))
+			entry.AddStreamInterceptors(rkgrpclog.StreamServerInterceptor(
+				rkmidlog.ToOptions(&element.Interceptors.LoggingZap, element.Name, GrpcEntryType,
+					zapLoggerEntry, eventLoggerEntry)...))
 		}
 
 		// did we enabled metrics interceptor?
 		if element.Interceptors.MetricsProm.Enabled {
-			opts := make([]rkgrpcmetrics.Option, 0)
-			opts = append(opts,
-				rkgrpcmetrics.WithRegisterer(promRegistry),
-				rkgrpcmetrics.WithEntryNameAndType(element.Name, GrpcEntryType))
-
-			entry.AddUnaryInterceptors(rkgrpcmetrics.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcmetrics.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpcmetrics.UnaryServerInterceptor(
+				rkmidmetrics.ToOptions(&element.Interceptors.MetricsProm, element.Name, GrpcEntryType,
+					promRegistry, rkmidmetrics.LabelerTypeGrpc)...))
+			entry.AddStreamInterceptors(rkgrpcmetrics.StreamServerInterceptor(
+				rkmidmetrics.ToOptions(&element.Interceptors.MetricsProm, element.Name, GrpcEntryType,
+					promRegistry, rkmidmetrics.LabelerTypeGrpc)...))
 		}
 
-		// did we enabled tracing interceptor?
+		// trace middleware
 		if element.Interceptors.TracingTelemetry.Enabled {
-			var exporter trace.SpanExporter
-
-			if element.Interceptors.TracingTelemetry.Exporter.File.Enabled {
-				exporter = rkgrpctrace.CreateFileExporter(element.Interceptors.TracingTelemetry.Exporter.File.OutputPath)
-			}
-
-			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Enabled {
-				opts := make([]jaeger.AgentEndpointOption, 0)
-				if len(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Host) > 0 {
-					opts = append(opts,
-						jaeger.WithAgentHost(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Host))
-				}
-				if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Port > 0 {
-					opts = append(opts,
-						jaeger.WithAgentPort(
-							fmt.Sprintf("%d", element.Interceptors.TracingTelemetry.Exporter.Jaeger.Agent.Port)))
-				}
-
-				exporter = rkgrpctrace.CreateJaegerExporter(jaeger.WithAgentEndpoint(opts...))
-			}
-
-			if element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Enabled {
-				opts := []jaeger.CollectorEndpointOption{
-					jaeger.WithUsername(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Username),
-					jaeger.WithPassword(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Password),
-				}
-
-				if len(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Endpoint) > 0 {
-					opts = append(opts, jaeger.WithEndpoint(element.Interceptors.TracingTelemetry.Exporter.Jaeger.Collector.Endpoint))
-				}
-
-				exporter = rkgrpctrace.CreateJaegerExporter(jaeger.WithCollectorEndpoint(opts...))
-			}
-
-			opts := []rkgrpctrace.Option{
-				rkgrpctrace.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpctrace.WithExporter(exporter),
-			}
-
-			entry.AddUnaryInterceptors(rkgrpctrace.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpctrace.UnaryServerInterceptor(
+				rkmidtrace.ToOptions(&element.Interceptors.TracingTelemetry, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpctrace.StreamServerInterceptor(
+				rkmidtrace.ToOptions(&element.Interceptors.TracingTelemetry, element.Name, GrpcEntryType)...))
 		}
 
-		// did we enabled jwt interceptor?
+		// jwt middleware
 		if element.Interceptors.Jwt.Enabled {
-			var signingKey []byte
-			if len(element.Interceptors.Jwt.SigningKey) > 0 {
-				signingKey = []byte(element.Interceptors.Jwt.SigningKey)
-			}
-
-			opts := []rkgrpcjwt.Option{
-				rkgrpcjwt.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcjwt.WithSigningKey(signingKey),
-				rkgrpcjwt.WithSigningAlgorithm(element.Interceptors.Jwt.SigningAlgo),
-				rkgrpcjwt.WithTokenLookup(element.Interceptors.Jwt.TokenLookup),
-				rkgrpcjwt.WithAuthScheme(element.Interceptors.Jwt.AuthScheme),
-				rkgrpcjwt.WithIgnorePrefix(element.Interceptors.Jwt.IgnorePrefix...),
-			}
-
-			for _, v := range element.Interceptors.Jwt.SigningKeys {
-				tokens := strings.SplitN(v, ":", 2)
-				if len(tokens) == 2 {
-					opts = append(opts, rkgrpcjwt.WithSigningKeys(tokens[0], tokens[1]))
-				}
-			}
-
-			entry.AddUnaryInterceptors(rkgrpcjwt.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcjwt.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpcjwt.UnaryServerInterceptor(
+				rkmidjwt.ToOptions(&element.Interceptors.Jwt, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpcjwt.StreamServerInterceptor(
+				rkmidjwt.ToOptions(&element.Interceptors.Jwt, element.Name, GrpcEntryType)...))
 		}
 
-		// did we enabled secure interceptor?
-		// secure interceptor is for grpc-gateway
+		// secure middleware
 		if element.Interceptors.Secure.Enabled {
-			opts := []rkgrpcsec.Option{
-				rkgrpcsec.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcsec.WithXSSProtection(element.Interceptors.Secure.XssProtection),
-				rkgrpcsec.WithContentTypeNosniff(element.Interceptors.Secure.ContentTypeNosniff),
-				rkgrpcsec.WithXFrameOptions(element.Interceptors.Secure.XFrameOptions),
-				rkgrpcsec.WithHSTSMaxAge(element.Interceptors.Secure.HstsMaxAge),
-				rkgrpcsec.WithHSTSExcludeSubdomains(element.Interceptors.Secure.HstsExcludeSubdomains),
-				rkgrpcsec.WithHSTSPreloadEnabled(element.Interceptors.Secure.HstsPreloadEnabled),
-				rkgrpcsec.WithContentSecurityPolicy(element.Interceptors.Secure.ContentSecurityPolicy),
-				rkgrpcsec.WithCSPReportOnly(element.Interceptors.Secure.CspReportOnly),
-				rkgrpcsec.WithReferrerPolicy(element.Interceptors.Secure.ReferrerPolicy),
-				rkgrpcsec.WithIgnorePrefix(element.Interceptors.Secure.IgnorePrefix...),
-			}
-
-			entry.AddGwSecureOptions(opts...)
+			entry.AddGwSecureOptions(rkmidsec.ToOptions(
+				&element.Interceptors.Secure, element.Name, GrpcEntryType)...)
 		}
 
-		// did we enabled csrf interceptor?
-		// CSRF interceptor is for grpc-gateway
+		// csrf middleware
 		if element.Interceptors.Csrf.Enabled {
-			opts := []rkgrpccsrf.Option{
-				rkgrpccsrf.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpccsrf.WithTokenLength(element.Interceptors.Csrf.TokenLength),
-				rkgrpccsrf.WithTokenLookup(element.Interceptors.Csrf.TokenLookup),
-				rkgrpccsrf.WithCookieName(element.Interceptors.Csrf.CookieName),
-				rkgrpccsrf.WithCookieDomain(element.Interceptors.Csrf.CookieDomain),
-				rkgrpccsrf.WithCookiePath(element.Interceptors.Csrf.CookiePath),
-				rkgrpccsrf.WithCookieMaxAge(element.Interceptors.Csrf.CookieMaxAge),
-				rkgrpccsrf.WithCookieHTTPOnly(element.Interceptors.Csrf.CookieHttpOnly),
-				rkgrpccsrf.WithCookieSameSite(element.Interceptors.Csrf.CookieSameSite),
-				rkgrpccsrf.WithIgnorePrefix(element.Interceptors.Csrf.IgnorePrefix...),
-			}
-
-			entry.AddGwCsrfOptions(opts...)
+			entry.AddGwCsrfOptions(rkmidcsrf.ToOptions(
+				&element.Interceptors.Csrf, element.Name, GrpcEntryType)...)
 		}
 
-		// did we enabled cors interceptor?
-		// CORS interceptor is for grpc-gateway
+		// cors middleware
 		if element.Interceptors.Cors.Enabled {
-			opts := []rkgrpccors.Option{
-				rkgrpccors.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpccors.WithAllowOrigins(element.Interceptors.Cors.AllowOrigins...),
-				rkgrpccors.WithAllowCredentials(element.Interceptors.Cors.AllowCredentials),
-				rkgrpccors.WithExposeHeaders(element.Interceptors.Cors.ExposeHeaders...),
-				rkgrpccors.WithMaxAge(element.Interceptors.Cors.MaxAge),
-				rkgrpccors.WithAllowHeaders(element.Interceptors.Cors.AllowHeaders...),
-				rkgrpccors.WithAllowMethods(element.Interceptors.Cors.AllowMethods...),
-			}
-
-			entry.AddGwCorsOptions(opts...)
+			entry.AddGwCorsOptions(rkmidcors.ToOptions(
+				&element.Interceptors.Cors, element.Name, GrpcEntryType)...)
 		}
 
-		// did we enabled meta interceptor?
+		// meta middleware
 		if element.Interceptors.Meta.Enabled {
-			opts := []rkgrpcmeta.Option{
-				rkgrpcmeta.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcmeta.WithPrefix(element.Interceptors.Meta.Prefix),
-			}
-
-			entry.AddUnaryInterceptors(rkgrpcmeta.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcmeta.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpcmeta.UnaryServerInterceptor(
+				rkmidmeta.ToOptions(&element.Interceptors.Meta, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpcmeta.StreamServerInterceptor(
+				rkmidmeta.ToOptions(&element.Interceptors.Meta, element.Name, GrpcEntryType)...))
 		}
 
-		// did we enabled auth interceptor?
+		// auth middleware
 		if element.Interceptors.Auth.Enabled {
-			opts := make([]rkgrpcauth.Option, 0)
-			opts = append(opts,
-				rkgrpcauth.WithEntryNameAndType(element.Name, GrpcEntryType),
-				rkgrpcauth.WithBasicAuth(element.Interceptors.Auth.Basic...),
-				rkgrpcauth.WithApiKeyAuth(element.Interceptors.Auth.ApiKey...))
-
-			opts = append(opts, rkgrpcauth.WithIgnorePrefix(element.Interceptors.Auth.IgnorePrefix...))
-
-			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpcauth.UnaryServerInterceptor(
+				rkmidauth.ToOptions(&element.Interceptors.Auth, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpcauth.StreamServerInterceptor(
+				rkmidauth.ToOptions(&element.Interceptors.Auth, element.Name, GrpcEntryType)...))
 		}
 
-		// did we enabled timeout interceptor?
-		// This should be in front of rate limit interceptor since rate limit may block over the threshold of timeout.
+		// timeout middleware
 		if element.Interceptors.Timeout.Enabled {
-			opts := make([]rkgrpctimeout.Option, 0)
-			opts = append(opts,
-				rkgrpctimeout.WithEntryNameAndType(element.Name, GrpcEntryType))
-
-			timeout := time.Duration(element.Interceptors.Timeout.TimeoutMs) * time.Millisecond
-			opts = append(opts, rkgrpctimeout.WithTimeoutAndResp(timeout, nil))
-
-			for i := range element.Interceptors.Timeout.Paths {
-				e := element.Interceptors.Timeout.Paths[i]
-				timeout := time.Duration(e.TimeoutMs) * time.Millisecond
-				opts = append(opts, rkgrpctimeout.WithTimeoutAndRespByPath(e.Path, timeout, nil))
-			}
-
-			entry.AddUnaryInterceptors(rkgrpctimeout.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpctimeout.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpctimeout.UnaryServerInterceptor(
+				rkmidtimeout.ToOptions(&element.Interceptors.Timeout, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpctimeout.StreamServerInterceptor(
+				rkmidtimeout.ToOptions(&element.Interceptors.Timeout, element.Name, GrpcEntryType)...))
 		}
 
-		// did we enabled rate limit interceptor?
+		// ratelimit middleware
 		if element.Interceptors.RateLimit.Enabled {
-			opts := make([]rkgrpclimit.Option, 0)
-			opts = append(opts, rkgrpclimit.WithEntryNameAndType(element.Name, GrpcEntryType))
-
-			if len(element.Interceptors.RateLimit.Algorithm) > 0 {
-				opts = append(opts, rkgrpclimit.WithAlgorithm(element.Interceptors.RateLimit.Algorithm))
-			}
-			opts = append(opts, rkgrpclimit.WithReqPerSec(element.Interceptors.RateLimit.ReqPerSec))
-
-			for i := range element.Interceptors.RateLimit.Paths {
-				e := element.Interceptors.RateLimit.Paths[i]
-				opts = append(opts, rkgrpclimit.WithReqPerSecByPath(e.Path, e.ReqPerSec))
-			}
-
-			entry.AddUnaryInterceptors(rkgrpclimit.UnaryServerInterceptor(opts...))
-			entry.AddStreamInterceptors(rkgrpclimit.StreamServerInterceptor(opts...))
+			entry.AddUnaryInterceptors(rkgrpclimit.UnaryServerInterceptor(
+				rkmidlimit.ToOptions(&element.Interceptors.RateLimit, element.Name, GrpcEntryType)...))
+			entry.AddStreamInterceptors(rkgrpclimit.StreamServerInterceptor(
+				rkmidlimit.ToOptions(&element.Interceptors.RateLimit, element.Name, GrpcEntryType)...))
 		}
 
 		res[element.Name] = entry
 	}
 	return res
-}
-
-// WithNameGrpc Provide name.
-func WithNameGrpc(name string) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.EntryName = name
-	}
-}
-
-// WithDescriptionGrpc Provide description.
-func WithDescriptionGrpc(description string) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.EntryDescription = description
-	}
-}
-
-// WithZapLoggerEntryGrpc Provide rkentry.ZapLoggerEntry
-func WithZapLoggerEntryGrpc(logger *rkentry.ZapLoggerEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.ZapLoggerEntry = logger
-	}
-}
-
-// WithEventLoggerEntryGrpc Provide rkentry.EventLoggerEntry
-func WithEventLoggerEntryGrpc(logger *rkentry.EventLoggerEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.EventLoggerEntry = logger
-	}
-}
-
-// WithPortGrpc Provide port.
-func WithPortGrpc(port uint64) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.Port = port
-	}
-}
-
-// WithServerOptionsGrpc Provide grpc.ServerOption.
-func WithServerOptionsGrpc(opts ...grpc.ServerOption) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.ServerOpts = append(entry.ServerOpts, opts...)
-	}
-}
-
-// WithUnaryInterceptorsGrpc Provide grpc.UnaryServerInterceptor.
-func WithUnaryInterceptorsGrpc(opts ...grpc.UnaryServerInterceptor) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.UnaryInterceptors = append(entry.UnaryInterceptors, opts...)
-	}
-}
-
-// WithStreamInterceptorsGrpc Provide grpc.StreamServerInterceptor.
-func WithStreamInterceptorsGrpc(opts ...grpc.StreamServerInterceptor) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.StreamInterceptors = append(entry.StreamInterceptors, opts...)
-	}
-}
-
-// WithGrpcRegF Provide GrpcRegFunc.
-func WithGrpcRegF(f ...GrpcRegFunc) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.GrpcRegF = append(entry.GrpcRegF, f...)
-	}
-}
-
-// WithCertEntryGrpc Provide rkentry.CertEntry.
-func WithCertEntryGrpc(certEntry *rkentry.CertEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.CertEntry = certEntry
-	}
-}
-
-// WithCommonServiceEntryGrpc Provide CommonServiceEntry.
-func WithCommonServiceEntryGrpc(commonService *CommonServiceEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.CommonServiceEntry = commonService
-	}
-}
-
-// WithEnableReflectionGrpc Provide EnableReflection.
-func WithEnableReflectionGrpc(enabled bool) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.EnableReflection = enabled
-	}
-}
-
-// WithSwEntryGrpc Provide SwEntry.
-func WithSwEntryGrpc(sw *SwEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.SwEntry = sw
-	}
-}
-
-// WithTvEntryGrpc Provide TvEntry.
-func WithTvEntryGrpc(tv *TvEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.TvEntry = tv
-	}
-}
-
-// WithProxyEntryGrpc Provide ProxyEntry.
-func WithProxyEntryGrpc(proxy *ProxyEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.ProxyEntry = proxy
-	}
-}
-
-// WithPromEntryGrpc Provide PromEntry.
-func WithPromEntryGrpc(prom *PromEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.PromEntry = prom
-	}
-}
-
-// WithStaticFileHandlerEntryGrpc provide StaticFileHandlerEntry.
-func WithStaticFileHandlerEntryGrpc(staticEntry *StaticFileHandlerEntry) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.StaticFileEntry = staticEntry
-	}
-}
-
-// WithGwRegFGrpc Provide registration function.
-func WithGwRegFGrpc(f ...GwRegFunc) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.GwRegF = append(entry.GwRegF, f...)
-	}
-}
-
-// WithGrpcDialOptionsGrpc Provide grpc dial options.
-func WithGrpcDialOptionsGrpc(opts ...grpc.DialOption) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.GwDialOptions = append(entry.GwDialOptions, opts...)
-	}
-}
-
-// WithGwMuxOptionsGrpc Provide gateway server mux options.
-func WithGwMuxOptionsGrpc(opts ...gwruntime.ServeMuxOption) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.GwMuxOptions = append(entry.GwMuxOptions, opts...)
-	}
-}
-
-// WithGwMappingFilePathsGrpc Provide gateway mapping configuration file paths.
-func WithGwMappingFilePathsGrpc(paths ...string) GrpcEntryOption {
-	return func(entry *GrpcEntry) {
-		entry.GwMappingFilePaths = append(entry.GwMappingFilePaths, paths...)
-	}
 }
 
 // RegisterGrpcEntry Register GrpcEntry with options.
@@ -956,64 +405,32 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 		ZapLoggerEntry:   rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
 		EventLoggerEntry: rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
 		Port:             8080,
-		// GRPC related
+		// gRPC related
 		ServerOpts:         make([]grpc.ServerOption, 0),
 		UnaryInterceptors:  make([]grpc.UnaryServerInterceptor, 0),
 		StreamInterceptors: make([]grpc.StreamServerInterceptor, 0),
 		GrpcRegF:           make([]GrpcRegFunc, 0),
 		EnableReflection:   true,
-		// Gateway related
+		// grpc-gateway related
 		GwMuxOptions:        make([]gwruntime.ServeMuxOption, 0),
 		GwRegF:              make([]GwRegFunc, 0),
 		GwMappingFilePaths:  make([]string, 0),
 		GwHttpToGrpcMapping: make(map[string]*gwRule),
 		GwDialOptions:       make([]grpc.DialOption, 0),
 		HttpMux:             http.NewServeMux(),
-		gwCorsOptions:       make([]rkgrpccors.Option, 0),
+		gwCorsOptions:       make([]rkmidcors.Option, 0),
+		gwCsrfOptions:       make([]rkmidcsrf.Option, 0),
+		gwSecureOptions:     make([]rkmidsec.Option, 0),
 	}
 
 	for i := range opts {
 		opts[i](entry)
 	}
 
-	// The ideal interceptor sequence would be like bellow
-
-	//    +-------+
-	//    |  log  |
-	//    +-------+
-	//        |
-	//    +-------+
-	//    | prom  |
-	//    +-------+
-	//        |
-	//   +---------+
-	//   | tracing |
-	//   +---------+
-	//        |
-	//    +------+
-	//    | meta |
-	//    +------+
-	//        |
-	//    +-------+
-	//    | auth  |
-	//    +-------+
-	//        |
-	//    +---------+
-	//    | timeout |
-	//    +---------+
-	//        |
-	//    +-------------+
-	//    | rate limit  |
-	//    +-------------+
-	//        |
-	//    +-------+
-	//    | panic |
-	//    +-------+
-	// Append panic interceptor at the end
 	entry.UnaryInterceptors = append(entry.UnaryInterceptors, rkgrpcpanic.UnaryServerInterceptor(
-		rkgrpcpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
+		rkmidpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
 	entry.StreamInterceptors = append(entry.StreamInterceptors, rkgrpcpanic.StreamServerInterceptor(
-		rkgrpcpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
+		rkmidpanic.WithEntryNameAndType(entry.EntryName, entry.EntryType)))
 
 	if entry.ZapLoggerEntry == nil {
 		entry.ZapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
@@ -1025,12 +442,6 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 
 	if len(entry.EntryName) < 1 {
 		entry.EntryName = "GrpcServer-" + strconv.FormatUint(entry.Port, 10)
-	}
-
-	// Register common service into grpc and grpc gateway
-	if entry.CommonServiceEntry != nil {
-		entry.GrpcRegF = append(entry.GrpcRegF, entry.CommonServiceEntry.GrpcRegF)
-		entry.GwRegF = append(entry.GwRegF, entry.CommonServiceEntry.GwRegF)
 	}
 
 	// Init TLS config
@@ -1056,50 +467,7 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	return entry
 }
 
-// AddServerOptions Add grpc server options.
-func (entry *GrpcEntry) AddServerOptions(opts ...grpc.ServerOption) {
-	entry.ServerOpts = append(entry.ServerOpts, opts...)
-}
-
-// AddUnaryInterceptors Add unary interceptor.
-func (entry *GrpcEntry) AddUnaryInterceptors(inter ...grpc.UnaryServerInterceptor) {
-	entry.UnaryInterceptors = append(entry.UnaryInterceptors, inter...)
-}
-
-// AddStreamInterceptors Add stream interceptor.
-func (entry *GrpcEntry) AddStreamInterceptors(inter ...grpc.StreamServerInterceptor) {
-	entry.StreamInterceptors = append(entry.StreamInterceptors, inter...)
-}
-
-// AddGwCorsOptions Enable CORS at gateway side with options.
-func (entry *GrpcEntry) AddGwCorsOptions(opts ...rkgrpccors.Option) {
-	entry.gwCorsOptions = append(entry.gwCorsOptions, opts...)
-}
-
-// AddGwCsrfOptions Enable CORS at gateway side with options.
-func (entry *GrpcEntry) AddGwCsrfOptions(opts ...rkgrpccsrf.Option) {
-	entry.gwCsrfOptions = append(entry.gwCsrfOptions, opts...)
-}
-
-// AddGwSecureOptions Enable secure at gateway side with options.
-func (entry *GrpcEntry) AddGwSecureOptions(opts ...rkgrpcsec.Option) {
-	entry.gwSecureOptions = append(entry.gwSecureOptions, opts...)
-}
-
-// AddRegFuncGrpc Add grpc registration func.
-func (entry *GrpcEntry) AddRegFuncGrpc(f ...GrpcRegFunc) {
-	entry.GrpcRegF = append(entry.GrpcRegF, f...)
-}
-
-// AddRegFuncGw Add gateway registration func.
-func (entry *GrpcEntry) AddRegFuncGw(f ...GwRegFunc) {
-	entry.GwRegF = append(entry.GwRegF, f...)
-}
-
-// AddGwDialOptions Add grpc dial options called from grpc gateway
-func (entry *GrpcEntry) AddGwDialOptions(opts ...grpc.DialOption) {
-	entry.GwDialOptions = append(entry.GwDialOptions, opts...)
-}
+// ************* Entry function *************
 
 // GetName Get entry name.
 func (entry *GrpcEntry) GetName() string {
@@ -1126,18 +494,18 @@ func (entry *GrpcEntry) GetDescription() string {
 func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	event, logger := entry.logBasicInfo("Bootstrap")
 
-	// 3: Parse gateway mapping file paths, this will record http to grpc path map into a map
+	// 1: Parse gateway mapping file paths, this will record http to grpc path map into a map
 	// which will be used for /apis call in CommonServiceEntry
 	entry.parseGwMapping()
 
-	// 4: Create grpc server
-	// 4.1: Make unary and stream interceptors into server opts
+	// 2: Create grpc server
+	// 2.1: Make unary and stream interceptors into server opts
 	// Important! Do not add tls as options since we already enable tls in listener
 	entry.ServerOpts = append(entry.ServerOpts,
 		grpc.ChainUnaryInterceptor(entry.UnaryInterceptors...),
 		grpc.ChainStreamInterceptor(entry.StreamInterceptors...))
 
-	// 4.2: Add proxy entry
+	// 3: Add proxy entry
 	if entry.IsProxyEnabled() {
 		entry.ServerOpts = append(entry.ServerOpts,
 			grpc.ForceServerCodec(Codec()),
@@ -1146,28 +514,32 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		entry.ProxyEntry.Bootstrap(ctx)
 	}
 
-	// 4.3: Create grpc server
+	// 4: Create grpc server
 	entry.Server = grpc.NewServer(entry.ServerOpts...)
-	// 4.4: Register grpc function into server
+
+	// 5: Register grpc function into server
 	for _, regFunc := range entry.GrpcRegF {
 		regFunc(entry.Server)
 	}
-	// 4.5: Enable grpc reflection
+
+	// 6: Enable grpc reflection
 	if entry.EnableReflection {
 		reflection.Register(entry.Server)
 	}
 
-	// 5: Create http server based on grpc gateway
-	// 5.1: Create gateway mux
+	// 7: Create http server based on grpc gateway
+	// 7.1: Create gateway mux
 	entry.GwMux = gwruntime.NewServeMux(entry.GwMuxOptions...)
-	// 5.2: Inject insecure option into dial option since grpc call is delegated from gateway which is inner code call
+
+	// 8: Inject insecure option into dial option since grpc call is delegated from gateway which is inner code call
 	// and which is safe!
 	if entry.TlsConfig != nil {
 		entry.GwDialOptions = append(entry.GwDialOptions, grpc.WithTransportCredentials(credentials.NewTLS(entry.TlsConfigInsecure)))
 	} else {
 		entry.GwDialOptions = append(entry.GwDialOptions, grpc.WithInsecure())
 	}
-	// 5.3: Register grpc gateway function into GwMux
+
+	// 9: Register grpc gateway function into GwMux
 	for i := range entry.GwRegF {
 		err := entry.GwRegF[i](context.Background(), entry.GwMux, "0.0.0.0:"+strconv.FormatUint(entry.Port, 10), entry.GwDialOptions)
 		if err != nil {
@@ -1175,38 +547,81 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 			rkcommon.ShutdownWithError(err)
 		}
 	}
-	// 5.4: Make http mux listen on path of / and configure TV, swagger, prometheus path
+
+	// 10: Make http mux listen on path of / and configure TV, swagger, prometheus path
 	entry.HttpMux.Handle("/", entry.GwMux)
-	if entry.IsTvEnabled() {
-		entry.HttpMux.HandleFunc("/rk/v1/tv/", entry.TvEntry.TV)
-		entry.HttpMux.HandleFunc("/rk/v1/assets/tv/", entry.TvEntry.AssetsFileHandler)
-	}
+
+	// 11: swagger
 	if entry.IsSwEnabled() {
-		entry.HttpMux.HandleFunc(entry.SwEntry.Path, entry.SwEntry.ConfigFileHandler)
-		entry.HttpMux.HandleFunc("/rk/v1/assets/sw/", entry.SwEntry.AssetsFileHandler)
+		entry.HttpMux.HandleFunc(entry.SwEntry.Path, entry.SwEntry.ConfigFileHandler())
+		entry.HttpMux.HandleFunc(entry.SwEntry.AssetsFilePath, entry.SwEntry.AssetsFileHandler())
+
+		entry.SwEntry.Bootstrap(ctx)
 	}
+
+	// 12: tv
+	if entry.IsTvEnabled() {
+		entry.HttpMux.HandleFunc(entry.TvEntry.BasePath, entry.TV)
+		entry.HttpMux.HandleFunc(entry.TvEntry.AssetsFilePath, entry.TvEntry.AssetsFileHandler())
+
+		entry.TvEntry.Bootstrap(ctx)
+	}
+
+	// 13: static file handler
 	if entry.IsStaticFileHandlerEnabled() {
-		entry.HttpMux.HandleFunc(entry.StaticFileEntry.Path, entry.StaticFileEntry.GetFileHandler)
+		entry.HttpMux.HandleFunc(entry.StaticFileEntry.Path, entry.StaticFileEntry.GetFileHandler())
+
+		entry.StaticFileEntry.Bootstrap(ctx)
 	}
+
+	// 14: prometheus
 	if entry.IsPromEnabled() {
 		// Register prom path into Router.
 		entry.HttpMux.Handle(entry.PromEntry.Path, promhttp.HandlerFor(entry.PromEntry.Gatherer, promhttp.HandlerOpts{}))
+
+		entry.PromEntry.Bootstrap(ctx)
 	}
-	// 5.5: Create http server
+
+	// 15: common service
+	if entry.IsCommonServiceEnabled() {
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.HealthyPath, entry.CommonServiceEntry.Healthy)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.GcPath, entry.CommonServiceEntry.Gc)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.InfoPath, entry.CommonServiceEntry.Info)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.ConfigsPath, entry.CommonServiceEntry.Configs)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.SysPath, entry.CommonServiceEntry.Sys)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.EntriesPath, entry.CommonServiceEntry.Entries)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.CertsPath, entry.CommonServiceEntry.Certs)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.LogsPath, entry.CommonServiceEntry.Logs)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.DepsPath, entry.CommonServiceEntry.Deps)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.LicensePath, entry.CommonServiceEntry.License)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.ReadmePath, entry.CommonServiceEntry.Readme)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.GitPath, entry.CommonServiceEntry.Git)
+
+		// swagger doc already generated at rkentry.CommonService
+		// follow bellow actions
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.ApisPath, entry.Apis)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.ReqPath, entry.Req)
+		entry.HttpMux.HandleFunc(entry.CommonServiceEntry.GwErrorMappingPath, entry.GwErrorMapping)
+
+		// Bootstrap common service entry.
+		entry.CommonServiceEntry.Bootstrap(ctx)
+	}
+
+	// 16: Create http server
 	var httpHandler http.Handler
 	httpHandler = entry.HttpMux
 
-	// 5.6: If CORS enabled, then add interceptor for grpc-gateway
+	// 17: If CORS enabled, then add interceptor for grpc-gateway
 	if len(entry.gwCorsOptions) > 0 {
 		httpHandler = rkgrpccors.Interceptor(httpHandler, entry.gwCorsOptions...)
 	}
 
-	// 5.7: If Secure enabled, then add interceptor for grpc-gateway
+	// 18: If Secure enabled, then add interceptor for grpc-gateway
 	if len(entry.gwSecureOptions) > 0 {
 		httpHandler = rkgrpcsec.Interceptor(httpHandler, entry.gwSecureOptions...)
 	}
 
-	// 5.8: If CSRF enabled, then add interceptor for grpc-gateway
+	// 19: If CSRF enabled, then add interceptor for grpc-gateway
 	if len(entry.gwCsrfOptions) > 0 {
 		httpHandler = rkgrpccsrf.Interceptor(httpHandler, entry.gwCsrfOptions...)
 	}
@@ -1216,24 +631,7 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		Handler: h2c.NewHandler(httpHandler, &http2.Server{}),
 	}
 
-	// 6: Bootstrap CommonServiceEntry, SwEntry, PromEntry and TvEntry
-	if entry.IsCommonServiceEnabled() {
-		entry.CommonServiceEntry.Bootstrap(ctx)
-	}
-	if entry.IsSwEnabled() {
-		entry.SwEntry.Bootstrap(ctx)
-	}
-	if entry.IsPromEnabled() {
-		entry.PromEntry.Bootstrap(ctx)
-	}
-	if entry.IsStaticFileHandlerEnabled() {
-		entry.StaticFileEntry.Bootstrap(ctx)
-	}
-	if entry.IsTvEnabled() {
-		entry.TvEntry.Bootstrap(ctx)
-	}
-
-	// 7: Start http server
+	// 20: Start http server
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 	go func(*GrpcEntry) {
 		// Create inner listener
@@ -1318,15 +716,19 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 	if entry.IsCommonServiceEnabled() {
 		entry.CommonServiceEntry.Interrupt(ctx)
 	}
+
 	if entry.IsSwEnabled() {
 		entry.SwEntry.Interrupt(ctx)
 	}
+
 	if entry.IsStaticFileHandlerEnabled() {
 		entry.StaticFileEntry.Interrupt(ctx)
 	}
+
 	if entry.IsTvEnabled() {
 		entry.TvEntry.Interrupt(ctx)
 	}
+
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Interrupt(ctx)
 	}
@@ -1343,6 +745,53 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 	}
 
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
+}
+
+// ************* public function *************
+
+// AddServerOptions Add grpc server options.
+func (entry *GrpcEntry) AddServerOptions(opts ...grpc.ServerOption) {
+	entry.ServerOpts = append(entry.ServerOpts, opts...)
+}
+
+// AddUnaryInterceptors Add unary interceptor.
+func (entry *GrpcEntry) AddUnaryInterceptors(inter ...grpc.UnaryServerInterceptor) {
+	entry.UnaryInterceptors = append(entry.UnaryInterceptors, inter...)
+}
+
+// AddStreamInterceptors Add stream interceptor.
+func (entry *GrpcEntry) AddStreamInterceptors(inter ...grpc.StreamServerInterceptor) {
+	entry.StreamInterceptors = append(entry.StreamInterceptors, inter...)
+}
+
+// AddGwCorsOptions Enable CORS at gateway side with options.
+func (entry *GrpcEntry) AddGwCorsOptions(opts ...rkmidcors.Option) {
+	entry.gwCorsOptions = append(entry.gwCorsOptions, opts...)
+}
+
+// AddGwCsrfOptions Enable CORS at gateway side with options.
+func (entry *GrpcEntry) AddGwCsrfOptions(opts ...rkmidcsrf.Option) {
+	entry.gwCsrfOptions = append(entry.gwCsrfOptions, opts...)
+}
+
+// AddGwSecureOptions Enable secure at gateway side with options.
+func (entry *GrpcEntry) AddGwSecureOptions(opts ...rkmidsec.Option) {
+	entry.gwSecureOptions = append(entry.gwSecureOptions, opts...)
+}
+
+// AddRegFuncGrpc Add grpc registration func.
+func (entry *GrpcEntry) AddRegFuncGrpc(f ...GrpcRegFunc) {
+	entry.GrpcRegF = append(entry.GrpcRegF, f...)
+}
+
+// AddRegFuncGw Add gateway registration func.
+func (entry *GrpcEntry) AddRegFuncGw(f ...GwRegFunc) {
+	entry.GwRegF = append(entry.GwRegF, f...)
+}
+
+// AddGwDialOptions Add grpc dial options called from grpc gateway
+func (entry *GrpcEntry) AddGwDialOptions(opts ...grpc.DialOption) {
+	entry.GwDialOptions = append(entry.GwDialOptions, opts...)
 }
 
 // MarshalJSON Marshal entry.
@@ -1519,95 +968,439 @@ func (entry *GrpcEntry) logBasicInfo(operation string) (rkquery.Event, *zap.Logg
 
 // Parse gw mapping file
 func (entry *GrpcEntry) parseGwMapping() {
-	// Parse common service if common service is enabled and GwMappingFilePath is not empty.
-	if entry.IsCommonServiceEnabled() && len(entry.CommonServiceEntry.GwMappingFilePath) > 0 {
-		bytes := readFileFromPkger(entry.CommonServiceEntry.GwMappingFilePath)
-		entry.parseGwMappingHelper(bytes)
-	}
-
 	// Parse user services.
 	for i := range entry.GwMappingFilePaths {
 		filePath := entry.GwMappingFilePaths[i]
 
-		if len(filePath) < 1 {
+		// case 1: read file
+		bytes := rkcommon.TryReadFile(filePath)
+		if len(bytes) < 1 {
 			continue
 		}
 
-		// Deal with relative directory.
-		if !path.IsAbs(filePath) {
-			if wd, err := os.Getwd(); err != nil {
-				entry.ZapLoggerEntry.GetLogger().Warn("Failed to get working directory.", zap.Error(err))
-				continue
-			} else {
-				filePath = path.Join(wd, filePath)
+		// case 2: convert json to yaml
+		jsonContents, err := yaml.YAMLToJSON(bytes)
+		if err != nil {
+			entry.ZapLoggerEntry.GetLogger().Warn("Failed to convert grpc api config.", zap.Error(err))
+			continue
+		}
+
+		// case 3: unmarshal
+		unmarshaler := protojson.UnmarshalOptions{
+			DiscardUnknown: true,
+		}
+		mapping := &apiutil.GrpcAPIService{}
+		if err := unmarshaler.Unmarshal(jsonContents, mapping); err != nil {
+			entry.ZapLoggerEntry.GetLogger().Warn("Failed to parse grpc api config.", zap.Error(err))
+			continue
+		}
+
+		// case 4: iterate rules
+		rules := mapping.GetHttp().GetRules()
+		for i := range rules {
+			element := rules[i]
+			rule := &gwRule{}
+			entry.GwHttpToGrpcMapping[element.GetSelector()] = rule
+			switch element.GetPattern().(type) {
+			case *annotations.HttpRule_Get:
+				rule.Pattern = strings.TrimSuffix(element.GetGet(), "/")
+				rule.Method = "GET"
+			case *annotations.HttpRule_Put:
+				rule.Pattern = strings.TrimSuffix(element.GetPut(), "/")
+				rule.Method = "PUT"
+			case *annotations.HttpRule_Post:
+				rule.Pattern = strings.TrimSuffix(element.GetPost(), "/")
+				rule.Method = "POST"
+			case *annotations.HttpRule_Delete:
+				rule.Pattern = strings.TrimSuffix(element.GetDelete(), "/")
+				rule.Method = "DELETE"
+			case *annotations.HttpRule_Patch:
+				rule.Pattern = strings.TrimSuffix(element.GetPatch(), "/")
+				rule.Method = "PATCH"
 			}
-		}
-
-		// Read file and parse mapping
-		if bytes, err := ioutil.ReadFile(filePath); err != nil {
-			entry.ZapLoggerEntry.GetLogger().Warn("Failed to read file.", zap.Error(err))
-			continue
-		} else {
-			entry.parseGwMappingHelper(bytes)
-		}
-	}
-}
-
-// Helper function of parseGwMapping
-func (entry *GrpcEntry) parseGwMappingHelper(bytes []byte) {
-	if len(bytes) < 1 {
-		return
-	}
-
-	mapping := &rk_grpc_common_v1.GrpcAPIService{}
-
-	jsonContents, err := yaml.YAMLToJSON(bytes)
-	if err != nil {
-		entry.ZapLoggerEntry.GetLogger().Warn("Failed to convert grpc api config.", zap.Error(err))
-	}
-
-	// GrpcAPIService is incomplete, accept unknown fields.
-	unmarshaler := protojson.UnmarshalOptions{
-		DiscardUnknown: true,
-	}
-
-	if err := unmarshaler.Unmarshal(jsonContents, mapping); err != nil {
-		entry.ZapLoggerEntry.GetLogger().Warn("Failed to parse grpc api config.", zap.Error(err))
-	}
-
-	rules := mapping.GetHttp().GetRules()
-
-	for i := range rules {
-		element := rules[i]
-		rule := &gwRule{}
-		entry.GwHttpToGrpcMapping[element.GetSelector()] = rule
-		// Iterate all possible mappings, we are tracking GET, PUT, POST, PATCH, DELETE only.
-		if len(element.GetGet()) > 0 {
-			rule.Pattern = strings.TrimSuffix(element.GetGet(), "/")
-			rule.Method = "GET"
-		} else if len(element.GetPut()) > 0 {
-			rule.Pattern = strings.TrimSuffix(element.GetPut(), "/")
-			rule.Method = "PUT"
-		} else if len(element.GetPost()) > 0 {
-			rule.Pattern = strings.TrimSuffix(element.GetPost(), "/")
-			rule.Method = "POST"
-		} else if len(element.GetDelete()) > 0 {
-			rule.Pattern = strings.TrimSuffix(element.GetDelete(), "/")
-			rule.Method = "DELETE"
-		} else if len(element.GetPatch()) > 0 {
-			rule.Pattern = strings.TrimSuffix(element.GetPatch(), "/")
-			rule.Method = "PATCH"
 		}
 	}
 }
 
 // GetGrpcEntry Get GrpcEntry from rkentry.GlobalAppCtx.
 func GetGrpcEntry(name string) *GrpcEntry {
-	entryRaw := rkentry.GlobalAppCtx.GetEntry(name)
-	if entryRaw == nil {
-		return nil
+	if raw := rkentry.GlobalAppCtx.GetEntry(name); raw != nil {
+		if res, ok := raw.(*GrpcEntry); ok {
+			return res
+		}
 	}
 
-	entry, _ := entryRaw.(*GrpcEntry)
-	return entry
+	return nil
+}
+
+// ************** Common service extension **************
+
+// Apis Stub
+func (entry *GrpcEntry) Apis(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	w.WriteHeader(http.StatusOK)
+	bytes, _ := json.MarshalIndent(entry.doApis(req), "", "  ")
+	w.Write(bytes)
+}
+
+// Req Stub
+func (entry *GrpcEntry) Req(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+
+	mix := false
+	if len(req.URL.Query().Get("fromTv")) > 0 {
+		mix = true
+	}
+
+	bytes, _ := json.MarshalIndent(entry.doReq(mix), "", "  ")
+	w.Write(bytes)
+}
+
+// GwErrorMapping Get error mapping file contents.
+func (entry *GrpcEntry) GwErrorMapping(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	bytes, _ := json.MarshalIndent(entry.doGwErrorMapping(), "", "  ")
+	w.Write(bytes)
+}
+
+// TV Http handler of /rk/v1/tv/*.
+func (entry *GrpcEntry) TV(w http.ResponseWriter, req *http.Request) {
+	logger := entry.ZapLoggerEntry.GetLogger()
+
+	item := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/rk/v1/tv"), "/")
+
+	w.Header().Set("charset", "utf-8")
+	w.Header().Set("content-type", "text/html")
+
+	switch item {
+	case "/apis":
+		buf := entry.TvEntry.ExecuteTemplate("apis", entry.doApis(req), logger)
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	case "/gwErrorMapping":
+		buf := entry.TvEntry.ExecuteTemplate("gw-error-mapping", entry.doGwErrorMapping(), logger)
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	default:
+		buf := entry.TvEntry.Action(item, logger)
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	}
+}
+
+func (entry *GrpcEntry) doApis(req *http.Request) *rkentry.ApisResponse {
+	res := &rkentry.ApisResponse{
+		Entries: make([]*rkentry.ApisResponseElement, 0),
+	}
+
+	for serviceName, serviceInfo := range entry.Server.GetServiceInfo() {
+		for i := range serviceInfo.Methods {
+			method := serviceInfo.Methods[i]
+
+			entry := &rkentry.ApisResponseElement{
+				EntryName: entry.GetName(),
+				Method:    serviceName,
+				Path:      method.Name,
+				Gw:        entry.getGwMapping(serviceName + "." + method.Name),
+				Port:      entry.Port,
+				SwUrl:     entry.getSwUrl(req),
+			}
+
+			res.Entries = append(res.Entries, entry)
+		}
+	}
+
+	return res
+}
+
+// Helper function for Req call
+func (entry *GrpcEntry) doReq(mixGrpcAndRestApi bool) *rkentry.ReqResponse {
+	metricsSet := rkmidmetrics.GetServerMetricsSet(entry.GetName())
+	// case 1: nil metrics set
+	if metricsSet == nil {
+		return &rkentry.ReqResponse{
+			Metrics: make([]*rkentry.ReqMetricsRK, 0),
+		}
+	}
+
+	// case 2: nil vector
+	vector := metricsSet.GetSummary(rkmidmetrics.MetricsNameElapsedNano)
+	if vector == nil {
+		return &rkentry.ReqResponse{
+			Metrics: make([]*rkentry.ReqMetricsRK, 0),
+		}
+	}
+
+	reqMetrics := rkentry.NewPromMetricsInfo(vector)
+
+	// Fill missed metrics
+	type innerGrpcInfo struct {
+		grpcService string
+		grpcMethod  string
+	}
+
+	apis := make([]*innerGrpcInfo, 0)
+
+	infos := entry.Server.GetServiceInfo()
+	for serviceName, serviceInfo := range infos {
+		for j := range serviceInfo.Methods {
+			apis = append(apis, &innerGrpcInfo{
+				grpcService: serviceName,
+				grpcMethod:  serviceInfo.Methods[j].Name,
+			})
+		}
+	}
+
+	// Add empty metrics into result
+	for i := range apis {
+		api := apis[i]
+		contains := false
+		// check whether api was in request metrics from prometheus
+		for j := range reqMetrics {
+			if reqMetrics[j].GrpcMethod == api.grpcMethod && reqMetrics[j].GrpcService == api.grpcService {
+				contains = true
+			}
+		}
+
+		if !contains {
+			reqMetrics = append(reqMetrics, &rkentry.ReqMetricsRK{
+				GrpcService: apis[i].grpcService,
+				GrpcMethod:  apis[i].grpcMethod,
+				ResCode:     make([]*rkentry.ResCodeRK, 0),
+			})
+		}
+	}
+
+	// convert restful api to grpc
+	if mixGrpcAndRestApi {
+		for i := range reqMetrics {
+			reqMetrics[i].RestPath = reqMetrics[i].GrpcMethod
+			reqMetrics[i].RestMethod = reqMetrics[i].GrpcService
+		}
+	}
+
+	return &rkentry.ReqResponse{
+		Metrics: reqMetrics,
+	}
+}
+
+// Helper function /gwErrorMapping
+func (entry *GrpcEntry) doGwErrorMapping() *rkentry.GwErrorMappingResponse {
+	res := &rkentry.GwErrorMappingResponse{
+		Mapping: make(map[int32]*rkentry.GwErrorMappingResponseElement),
+	}
+
+	// list grpc errors
+	for k, v := range code.Code_name {
+		element := &rkentry.GwErrorMappingResponseElement{
+			GrpcCode: k,
+			GrpcText: v,
+		}
+
+		restCode := gwruntime.HTTPStatusFromCode(codes.Code(k))
+		restText := http.StatusText(restCode)
+
+		element.RestCode = int32(restCode)
+		element.RestText = restText
+
+		res.Mapping[element.GrpcCode] = element
+	}
+
+	return res
+}
+
+// Compose gateway related elements based on GwEntry and SwEntry.
+func (entry *GrpcEntry) getGwMapping(grpcMethod string) string {
+	var value *gwRule
+	var ok bool
+	if value, ok = entry.GwHttpToGrpcMapping[grpcMethod]; !ok {
+		return ""
+	}
+
+	return value.Method + " " + value.Pattern
+}
+
+// Compose swagger URL based on SwEntry.
+func (entry *GrpcEntry) getSwUrl(req *http.Request) string {
+	if entry.IsSwEnabled() {
+		scheme := "http"
+		if entry.IsTlsEnabled() {
+			scheme = "https"
+		}
+
+		remoteIp, _ := rkmid.GetRemoteAddressSet(req)
+
+		return fmt.Sprintf("%s://%s:%d%s",
+			scheme,
+			remoteIp,
+			entry.SwEntry.Port,
+			entry.SwEntry.Path)
+	}
+
+	return ""
+}
+
+// *********** Options ***********
+
+// internal usage
+type gwRule struct {
+	Method  string `json:"method" yaml:"method"`
+	Pattern string `json:"pattern" yaml:"pattern"`
+}
+
+// GwRegFunc Registration function grpc gateway.
+type GwRegFunc func(context.Context, *gwruntime.ServeMux, string, []grpc.DialOption) error
+
+// GrpcRegFunc Grpc registration func.
+type GrpcRegFunc func(server *grpc.Server)
+
+// GrpcEntryOption GrpcEntry option.
+type GrpcEntryOption func(*GrpcEntry)
+
+// WithName Provide name.
+func WithName(name string) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.EntryName = name
+	}
+}
+
+// WithDescription Provide description.
+func WithDescription(description string) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.EntryDescription = description
+	}
+}
+
+// WithZapLoggerEntry Provide rkentry.ZapLoggerEntry
+func WithZapLoggerEntry(logger *rkentry.ZapLoggerEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.ZapLoggerEntry = logger
+	}
+}
+
+// WithEventLoggerEntry Provide rkentry.EventLoggerEntry
+func WithEventLoggerEntry(logger *rkentry.EventLoggerEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.EventLoggerEntry = logger
+	}
+}
+
+// WithPort Provide port.
+func WithPort(port uint64) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.Port = port
+	}
+}
+
+// WithServerOptions Provide grpc.ServerOption.
+func WithServerOptions(opts ...grpc.ServerOption) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.ServerOpts = append(entry.ServerOpts, opts...)
+	}
+}
+
+// WithUnaryInterceptors Provide grpc.UnaryServerInterceptor.
+func WithUnaryInterceptors(opts ...grpc.UnaryServerInterceptor) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.UnaryInterceptors = append(entry.UnaryInterceptors, opts...)
+	}
+}
+
+// WithStreamInterceptors Provide grpc.StreamServerInterceptor.
+func WithStreamInterceptors(opts ...grpc.StreamServerInterceptor) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.StreamInterceptors = append(entry.StreamInterceptors, opts...)
+	}
+}
+
+// WithGrpcRegF Provide GrpcRegFunc.
+func WithGrpcRegF(f ...GrpcRegFunc) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GrpcRegF = append(entry.GrpcRegF, f...)
+	}
+}
+
+// WithCertEntry Provide rkentry.CertEntry.
+func WithCertEntry(certEntry *rkentry.CertEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.CertEntry = certEntry
+	}
+}
+
+// WithCommonServiceEntry Provide CommonServiceEntry.
+func WithCommonServiceEntry(commonService *rkentry.CommonServiceEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.CommonServiceEntry = commonService
+	}
+}
+
+// WithEnableReflection Provide EnableReflection.
+func WithEnableReflection(enabled bool) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.EnableReflection = enabled
+	}
+}
+
+// WithSwEntry Provide SwEntry.
+func WithSwEntry(sw *rkentry.SwEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.SwEntry = sw
+	}
+}
+
+// WithTvEntry Provide TvEntry.
+func WithTvEntry(tv *rkentry.TvEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.TvEntry = tv
+	}
+}
+
+// WithProxyEntry Provide ProxyEntry.
+func WithProxyEntry(proxy *ProxyEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.ProxyEntry = proxy
+	}
+}
+
+// WithPromEntry Provide PromEntry.
+func WithPromEntry(prom *rkentry.PromEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.PromEntry = prom
+	}
+}
+
+// WithStaticFileHandlerEntry provide StaticFileHandlerEntry.
+func WithStaticFileHandlerEntry(staticEntry *rkentry.StaticFileHandlerEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.StaticFileEntry = staticEntry
+	}
+}
+
+// WithGwRegF Provide registration function.
+func WithGwRegF(f ...GwRegFunc) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GwRegF = append(entry.GwRegF, f...)
+	}
+}
+
+// WithGrpcDialOptions Provide grpc dial options.
+func WithGrpcDialOptions(opts ...grpc.DialOption) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GwDialOptions = append(entry.GwDialOptions, opts...)
+	}
+}
+
+// WithGwMuxOptions Provide gateway server mux options.
+func WithGwMuxOptions(opts ...gwruntime.ServeMuxOption) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GwMuxOptions = append(entry.GwMuxOptions, opts...)
+	}
+}
+
+// WithGwMappingFilePaths Provide gateway mapping configuration file paths.
+func WithGwMappingFilePaths(paths ...string) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GwMappingFilePaths = append(entry.GwMappingFilePaths, paths...)
+	}
 }

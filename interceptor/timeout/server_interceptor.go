@@ -7,120 +7,142 @@ package rkgrpctimeout
 
 import (
 	"context"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
+	rkmidtimeout "github.com/rookie-ninja/rk-entry/middleware/timeout"
+	rkgrpcerr "github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
-	"time"
 )
 
-// UnaryServerInterceptor Add rate limit interceptors.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+var defaultResponse = rkgrpcerr.Canceled("Request timed out!").Err()
+
+// UnaryServerInterceptor Add timeout interceptors.
+func UnaryServerInterceptor(opts ...rkmidtimeout.Option) grpc.UnaryServerInterceptor {
+	set := rkmidtimeout.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
 
-		event := rkgrpcctx.GetEvent(ctx)
-
-		rk := set.getTimeoutRk(info.FullMethod)
-
-		// 1: create three channels
-		//
-		// finishChan: triggered while request has been handled successfully
-		// panicChan: triggered while panic occurs
-		// timeoutChan: triggered while timing out
-		finishChan := make(chan struct{}, 1)
-		panicChan := make(chan interface{}, 1)
-		timeoutChan := time.After(rk.timeout)
-
-		var resp interface{}
-		var err error
-
-		// 2: create a new go routine catch panic
-		go func() {
-			defer func() {
-				if recv := recover(); recv != nil {
-					panicChan <- recv
-				}
-			}()
-
-			resp, err = handler(ctx, req)
-			finishChan <- struct{}{}
-		}()
-
-		// 3: waiting for three channels
-		select {
-		// 3.1: return panic
-		case recv := <-panicChan:
-			panic(recv)
-		// 3.2: break
-		case <-finishChan:
-			break
-		// 3.3: return timeout error
-		case <-timeoutChan:
-			// set as timeout
-			event.SetCounter("timeout", 1)
-			err = rk.response
+		beforeCtx := set.BeforeCtx(nil, rkgrpcctx.GetEvent(ctx))
+		toCtx := &unaryTimeoutCtx{
+			req:     req,
+			grpcCtx: ctx,
+			handler: handler,
+			before:  beforeCtx,
 		}
+		// assign handlers
+		beforeCtx.Input.InitHandler = unaryInitHandler(toCtx)
+		beforeCtx.Input.NextHandler = unaryNextHandler(toCtx)
+		beforeCtx.Input.PanicHandler = unaryPanicHandler(toCtx)
+		beforeCtx.Input.FinishHandler = unaryFinishHandler(toCtx)
+		beforeCtx.Input.TimeoutHandler = unaryTimeoutHandler(toCtx)
+		// call before
+		set.Before(beforeCtx)
 
-		return resp, err
+		beforeCtx.Output.WaitFunc()
+
+		return toCtx.resp, toCtx.err
 	}
 }
 
 // StreamServerInterceptor Add rate limit interceptors.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidtimeout.Option) grpc.StreamServerInterceptor {
+	set := rkmidtimeout.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
 
-		event := rkgrpcctx.GetEvent(wrappedStream.Context())
-
-		rk := set.getTimeoutRk(info.FullMethod)
-
-		// 1: create three channels
-		//
-		// finishChan: triggered while request has been handled successfully
-		// panicChan: triggered while panic occurs
-		// timeoutChan: triggered while timing out
-		finishChan := make(chan struct{}, 1)
-		panicChan := make(chan interface{}, 1)
-		timeoutChan := time.After(rk.timeout)
-
-		var err error
-
-		// 2: create a new go routine catch panic
-		go func() {
-			defer func() {
-				if recv := recover(); recv != nil {
-					panicChan <- recv
-				}
-			}()
-
-			err = handler(srv, wrappedStream)
-			finishChan <- struct{}{}
-		}()
-
-		// 3: waiting for three channels
-		select {
-		// 3.1: return panic
-		case recv := <-panicChan:
-			panic(recv)
-		// 3.2: break
-		case <-finishChan:
-			break
-		// 3.3: return timeout error
-		case <-timeoutChan:
-			// set as timeout
-			event.SetCounter("timeout", 1)
-			err = rk.response
+		beforeCtx := set.BeforeCtx(nil, rkgrpcctx.GetEvent(wrappedStream.WrappedContext))
+		toCtx := &streamTimeoutCtx{
+			srv:     srv,
+			stream:  stream,
+			handler: handler,
+			before:  beforeCtx,
 		}
+		// assign handlers
+		beforeCtx.Input.InitHandler = streamInitHandler(toCtx)
+		beforeCtx.Input.NextHandler = streamNextHandler(toCtx)
+		beforeCtx.Input.PanicHandler = streamPanicHandler(toCtx)
+		beforeCtx.Input.FinishHandler = streamFinishHandler(toCtx)
+		beforeCtx.Input.TimeoutHandler = streamTimeoutHandler(toCtx)
+		// call before
+		set.Before(beforeCtx)
 
-		return err
+		beforeCtx.Output.WaitFunc()
+
+		return toCtx.err
 	}
+}
+
+// *************** utility ***************
+
+type unaryTimeoutCtx struct {
+	req     interface{}
+	resp    interface{}
+	err     error
+	grpcCtx context.Context
+	handler grpc.UnaryHandler
+	before  *rkmidtimeout.BeforeCtx
+}
+
+func unaryTimeoutHandler(ctx *unaryTimeoutCtx) func() {
+	return func() {
+		ctx.err = defaultResponse
+	}
+}
+
+func unaryFinishHandler(ctx *unaryTimeoutCtx) func() {
+	return func() {}
+}
+
+func unaryPanicHandler(ctx *unaryTimeoutCtx) func() {
+	return func() {}
+}
+
+func unaryNextHandler(ctx *unaryTimeoutCtx) func() {
+	return func() {
+		ctx.resp, ctx.err = ctx.handler(ctx.grpcCtx, ctx.req)
+	}
+}
+
+func unaryInitHandler(ctx *unaryTimeoutCtx) func() {
+	return func() {}
+}
+
+type streamTimeoutCtx struct {
+	srv     interface{}
+	stream  grpc.ServerStream
+	err     error
+	handler grpc.StreamHandler
+	before  *rkmidtimeout.BeforeCtx
+}
+
+func streamTimeoutHandler(ctx *streamTimeoutCtx) func() {
+	return func() {
+		ctx.err = defaultResponse
+	}
+}
+
+func streamFinishHandler(ctx *streamTimeoutCtx) func() {
+	return func() {}
+}
+
+func streamPanicHandler(ctx *streamTimeoutCtx) func() {
+	return func() {}
+}
+
+func streamNextHandler(ctx *streamTimeoutCtx) func() {
+	return func() {
+		ctx.err = ctx.handler(ctx.srv, ctx.stream)
+	}
+}
+
+func streamInitHandler(ctx *streamTimeoutCtx) func() {
+	return func() {}
 }

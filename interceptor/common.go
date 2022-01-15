@@ -18,70 +18,11 @@ import (
 )
 
 var (
-	// Realm environment variable
-	Realm = zap.String("realm", rkcommon.GetEnvValueOrDefault("REALM", "*"))
-	// Region environment variable
-	Region = zap.String("region", rkcommon.GetEnvValueOrDefault("REGION", "*"))
-	// AZ environment variable
-	AZ = zap.String("az", rkcommon.GetEnvValueOrDefault("AZ", "*"))
-	// Domain environment variable
-	Domain = zap.String("domain", rkcommon.GetEnvValueOrDefault("DOMAIN", "*"))
-	// LocalIp read local IP from localhost
 	LocalIp = zap.String("localIp", rkcommon.GetLocalIP())
 	// LocalHostname read hostname from localhost
 	LocalHostname = zap.String("localHostname", rkcommon.GetLocalHostname())
 
-	clientPayloadKey = &clientPayload{}
 	serverPayloadKey = &serverPayload{}
-)
-
-const (
-	// RpcEntryNameKey default entry name key of grpc
-	RpcEntryNameKey = "grpcEntryName"
-	// RpcEntryNameValue default entry name value of grpc
-	RpcEntryNameValue = "grpc"
-	// RpcEntryTypeKey default entry type key of grpc
-	RpcEntryTypeKey = "grpcEntryType"
-	// RpcEntryTypeValue default entry type value of grpc
-	RpcEntryTypeValue = "grpc"
-
-	// RpcEventKey event key in grpc context
-	RpcEventKey = "grpcEvent"
-	// RpcLoggerKey logger key in grpc context
-	RpcLoggerKey = "grpcLogger"
-	// RpcMethodKey RPC method key in grpc context
-	RpcMethodKey = "grpcMethod"
-	// RpcErrorKey RPC error key in grpc context
-	RpcErrorKey = "grpcError"
-
-	// RpcTypeKey RPC type key in grpc context
-	RpcTypeKey = "grpcType"
-	// RpcTracerKey tracer key in grpc context
-	RpcTracerKey = "grpcTracer"
-	// RpcSpanKey Span key in grpc context
-	RpcSpanKey = "grpcSpan"
-	// RpcTracerProviderKey tracer provider key in grpc context
-	RpcTracerProviderKey = "grpcTracerProvider"
-	// RpcPropagatorKey propagator key in grpc context
-	RpcPropagatorKey = "grpcPropagator"
-
-	// RpcAuthorizationHeaderKey basic auth header key in request
-	RpcAuthorizationHeaderKey = "authorization"
-	// RpcApiKeyHeaderKey api key header in request
-	RpcApiKeyHeaderKey = "X-API-Key"
-
-	// RpcTypeUnaryServer unary RPC server type key in context
-	RpcTypeUnaryServer = "unaryServer"
-	// RpcTypeStreamServer stream RPC server type key in context
-	RpcTypeStreamServer = "streamServer"
-	// RpcTypeUnaryClient unary RPC client type key in context
-	RpcTypeUnaryClient = "unaryClient"
-	// RpcTypeStreamClient stream RPC client type in context
-	RpcTypeStreamClient = "streamClient"
-	// RpcJwtTokenKey key of jwt token in context
-	RpcJwtTokenKey = "grpcJwt"
-	// RpcCsrfTokenKey key of csrf token injected by csrf middleware
-	RpcCsrfTokenKey = "grpcCsrfToken"
 )
 
 // RpcPayloadAppended a flag used in inner middleware
@@ -89,14 +30,8 @@ var RpcPayloadAppended = rpcPayloadAppended{}
 
 type rpcPayloadAppended struct{}
 
-type clientPayload struct {
-	incomingHeaders *metadata.MD
-	outgoingHeaders *metadata.MD
-	m               map[string]interface{}
-}
-
 type serverPayload struct {
-	m map[string]interface{}
+	m map[interface{}]interface{}
 }
 
 // GetGwInfo Extract gateway related information from metadata.
@@ -259,79 +194,28 @@ func WrapContextForServer(ctx context.Context) context.Context {
 	}
 
 	return context.WithValue(ctx, serverPayloadKey, serverPayload{
-		m: make(map[string]interface{}),
+		m: make(map[interface{}]interface{}),
 	})
 }
 
-// GetIncomingHeadersOfClient get incoming header from client
-func GetIncomingHeadersOfClient(ctx context.Context) *metadata.MD {
-	if v := ctx.Value(clientPayloadKey); v != nil {
-		// called from client side
-		return v.(clientPayload).incomingHeaders
-	}
-
-	md := metadata.Pairs()
-	return &md
-}
-
-// GetOutgoingHeadersOfClient get outgoing header from client
-func GetOutgoingHeadersOfClient(ctx context.Context) *metadata.MD {
-	if v := ctx.Value(clientPayloadKey); v != nil {
-		// called from client side
-		return v.(clientPayload).outgoingHeaders
-	}
-
-	md := metadata.Pairs()
-	return &md
-}
-
 // GetServerContextPayload get context payload injected into server side context
-func GetServerContextPayload(ctx context.Context) map[string]interface{} {
+func GetServerContextPayload(ctx context.Context) map[interface{}]interface{} {
 	if ctx == nil {
-		return make(map[string]interface{})
+		return make(map[interface{}]interface{})
 	}
 
 	if v := ctx.Value(serverPayloadKey); v != nil {
 		return v.(serverPayload).m
 	}
 
-	return make(map[string]interface{})
+	return make(map[interface{}]interface{})
 }
 
 // AddToServerContextPayload add k/v into payload injected into server side context
-func AddToServerContextPayload(ctx context.Context, key string, value interface{}) {
+func AddToServerContextPayload(ctx context.Context, key interface{}, value interface{}) {
 	if value != nil {
 		GetServerContextPayload(ctx)[key] = value
 	}
-}
-
-// GetClientContextPayload get payload injected into client side context
-func GetClientContextPayload(ctx context.Context) map[string]interface{} {
-	if ctx == nil {
-		return make(map[string]interface{})
-	}
-
-	if v := ctx.Value(clientPayloadKey); v != nil {
-		return v.(clientPayload).m
-	}
-
-	return make(map[string]interface{})
-}
-
-// AddToClientContextPayload add k/v into payload injected into client side context
-func AddToClientContextPayload(ctx context.Context, key string, value interface{}) {
-	if value != nil {
-		GetClientContextPayload(ctx)[key] = value
-	}
-}
-
-// ContainsClientPayload is payload injected into client side context?
-func ContainsClientPayload(ctx context.Context) bool {
-	if v := ctx.Value(clientPayloadKey); v != nil {
-		return true
-	}
-
-	return false
 }
 
 // ContainsServerPayload is payload injected into server side context?
@@ -341,23 +225,6 @@ func ContainsServerPayload(ctx context.Context) bool {
 	}
 
 	return false
-}
-
-// NewClientPayload create new client side payload
-func NewClientPayload() clientPayload {
-	incomingMD := metadata.Pairs()
-	outgoingMD := metadata.Pairs()
-
-	return clientPayload{
-		incomingHeaders: &incomingMD,
-		outgoingHeaders: &outgoingMD,
-		m:               make(map[string]interface{}),
-	}
-}
-
-// GetClientPayloadKey get client payload key used in context.Context
-func GetClientPayloadKey() interface{} {
-	return clientPayloadKey
 }
 
 // GetServerPayloadKey get server payload key used in context.Context
