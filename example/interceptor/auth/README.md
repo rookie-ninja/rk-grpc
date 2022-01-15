@@ -1,5 +1,5 @@
 # Auth interceptor
-In this example, we will try to create unary grpc server and client with auth interceptor enabled.
+In this example, we will try to create unary grpc server with auth interceptor enabled.
 
 Auth interceptor will validate bellow authorizations.
 
@@ -44,8 +44,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             rkgrpcauth.UnaryServerInterceptor(
-                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+                rkmidauth.WithBasicAuth("rk-user:rk-pass"),
+                rkmidauth.WithApiKeyAuth("rk-api-key"),
             ),
         ),
     }
@@ -56,32 +56,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
             rkgrpcauth.StreamServerInterceptor(
-                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
-            ),
-        ),
-    }
-
-    // *************************************
-    // ********** Unary Client *************
-    // *************************************
-    opts := []grpc.DialOption {
-        grpc.WithChainUnaryInterceptor(
-            rkgrpcauth.UnaryClientInterceptor(
-                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-                // rkgrpcauth.WithApiKeyAuth("rk-api-key"),
-            ),
-        ),
-    }
-
-    // **************************************
-    // ********** Stream Client *************
-    // **************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainStreamInterceptor(
-            rkgrpcauth.StreamClientInterceptor(
-                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-                // rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+                rkmidauth.WithBasicAuth("rk-user:rk-pass"),
+                rkmidauth.WithApiKeyAuth("rk-api-key"),
             ),
         ),
     }
@@ -91,13 +67,12 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 Auth interceptor validate authorization for each request.
 
 ![server-arch](img/server-arch.png)
-![client-arch](img/client-arch.png)
 
 | Name | Default | Description |
 | ---- | ---- | ---- |
-| WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
-| WithBasicAuth(cred ...string) | []string | Provide Basic auth credential with scheme of [user:pass]. Multiple credential are available for server. |
-| WithApiKeyAuth(key ...string) | []string | Provide API key. Multiple keys are available for server. |
+| rkmidauth.WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
+| rkmidauth.WithBasicAuth(cred ...string) | []string | Provide Basic auth credential with scheme of [user:pass]. Multiple credential are available for server. |
+| rkmidauth.WithApiKeyAuth(key ...string) | []string | Provide API key. Multiple keys are available for server. |
 
 ```go
     // ********************************************
@@ -106,8 +81,8 @@ Auth interceptor validate authorization for each request.
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             rkgrpcauth.UnaryServerInterceptor(
-                rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-                rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+                rkmidauth.WithBasicAuth("rk-user:rk-pass"),
+                rkmidauth.WithApiKeyAuth("rk-api-key"),
             ),
         ),
     }
@@ -139,48 +114,28 @@ $ go run greeter-client.go
 - Server side (event)
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-06-24T00:18:37.554796+08:00
-startTime=2021-06-24T00:18:37.554773+08:00
-elapsedNano=22952
+endTime=2022-01-15T20:44:10.86288+08:00
+startTime=2022-01-15T20:44:10.862731+08:00
+elapsedNano=149561
 timezone=CST
-ids={"eventId":"0b83739d-39c9-47a6-811b-afd0f98fbb84"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"8a2b14f3-38d4-497c-b9d8-2b92f5129560"}
+app={"appName":"rk","appVersion":"","entryName":"c7hc35rd0cvkld9i58ag","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
-error={"rpc error: code = Unauthenticated desc = Invalid credential":1}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
+error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:55001
+remoteAddr=127.0.0.1:62374
 operation=/Greeter/SayHello
 resCode=Unauthenticated
 eventStatus=Ended
 EOE
 ```
 
-- Client side (zap & event)
+- Client side
 ```shell script
-2021-06-24T00:18:37.556+0800    FATAL   auth/greeter-client.go:47       Failed to send request to server.       {"error": "rpc error: code = Unauthenticated desc = Invalid credential"}
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-24T00:18:37.556421+08:00
-startTime=2021-06-24T00:18:37.554136+08:00
-elapsedNano=2285585
-timezone=CST
-ids={"eventId":"650f2e07-6c17-4c2b-aa22-33efd4dffb6a"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={"rpc error: code = Unauthenticated desc = Invalid credential":1}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=Unauthenticated
-eventStatus=Ended
-EOE
+2022-01-15T20:44:10.863+0800    FATAL   client/greeter-client.go:35     Failed to send request to server.       {"error": "rpc error: code = Unauthenticated desc = missing authorization, provide one of bellow auth header:[X-API-Key]"}
 ```
 
 #### Code

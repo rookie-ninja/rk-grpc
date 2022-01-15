@@ -8,6 +8,7 @@ package rkgrpcctx
 
 import (
 	"github.com/golang-jwt/jwt/v4"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-logger"
 	"github.com/rookie-ninja/rk-query"
@@ -19,15 +20,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"net/http"
-	"strings"
-	"time"
-)
-
-const (
-	// RequestIdKey request id key in response header
-	RequestIdKey = "X-Request-Id"
-	// TraceIdKey trace id key in response header
-	TraceIdKey = "X-Trace-Id"
 )
 
 var (
@@ -63,59 +55,8 @@ func (carrier *GrpcMetadataCarrier) Keys() []string {
 	return out
 }
 
-// WrapContext We will add payload into context for further usage.
-// Used for client side only.
-func WrapContext(ctx context.Context) context.Context {
-	if rkgrpcinter.ContainsClientPayload(ctx) {
-		return ctx
-	}
-
-	return context.WithValue(ctx, rkgrpcinter.GetClientPayloadKey(), rkgrpcinter.NewClientPayload())
-}
-
-// FinishClientStream This function is mainly used for client stream.
-//
-// Streaming client is a little bit tricky.
-// It is not an easy work to get headers sent from server while receiving message
-// since client stream interceptor will finish before client start receiving message.
-//
-// As a result, what event will log is the time before Recv() start to be called.
-// No request id nor trace id would be logged since we are unable to call stream.Header() function which would be
-// blocked until stream.Recv() has been called.
-//
-// We believe it is not a good idea to wrap client stream or do anything tricky with stream.
-//
-// If user hope to log request id and trace id into event, user need to call bellow function as soon as stream.Header()
-// is ready.
-// The downside is you will get multiple event logs with same event id.
-func FinishClientStream(ctx context.Context, stream grpc.ClientStream) {
-	if header, err := stream.Header(); err == nil {
-		event := GetEvent(ctx)
-
-		requestId := strings.Join(header.Get(RequestIdKey), ",")
-		if len(requestId) > 0 {
-			event.SetRequestId(requestId)
-			rkgrpcinter.AddToClientContextPayload(ctx, RequestIdKey, requestId)
-		}
-
-		traceId := strings.Join(header.Get(TraceIdKey), ",")
-		if len(traceId) > 0 {
-			event.SetTraceId(traceId)
-			rkgrpcinter.AddToClientContextPayload(ctx, TraceIdKey, traceId)
-		}
-
-		event.SetEndTime(time.Now())
-		event.Finish()
-	}
-}
-
 // GetIncomingHeaders Extract call-scoped incoming headers
 func GetIncomingHeaders(ctx context.Context) metadata.MD {
-	// called from client
-	if rkgrpcinter.ContainsClientPayload(ctx) {
-		return *rkgrpcinter.GetIncomingHeadersOfClient(ctx)
-	}
-
 	// called from server
 	if v, ok := metadata.FromIncomingContext(ctx); ok {
 		return v
@@ -134,27 +75,11 @@ func AddHeaderToClient(ctx context.Context, key, value string) {
 	rkgrpcinter.AddToServerContextPayload(ctx, key, value)
 }
 
-// AddHeaderToServer Headers that would be sent to server.
-func AddHeaderToServer(ctx context.Context, key, value string) {
-	// Make sure called from client
-	if rkgrpcinter.ContainsClientPayload(ctx) {
-		// called from client side
-		outgoingHeaders := rkgrpcinter.GetOutgoingHeadersOfClient(ctx)
-		outgoingHeaders.Append(key, value)
-	}
-}
-
 // GetEvent Extract the call-scoped EventData from context.
 func GetEvent(ctx context.Context) rkquery.Event {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v, ok := m[rkgrpcinter.RpcEventKey]; ok {
-		return v.(rkquery.Event)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v, ok := m[rkgrpcinter.RpcEventKey]; ok {
+	if v, ok := m[rkmid.EventKey]; ok {
 		return v.(rkquery.Event)
 	}
 
@@ -167,22 +92,7 @@ func GetLogger(ctx context.Context) *zap.Logger {
 
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcLoggerKey]; ok {
-		requestId := GetRequestId(ctx)
-		traceId := GetTraceId(ctx)
-		fields := make([]zap.Field, 0)
-		if len(requestId) > 0 {
-			fields = append(fields, zap.String("requestId", requestId))
-		}
-		if len(traceId) > 0 {
-			fields = append(fields, zap.String("traceId", traceId))
-		}
-		return v1.(*zap.Logger).With(fields...)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcLoggerKey]; ok {
+	if v1, ok := m[rkmid.LoggerKey]; ok {
 		requestId := GetRequestId(ctx)
 		traceId := GetTraceId(ctx)
 		fields := make([]zap.Field, 0)
@@ -202,14 +112,8 @@ func GetLogger(ctx context.Context) *zap.Logger {
 func GetRequestId(ctx context.Context) string {
 	// case 1: called from server side context which wrapped with WrapContextForServer()'
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if id := m[RequestIdKey]; id != nil {
+	if id := m[rkmid.HeaderRequestId]; id != nil {
 		return id.(string)
-	}
-
-	// case 2: called from client side context which wrapped with WrapContextForClient()
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[RequestIdKey]; ok {
-		return v1.(string)
 	}
 
 	return ""
@@ -219,14 +123,8 @@ func GetRequestId(ctx context.Context) string {
 func GetTraceId(ctx context.Context) string {
 	// case 1: called from server side context which wrapped with WrapContextForServer()
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if id := m[TraceIdKey]; id != nil {
+	if id := m[rkmid.HeaderTraceId]; id != nil {
 		return id.(string)
-	}
-
-	// case 2: called from client side context which wrapped with WrapContextForClient()
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[TraceIdKey]; ok {
-		return v1.(string)
 	}
 
 	return ""
@@ -236,68 +134,11 @@ func GetTraceId(ctx context.Context) string {
 func GetEntryName(ctx context.Context) string {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcEntryNameKey]; ok {
-		return v1.(string)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcEntryNameKey]; ok {
+	if v1, ok := m[rkmid.EntryNameKey]; ok {
 		return v1.(string)
 	}
 
 	return ""
-}
-
-// GetRpcType Extract the call-scoped rpc type.
-func GetRpcType(ctx context.Context) string {
-	// case 1: called from server side
-	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTypeKey]; ok {
-		return v1.(string)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTypeKey]; ok {
-		return v1.(string)
-	}
-
-	return ""
-}
-
-// GetMethodName Extract the call-scoped method name.
-func GetMethodName(ctx context.Context) string {
-	// case 1: called from server side
-	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcMethodKey]; ok {
-		return v1.(string)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcMethodKey]; ok {
-		return v1.(string)
-	}
-
-	return ""
-}
-
-// GetError Extract the call-scoped error.
-func GetError(ctx context.Context) error {
-	// case 1: called from server side
-	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcErrorKey]; ok {
-		return v1.(error)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcErrorKey]; ok {
-		return v1.(error)
-	}
-
-	return nil
 }
 
 // GetTraceSpan Extract the call-scoped span from context.
@@ -306,13 +147,7 @@ func GetTraceSpan(ctx context.Context) trace.Span {
 
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcSpanKey]; ok {
-		return v1.(trace.Span)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcSpanKey]; ok {
+	if v1, ok := m[rkmid.SpanKey]; ok {
 		return v1.(trace.Span)
 	}
 
@@ -323,13 +158,7 @@ func GetTraceSpan(ctx context.Context) trace.Span {
 func GetTracer(ctx context.Context) trace.Tracer {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTracerKey]; ok {
-		return v1.(trace.Tracer)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTracerKey]; ok {
+	if v1, ok := m[rkmid.TracerKey]; ok {
 		return v1.(trace.Tracer)
 	}
 
@@ -340,13 +169,7 @@ func GetTracer(ctx context.Context) trace.Tracer {
 func GetTracerProvider(ctx context.Context) trace.TracerProvider {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTracerProviderKey]; ok {
-		return v1.(trace.TracerProvider)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcTracerProviderKey]; ok {
+	if v1, ok := m[rkmid.TracerProviderKey]; ok {
 		return v1.(trace.TracerProvider)
 	}
 
@@ -357,13 +180,7 @@ func GetTracerProvider(ctx context.Context) trace.TracerProvider {
 func GetTracerPropagator(ctx context.Context) propagation.TextMapPropagator {
 	// case 1: called from server side
 	m := rkgrpcinter.GetServerContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcPropagatorKey]; ok {
-		return v1.(propagation.TextMapPropagator)
-	}
-
-	// case 2: called from client side
-	m = rkgrpcinter.GetClientContextPayload(ctx)
-	if v1, ok := m[rkgrpcinter.RpcPropagatorKey]; ok {
+	if v1, ok := m[rkmid.PropagatorKey]; ok {
 		return v1.(propagation.TextMapPropagator)
 	}
 
@@ -413,7 +230,7 @@ func GetJwtToken(ctx context.Context) *jwt.Token {
 		return nil
 	}
 
-	if raw := ctx.Value(rkgrpcinter.RpcJwtTokenKey); raw != nil {
+	if raw := ctx.Value(rkmid.JwtTokenKey); raw != nil {
 		if res, ok := raw.(*jwt.Token); ok {
 			return res
 		}

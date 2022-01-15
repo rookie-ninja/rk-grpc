@@ -8,13 +8,113 @@ package rkgrpctimeout
 import (
 	"context"
 	"fmt"
-	"github.com/rookie-ninja/rk-grpc/interceptor"
+	rkmidtimeout "github.com/rookie-ninja/rk-entry/middleware/timeout"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"testing"
 	"time"
 )
+
+func TestUnaryServerInterceptor_WithTimeout(t *testing.T) {
+	// with global timeout
+	inter := UnaryServerInterceptor(rkmidtimeout.WithTimeout(time.Nanosecond))
+
+	resp, err := inter(context.TODO(), req, unaryInfo, sleepHandlerUnary)
+	assert.Nil(t, resp)
+	assert.Equal(t, defaultResponse, err)
+
+	// with method
+	inter = UnaryServerInterceptor(
+		rkmidtimeout.WithTimeoutByPath(unaryInfo.FullMethod, time.Nanosecond))
+
+	resp, err = inter(context.TODO(), req, unaryInfo, sleepHandlerUnary)
+	assert.Nil(t, resp)
+	assert.Equal(t, defaultResponse, err)
+}
+
+func TestUnaryServerInterceptor_WithPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	inter := UnaryServerInterceptor(
+		rkmidtimeout.WithTimeout(time.Second))
+
+	resp, err := inter(context.TODO(), req, unaryInfo, panicHandlerUnary)
+	assert.Nil(t, resp)
+	assert.Nil(t, err)
+}
+
+func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
+	timeoutMethod := "/timeout"
+	happyMethod := "/happy"
+
+	// Let's add two routes /timeout and /happy
+	// We expect interceptor acts as the name describes
+	inter := UnaryServerInterceptor(
+		rkmidtimeout.WithTimeoutByPath(timeoutMethod, time.Nanosecond),
+		rkmidtimeout.WithTimeoutByPath(happyMethod, time.Second))
+
+	// timeout on /timeout
+	resp, err := inter(context.TODO(), req, &grpc.UnaryServerInfo{FullMethod: timeoutMethod}, sleepHandlerUnary)
+	assert.Nil(t, resp)
+	assert.Equal(t, defaultResponse, err)
+
+	// OK on /happy
+	resp, err = inter(context.TODO(), req, &grpc.UnaryServerInfo{FullMethod: happyMethod}, returnHandlerUnary)
+	assert.NotNil(t, resp)
+	assert.Nil(t, err)
+}
+
+func TestStreamServerInterceptor_WithTimeout(t *testing.T) {
+	// with global timeout
+	inter := StreamServerInterceptor(
+		rkmidtimeout.WithTimeout(time.Nanosecond))
+
+	err := inter(fakeServer, stream, streamInfo, sleepHandlerStream)
+	assert.Equal(t, defaultResponse, err)
+
+	// with method
+	inter = StreamServerInterceptor(
+		rkmidtimeout.WithTimeoutByPath(streamInfo.FullMethod, time.Nanosecond))
+
+	err = inter(fakeServer, stream, streamInfo, sleepHandlerStream)
+	assert.Equal(t, defaultResponse, err)
+}
+
+func TestStreamServerInterceptor_WithPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	inter := StreamServerInterceptor(
+		rkmidtimeout.WithTimeout(time.Second))
+
+	err := inter(fakeServer, stream, streamInfo, panicHandlerStream)
+	assert.Nil(t, err)
+}
+
+func TestStreamServerInterceptor_HappyCase(t *testing.T) {
+	timeoutMethod := "/timeout"
+	happyMethod := "/happy"
+
+	// Let's add two routes /timeout and /happy
+	// We expect interceptor acts as the name describes
+	inter := StreamServerInterceptor(
+		rkmidtimeout.WithTimeoutByPath(timeoutMethod, time.Nanosecond),
+		rkmidtimeout.WithTimeoutByPath(happyMethod, time.Second))
+
+	// timeout on /timeout
+	err := inter(fakeServer, stream, &grpc.StreamServerInfo{
+		FullMethod: timeoutMethod,
+	}, sleepHandlerStream)
+	assert.Equal(t, defaultResponse, err)
+
+	// OK on /happy
+	err = inter(fakeServer, stream, &grpc.StreamServerInfo{
+		FullMethod: happyMethod,
+	}, returnHandlerStream)
+	assert.Nil(t, err)
+}
+
+// ************ Test utility ************
 
 var (
 	unaryInfo = &grpc.UnaryServerInfo{
@@ -88,136 +188,6 @@ func returnHandlerUnary(ctx context.Context, req interface{}) (interface{}, erro
 
 func returnHandlerStream(srv interface{}, stream grpc.ServerStream) error {
 	return nil
-}
-
-func TestUnaryServerInterceptor_WithoutOptions(t *testing.T) {
-	inter := UnaryServerInterceptor()
-
-	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeUnaryServer)])
-}
-
-func TestUnaryServerInterceptor_WithTimeout(t *testing.T) {
-	// with global timeout
-	inter := UnaryServerInterceptor(
-		WithTimeoutAndResp(time.Nanosecond, nil))
-
-	resp, err := inter(context.TODO(), req, unaryInfo, sleepHandlerUnary)
-	assert.Nil(t, resp)
-	assert.Equal(t, defaultResponse, err)
-
-	// with method
-	inter = UnaryServerInterceptor(
-		WithTimeoutAndRespByPath(unaryInfo.FullMethod, time.Nanosecond, nil))
-
-	resp, err = inter(context.TODO(), req, unaryInfo, sleepHandlerUnary)
-	assert.Nil(t, resp)
-	assert.Equal(t, defaultResponse, err)
-
-	// with custom err
-	myErr := fmt.Errorf("my error")
-	inter = UnaryServerInterceptor(
-		WithTimeoutAndRespByPath(unaryInfo.FullMethod, time.Nanosecond, myErr))
-
-	resp, err = inter(context.TODO(), req, unaryInfo, sleepHandlerUnary)
-	assert.Nil(t, resp)
-	assert.Equal(t, myErr, err)
-}
-
-func TestUnaryServerInterceptor_WithPanic(t *testing.T) {
-	defer assertPanic(t)
-
-	inter := UnaryServerInterceptor(
-		WithTimeoutAndResp(time.Second, nil))
-
-	resp, err := inter(context.TODO(), req, unaryInfo, panicHandlerUnary)
-	assert.Nil(t, resp)
-	assert.Nil(t, err)
-}
-
-func TestUnaryServerInterceptor_HappyCase(t *testing.T) {
-	timeoutMethod := "/timeout"
-	happyMethod := "/happy"
-
-	// Let's add two routes /timeout and /happy
-	// We expect interceptor acts as the name describes
-	inter := UnaryServerInterceptor(
-		WithTimeoutAndRespByPath(timeoutMethod, time.Nanosecond, nil),
-		WithTimeoutAndRespByPath(happyMethod, time.Second, nil))
-
-	// timeout on /timeout
-	resp, err := inter(context.TODO(), req, &grpc.UnaryServerInfo{FullMethod: timeoutMethod}, sleepHandlerUnary)
-	assert.Nil(t, resp)
-	assert.Equal(t, defaultResponse, err)
-
-	// OK on /happy
-	resp, err = inter(context.TODO(), req, &grpc.UnaryServerInfo{FullMethod: happyMethod}, returnHandlerUnary)
-	assert.NotNil(t, resp)
-	assert.Nil(t, err)
-}
-
-func TestStreamServerInterceptor_WithoutOptions(t *testing.T) {
-	inter := StreamServerInterceptor()
-
-	assert.NotNil(t, inter)
-	assert.NotNil(t, optionsMap[rkgrpcinter.ToOptionsKey(rkgrpcinter.RpcEntryNameValue, rkgrpcinter.RpcTypeStreamServer)])
-}
-
-func TestStreamServerInterceptor_WithTimeout(t *testing.T) {
-	// with global timeout
-	inter := StreamServerInterceptor(
-		WithTimeoutAndResp(time.Nanosecond, nil))
-
-	err := inter(fakeServer, stream, streamInfo, sleepHandlerStream)
-	assert.Equal(t, defaultResponse, err)
-
-	// with method
-	inter = StreamServerInterceptor(
-		WithTimeoutAndRespByPath(streamInfo.FullMethod, time.Nanosecond, nil))
-
-	err = inter(fakeServer, stream, streamInfo, sleepHandlerStream)
-	assert.Equal(t, defaultResponse, err)
-
-	// with custom err
-	myErr := fmt.Errorf("my error")
-	inter = StreamServerInterceptor(
-		WithTimeoutAndRespByPath(streamInfo.FullMethod, time.Nanosecond, myErr))
-
-	err = inter(fakeServer, stream, streamInfo, sleepHandlerStream)
-	assert.Equal(t, myErr, err)
-}
-
-func TestStreamServerInterceptor_WithPanic(t *testing.T) {
-	defer assertPanic(t)
-
-	inter := StreamServerInterceptor(
-		WithTimeoutAndResp(time.Second, nil))
-
-	err := inter(fakeServer, stream, streamInfo, panicHandlerStream)
-	assert.Nil(t, err)
-}
-
-func TestStreamServerInterceptor_HappyCase(t *testing.T) {
-	timeoutMethod := "/timeout"
-	happyMethod := "/happy"
-
-	// Let's add two routes /timeout and /happy
-	// We expect interceptor acts as the name describes
-	inter := StreamServerInterceptor(
-		WithTimeoutAndRespByPath(timeoutMethod, time.Nanosecond, nil),
-		WithTimeoutAndRespByPath(happyMethod, time.Second, nil))
-
-	// timeout on /timeout
-	err := inter(fakeServer, stream, &grpc.StreamServerInfo{
-		FullMethod: timeoutMethod,
-	}, sleepHandlerStream)
-	assert.Equal(t, defaultResponse, err)
-
-	// OK on /happy
-	err = inter(fakeServer, stream, &grpc.StreamServerInfo{
-		FullMethod: happyMethod,
-	}, returnHandlerStream)
-	assert.Nil(t, err)
 }
 
 func assertPanic(t *testing.T) {

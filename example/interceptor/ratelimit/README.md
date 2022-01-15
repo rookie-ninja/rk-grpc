@@ -44,8 +44,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             rkgrpclimit.UnaryServerInterceptor(
-                rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
+                rkmidlimit.WithReqPerSec(100),
+                rkmidlimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
             ),
         ),
     }
@@ -56,8 +56,8 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
             rkgrpclimit.StreamServerInterceptor(
-                rkgrpclimit.WithReqPerSec(100),
-                rkgrpclimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
+                rkmidlimit.WithReqPerSec(100),
+                rkmidlimit.WithReqPerSecByPath("/Greeter/SayHello", 0),
             ),
         ),
     }
@@ -66,12 +66,12 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/ratelimit"
 ## Options
 | Name | Default | Description |
 | ---- | ---- | ---- |
-| WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
-| WithReqPerSec(int) | int | Global rate limit per second. |
-| WithReqPerSecByPath(path string, reqPerSec int) | "", 0 | Request limiter by gRPC method. |
-| WithAlgorithm(algo string) | tokenBucket | Algorithm of rate limiter. |
-| WithGlobalLimiter(l Limiter) | nil | Provider user defined limiter. |
-| WithLimiterByPath(path string, l Limiter) | "", nil | Provider user defined limiter by gRPC method. |
+| rkmidlimit.WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
+| rkmidlimit.WithReqPerSec(int) | int | Global rate limit per second. |
+| rkmidlimit.WithReqPerSecByPath(path string, reqPerSec int) | "", 0 | Request limiter by gRPC method. |
+| rkmidlimit.WithAlgorithm(algo string) | tokenBucket | Algorithm of rate limiter. |
+| rkmidlimit.WithGlobalLimiter(l Limiter) | nil | Provider user defined limiter. |
+| rkmidlimit.WithLimiterByPath(path string, l Limiter) | "", nil | Provider user defined limiter by gRPC method. |
 
 ### Context Usage
 | Name | Functionality |
@@ -120,23 +120,27 @@ EOE
 
 - Client side (zap & event)
 ```shell script
-2021-10-24T04:41:24.601+0800    FATAL   client/greeter-client.go:40     Failed to send request to server.       {"error": "rpc error: code = ResourceExhausted desc = Slow down your request."}
+2022-01-15T21:52:11.219+0800    FATAL   client/greeter-client.go:31     Failed to send request to server.       {"error": "rpc error: code = ResourceExhausted desc = "}
+main.main
+        /Users/dongxuny/workspace/dongxuny/rk-grpc/example/interceptor/ratelimit/client/greeter-client.go:31
+runtime.main
+        /usr/local/Cellar/go/1.16.3/libexec/src/runtime/proc.go:225
 ```
 ```shell script
 ------------------------------------------------------------------------
-endTime=2021-10-24T04:41:24.601294+08:00
-startTime=2021-10-24T04:41:24.599985+08:00
-elapsedNano=1308704
+endTime=2022-01-15T21:52:11.218264+08:00
+startTime=2022-01-15T21:52:11.218067+08:00
+elapsedNano=196617
 timezone=CST
-ids={"eventId":"f8d0bcf2-da63-489a-bc7d-7b81035b4bfc"}
-app={"appName":"rk","appVersion":"","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"acb9fae2-a841-4b0f-90e7-ff79534be6e4"}
+app={"appName":"rk","appVersion":"","entryName":"c7hd31jd0cvkvqvs34v0","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={"rpc error: code = ResourceExhausted desc = Slow down your request.":1}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
+error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:8080
+remoteAddr=127.0.0.1:63044
 operation=/Greeter/SayHello
 resCode=ResourceExhausted
 eventStatus=Ended

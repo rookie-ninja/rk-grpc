@@ -80,5 +80,5 @@ go run test/main.go
 ```shell script
 go run client/main.go
 
-2021-11-12T22:39:45.516+0800    INFO    client/greeter-client.go:45     [Message]: fields:{key:"healthy" value:{bool_value:true}}
+2022-01-15T22:58:31.865+0800    INFO    client/main.go:40       [Message]: message:"Hello !"
 ```

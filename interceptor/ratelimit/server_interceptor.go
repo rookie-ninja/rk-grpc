@@ -7,25 +7,29 @@ package rkgrpclimit
 
 import (
 	"context"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
+	rkmidlimit "github.com/rookie-ninja/rk-entry/middleware/ratelimit"
+	rkgrpcerr "github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
 )
 
 // UnaryServerInterceptor Add rate limit interceptors.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+func UnaryServerInterceptor(opts ...rkmidlimit.Option) grpc.UnaryServerInterceptor {
+	set := rkmidlimit.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
 
-		event := rkgrpcctx.GetEvent(ctx)
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
 
-		if duration, err := set.Wait(ctx, info.FullMethod); err != nil {
-			event.SetCounter("rateLimitWaitMs", duration.Milliseconds())
-			event.AddErr(err)
-			return nil, err
+		set.Before(beforeCtx)
+
+		if beforeCtx.Output.ErrResp != nil {
+			return nil, rkgrpcerr.ResourceExhausted("", beforeCtx.Output.ErrResp.Err).Err()
 		}
 
 		resp, err := handler(ctx, req)
@@ -34,22 +38,23 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 }
 
 // StreamServerInterceptor Add rate limit interceptors.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidlimit.Option) grpc.StreamServerInterceptor {
+	set := rkmidlimit.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
 
-		event := rkgrpcctx.GetEvent(wrappedStream.Context())
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
 
-		if duration, err := set.Wait(wrappedStream.Context(), info.FullMethod); err != nil {
-			event.SetCounter("rateLimitWaitMs", duration.Milliseconds())
-			event.AddErr(err)
-			return err
+		set.Before(beforeCtx)
+
+		if beforeCtx.Output.ErrResp != nil {
+			return rkgrpcerr.ResourceExhausted("", beforeCtx.Output.ErrResp.Err).Err()
 		}
 
 		return handler(srv, wrappedStream)

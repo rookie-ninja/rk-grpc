@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkmidtimeout "github.com/rookie-ninja/rk-entry/middleware/timeout"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
 	"github.com/rookie-ninja/rk-grpc/interceptor/timeout"
@@ -28,14 +29,14 @@ func main() {
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpctimeout.UnaryServerInterceptor(
 				// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-				// rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
+				// rkmidtimeout.WithEntryNameAndType("greeter", "grpc"),
 				//
 				// Provide timeout and response error, a default one would be assigned with codes.Canceled
 				// This option impact all methods
-				rkgrpctimeout.WithTimeoutAndResp(time.Second, nil),
+				rkmidtimeout.WithTimeout(time.Second),
 				//
 				// Provide timeout and response error by method, a default one would be assigned with codes.Canceled
-				// rkgrpctimeout.WithTimeoutAndRespByPath("/Greeter/SayHello", time.Second, nil),
+				// rkmidtimeout.WithTimeoutByPath("/Greeter/SayHello", time.Second),
 			),
 		),
 	}

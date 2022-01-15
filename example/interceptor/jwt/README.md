@@ -38,34 +38,29 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
 		grpc.ChainUnaryInterceptor(
 			rkgrpcjwt.UnaryServerInterceptor(
 			    // Required, entry name and entry type will be used for distinguishing interceptors. Recommended.
-			    //rkgrpcjwt.WithEntryNameAndType("greeter", "grpc"),
+			    //rkmidjwt.WithEntryNameAndType("greeter", "grpc"),
 			    //
 			    // Required, provide signing key.
-			    rkgrpcjwt.WithSigningKey([]byte("my-secret")),
-			    //
-			    // Optional, provide skipper function
-			    //rkgrpcjwt.WithSkipper(func(fullMethod string) bool {
-			    //	return true
-			    //}),
+			    rkmidjwt.WithSigningKey([]byte("my-secret")),
 			    //
 			    // Optional, provide token parse function, default one will be assigned.
-			    //rkgrpcjwt.WithParseTokenFunc(func(auth string, ctx context.Context) (*jwt.Token, error) {
+			    //rkmidjwt.WithParseTokenFunc(func(auth string) (*jwt.Token, error) {
 			    //	return nil, nil
 			    //}),
 			    //
 			    // Optional, provide key function, default one will be assigned.
-			    //rkgrpcjwt.WithKeyFunc(func(token *jwt.Token) (interface{}, error) {
+			    //rkmidjwt.WithKeyFunc(func(token *jwt.Token) (interface{}, error) {
 			    //	return nil, nil
 			    //}),
 			    //
 			    // Optional, default is Bearer
-			    //rkgrpcjwt.WithAuthScheme("Bearer"),
+			    //rkmidjwt.WithAuthScheme("Bearer"),
 			    //
 			    // Optional
-			    //rkechojwt.WithTokenLookup("header:my-jwt-header-key"),
+			    //rkmidjwt.WithTokenLookup("header:my-jwt-header-key"),
 			    //
 			    // Optional, default is HS256
-			    //rkgrpcjwt.WithSigningAlgorithm(rkgrpcjwt.AlgorithmHS256),
+			    //rkmidjwt.WithSigningAlgorithm(rkmidjwt.AlgorithmHS256),
 			),
 		),
 	}
@@ -76,7 +71,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
             rkgrpcjwt.StreamServerInterceptor(
-				rkgrpcjwt.WithSigningKey([]byte("my-secret")),
+				rkmidjwt.WithSigningKey([]byte("my-secret")),
             ),
         ),
     }
@@ -85,17 +80,16 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
 ## Options
 | Name | Description | Default Values |
 | ---- | ---- | ---- |
-| rkgrpcjwt.WithEntryNameAndType(entryName, entryType string) | Optional. Provide entry name and type if there are multiple jwt interceptors needs to be used. | grpc, grpc |
-| rkgrpcjwt.WithSkipper(skipper function) | Optional. Provide skipper function | function always returns false |
-| rkgrpcjwt.WithSigningKey(interface{}) | Required. Provide signing key | nil |
-| rkgrpcjwt.WithSigningKeys(string, interface{}) | Optional. Provide signing key value pairs | empty |
-| rkgrpcjwt.WithSigningAlgorithm(string) | Optional, Provide signing algorithm. | HS256 |
-| rkgrpcjwt.WithClaims(jwt.Claims) | Optional, provide jwt.Claims. | jwt.MapClaims{} |
-| rkgrpcjwt.WithTokenLookup(string) | Optional, provide jwt token lookup rules, please see code comments for details. | "header:Authorization" |
-| rkgrpcjwt.WithAuthScheme(string) | Optional, provide auth scheme. | Bearer |
-| rkgrpcjwt.WithKeyFunc(jwt.Keyfunc) | Optional, provide key function. | default function will be assigned. |
-| rkgrpcjwt.WithParseTokenFunc(func) | Optional, provide token parse function. | default function will be assigned. | 
-| rkgrpcjwt.WithIgnorePrefix([]string) | Optional, provide ignoring path prefix. | [] |
+| rkmidjwt.WithEntryNameAndType(entryName, entryType string) | Optional. Provide entry name and type if there are multiple jwt interceptors needs to be used. | grpc, grpc |
+| rkmidjwt.WithSigningKey(interface{}) | Required. Provide signing key | nil |
+| rkmidjwt.WithSigningKeys(string, interface{}) | Optional. Provide signing key value pairs | empty |
+| rkmidjwt.WithSigningAlgorithm(string) | Optional, Provide signing algorithm. | HS256 |
+| rkmidjwt.WithClaims(jwt.Claims) | Optional, provide jwt.Claims. | jwt.MapClaims{} |
+| rkmidjwt.WithTokenLookup(string) | Optional, provide jwt token lookup rules, please see code comments for details. | "header:Authorization" |
+| rkmidjwt.WithAuthScheme(string) | Optional, provide auth scheme. | Bearer |
+| rkmidjwt.WithKeyFunc(jwt.Keyfunc) | Optional, provide key function. | default function will be assigned. |
+| rkmidjwt.WithParseTokenFunc(func) | Optional, provide token parse function. | default function will be assigned. | 
+| rkmidjwt.WithIgnorePrefix([]string) | Optional, provide ignoring path prefix. | [] |
 
 ```go
     // ********************************************
@@ -104,7 +98,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/jwt"
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             rkgrpcjwt.UnaryServerInterceptor(
- 			    rkgrpcjwt.WithSigningKey([]byte("my-secret")),
+ 			    rkmidjwt.WithSigningKey([]byte("my-secret")),
             ),
         ),
     }
@@ -148,7 +142,6 @@ ERROR:
   Message: invalid or expired jwt
   Details:
   1)	{"@type":"type.googleapis.com/rk.api.v1.ErrorDetail","code":16,"message":"[from-grpc] invalid or expired jwt","status":"Unauthenticated"}
-  2)	{"@type":"type.googleapis.com/rk.api.v1.ErrorDetail","code":2,"message":"token contains an invalid number of segments","status":"Unknown"}
 ```
 
 #### Code

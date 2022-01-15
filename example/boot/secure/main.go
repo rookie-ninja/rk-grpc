@@ -8,6 +8,7 @@ import (
 	"context"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/rookie-ninja/rk-grpc/boot"
+	"net/http"
 )
 
 func main() {
@@ -19,6 +20,11 @@ func main() {
 
 	// Bootstrap grpc entry
 	res["greeter"].Bootstrap(context.Background())
+
+	entry := res["greeter"].(*rkgrpc.GrpcEntry)
+	entry.GwMux.HandlePath("GET", "/rk/v1/greeter", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		w.Write([]byte("Received message!"))
+	})
 
 	// Wait for shutdown signal
 	rkentry.GlobalAppCtx.WaitForShutdownSig()

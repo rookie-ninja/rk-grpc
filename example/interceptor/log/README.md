@@ -41,7 +41,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
     // *************************************
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
-            rkgrpclog.UnaryServerInterceptor(),
+            rkmidlog.UnaryServerInterceptor(),
         ),
     }
 
@@ -51,27 +51,7 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
     opts := []grpc.ServerOption {
         grpc.ChainStreamInterceptor(
             // Add log interceptor
-            rkgrpclog.StreamServerInterceptor(),
-        ),
-    }
-
-    // *************************************
-    // ********** Unary Client *************
-    // *************************************
-    opts := []grpc.DialOption {
-        grpc.WithChainUnaryInterceptor(
-            // Add log interceptor
-            rkgrpclog.UnaryClientInterceptor(),
-        ),
-    }
-
-    // **************************************
-    // ********** Stream Client *************
-    // **************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainStreamInterceptor(
-            // Add log interceptor
-            rkgrpclog.StreamClientInterceptor(),
+            rkmidlog.StreamServerInterceptor(),
         ),
     }
 ```
@@ -84,13 +64,13 @@ As soon as user function returns, interceptor will write the event into files.
 
 | Name | Default | Description |
 | ---- | ---- | ---- |
-| WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
-| WithZapLoggerEntry(zapLoggerEntry *rkentry.ZapLoggerEntry) | [rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()](https://github.com/rookie-ninja/rk-entry/blob/master/entry/context.go) | Zap logger would print to stdout with console encoding type. |
-| WithEventLoggerEntry(eventLoggerEntry *rkentry.EventLoggerEntry) | [rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()](https://github.com/rookie-ninja/rk-entry/blob/master/entry/context.go) | Event logger would print to stdout with console encoding type. |
-| WithZapLoggerEncoding(ec int) | rkgrpclog.ENCODING_CONSOLE | rkgrpclog.ENCODING_CONSOLE and rkgrpclog.ENCODING_JSON are available options. |
-| WithZapLoggerOutputPaths(path ...string) | stdout | Both absolute path and relative path is acceptable. Current working directory would be used if path is relative. |
-| WithEventLoggerEncoding(ec int) | rkgrpclog.ENCODING_CONSOLE | rkgrpclog.ENCODING_CONSOLE and rkgrpclog.ENCODING_JSON are available options. |
-| WithEventLoggerOutputPaths(path ...string) | stdout | Both absolute path and relative path is acceptable. Current working directory would be used if path is relative. |
+| rkmidlog.WithEntryNameAndType(entryName, entryType string) | entryName=grpc, entryType=grpc | entryName and entryType will be used to distinguish options if there are multiple interceptors in single process. |
+| rkmidlog.WithZapLoggerEntry(zapLoggerEntry *rkentry.ZapLoggerEntry) | [rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()](https://github.com/rookie-ninja/rk-entry/blob/master/entry/context.go) | Zap logger would print to stdout with console encoding type. |
+| rkmidlog.WithEventLoggerEntry(eventLoggerEntry *rkentry.EventLoggerEntry) | [rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()](https://github.com/rookie-ninja/rk-entry/blob/master/entry/context.go) | Event logger would print to stdout with console encoding type. |
+| rkmidlog.WithZapLoggerEncoding(ec string) | console | console and json are available options. |
+| rkmidlog.WithZapLoggerOutputPaths(path ...string) | stdout | Both absolute path and relative path is acceptable. Current working directory would be used if path is relative. |
+| rkmidlog.WithEventLoggerEncoding(ec string) | console | console and json are available options. |
+| rkmidlog.WithEventLoggerOutputPaths(path ...string) | stdout | Both absolute path and relative path is acceptable. Current working directory would be used if path is relative. |
 
 ```go
     // ********************************************
@@ -100,19 +80,19 @@ As soon as user function returns, interceptor will write the event into files.
         grpc.ChainUnaryInterceptor(
             rkgrpclog.UnaryServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidlog.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // Zap logger would be logged as JSON format.
-                // rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON),
+                // rkmidlog.WithZapLoggerEncoding("json"),
                 //
                 // Event logger would be logged as JSON format.
-                // rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON),
+                // rkmidlog.WithEventLoggerEncoding("json"),
                 //
                 // Zap logger would be logged to specified path.
-                // rkgrpclog.WithZapLoggerOutputPaths("logs/server-zap.log"),
+                // rkmidlog.WithZapLoggerOutputPaths("logs/server-zap.log"),
                 //
                 // Event logger would be logged to specified path.
-                // rkgrpclog.WithEventLoggerOutputPaths("logs/server-event.log"),
+                // rkmidlog.WithEventLoggerOutputPaths("logs/server-event.log"),
             ),
         ),
     }
@@ -151,10 +131,10 @@ EOE
         grpc.ChainUnaryInterceptor(
             rkgrpclog.UnaryServerInterceptor(
                 // Zap logger would be logged as JSON format.
-                rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON),
+                rkmidlog.WithZapLoggerEncoding("json"),
                 //
                 // Event logger would be logged as JSON format.
-                rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON),
+                rkmidlog.WithEventLoggerEncoding("json"),
             ),
         ),
     }
@@ -176,10 +156,10 @@ No options needs to be provided.
         grpc.ChainUnaryInterceptor(
             rkgrpclog.UnaryServerInterceptor(
                 // Zap logger would be logged to specified path.
-                rkgrpclog.WithZapLoggerOutputPaths("logs/server-zap.log"),
+                rkmidlog.WithZapLoggerOutputPaths("logs/server-zap.log"),
 
                 // Event logger would be logged to specified path.
-                rkgrpclog.WithEventLoggerOutputPaths("logs/server-event.log"),
+                rkmidlog.WithEventLoggerOutputPaths("logs/server-event.log"),
             ),
         ),
     }
@@ -210,52 +190,30 @@ $ go run greeter-client.go
 #### Output
 - Server side (zap & event)
 ```shell script
-2021-06-23T23:14:19.112+0800    INFO    logging/greeter-server.go:60    Received request from client.
-```
-```shell script
+2022-01-15T20:51:05.666+0800    INFO    greeter-server/greeter-server.go:67     Received request from client.
 ------------------------------------------------------------------------
-endTime=2021-06-23T23:14:19.113101+08:00
-startTime=2021-06-23T23:14:19.112939+08:00
-elapsedNano=162050
+endTime=2022-01-15T20:51:05.666785+08:00
+startTime=2022-01-15T20:51:05.666719+08:00
+elapsedNano=66233
 timezone=CST
-ids={"eventId":"c1f25000-b724-42f9-b820-7dc79d14d3e7"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"abdb0d22-7f96-47a9-91e8-9d1008f03321"}
+app={"appName":"rk","appVersion":"","entryName":"c7hc6crd0cvkmiv2oqqg","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
 error={}
 counters={}
-pairs={"rk-key":"rk-value"}
+pairs={}
 timing={}
-remoteAddr=localhost:53603
+remoteAddr=127.0.0.1:62427
 operation=/Greeter/SayHello
 resCode=OK
 eventStatus=Ended
 EOE
 ```
 
-- Client side (zap & event)
+- Client side
 ```shell script
-2021-06-23T23:14:19.115+0800    INFO    logging/greeter-client.go:59    [Message]: Hello rk-dev!
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-23T23:14:19.115602+08:00
-startTime=2021-06-23T23:14:19.11139+08:00
-elapsedNano=4211992
-timezone=CST
-ids={"eventId":"546adc7a-1dc0-4611-af0b-bfa389b8d383"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=OK
-eventStatus=Ended
-EOE
+2022-01-15T20:51:05.667+0800    INFO    greeter-client/greeter-client.go:47     [Message]: Hello rk-dev!
 ```
 
 #### Code
@@ -297,54 +255,32 @@ $ go run chat-client.go
 #### Output
 - Server side (zap & event)
 ```shell script
-2021-06-23T23:19:24.656+0800    INFO    logging/chat-server.go:91       [From client]: Hi!
-2021-06-23T23:19:24.656+0800    INFO    logging/chat-server.go:91       [From client]: Nice to meet you!
-```
-```shell script
+2022-01-15T20:53:42.657+0800    INFO    chat-server/chat-server.go:97   [From client]: Hi!
+2022-01-15T20:53:42.657+0800    INFO    chat-server/chat-server.go:97   [From client]: Nice to meet you!
 ------------------------------------------------------------------------
-endTime=2021-06-23T23:19:24.656495+08:00
-startTime=2021-06-23T23:19:24.656247+08:00
-elapsedNano=248482
+endTime=2022-01-15T20:53:42.657899+08:00
+startTime=2022-01-15T20:53:42.657707+08:00
+elapsedNano=192057
 timezone=CST
-ids={"eventId":"531a804b-49de-4535-9ef3-b13962bb76dc"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"ecdbec69-39bd-4b51-a9f8-916ee3eb4325"}
+app={"appName":"rk","appVersion":"","entryName":"c7hc7j3d0cvknpllnk80","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"Say","grpcService":"Chat","grpcType":"streamServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+payloads={"apiMethod":"","apiPath":"/Chat/Say","apiProtocol":"","apiQuery":"","grpcMethod":"Say","grpcService":"Chat","grpcType":"StreamServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
 error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:53636
+remoteAddr=127.0.0.1:62461
 operation=/Chat/Say
 resCode=OK
 eventStatus=Ended
 EOE
 ```
 
-- Client side (zap & event)
+- Client side
 ```shell script
-2021-06-23T23:19:24.658+0800    INFO    logging/chat-client.go:98       [From server]: Hi!
-2021-06-23T23:19:24.658+0800    INFO    logging/chat-client.go:98       [From server]: Nice to meet you too!
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-23T23:19:24.655483+08:00
-startTime=2021-06-23T23:19:24.655401+08:00
-elapsedNano=81912
-timezone=CST
-ids={"eventId":"3c47517a-0dc6-409c-8025-af6f83f9f6d3"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"Say","grpcService":"Chat","grpcType":"streamClient","remoteIp":"localhost","remotePort":"8080"}
-error={}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Chat/Say
-resCode=OK
-eventStatus=Ended
-EOE
+2022-01-15T20:53:42.658+0800    INFO    chat-client/chat-client.go:78   [From server]: Hi!
+2022-01-15T20:53:42.658+0800    INFO    chat-client/chat-client.go:78   [From server]: Nice to meet you too!
 ```
 
 #### Code

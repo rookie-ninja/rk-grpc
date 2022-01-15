@@ -7,83 +7,128 @@ package rkgrpctrace
 
 import (
 	"context"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
+	rkmidtrace "github.com/rookie-ninja/rk-entry/middleware/tracing"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
 // UnaryServerInterceptor Create new unary server interceptor.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+func UnaryServerInterceptor(opts ...rkmidtrace.Option) grpc.UnaryServerInterceptor {
+	set := rkmidtrace.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTracerKey, set.Tracer)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTracerProviderKey, set.Provider)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcPropagatorKey, set.Propagator)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.TracerKey, set.GetTracer())
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.TracerProviderKey, set.GetProvider())
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.PropagatorKey, set.GetPropagator())
 
-		// Before invoking
-		ctx, span := serverBefore(ctx, set, info.FullMethod, rkgrpcinter.RpcTypeUnaryServer)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcSpanKey, span)
+		beforeCtx := set.BeforeCtx(nil, false)
+		beforeCtx.Input.UrlPath = info.FullMethod
+		beforeCtx.Input.RequestCtx = ctx
+		beforeCtx.Input.SpanName = info.FullMethod
 
-		// Invoking
+		// metadata carrier
+		incomingMD, _ := metadata.FromIncomingContext(ctx)
+		beforeCtx.Input.Carrier = &rkgrpcctx.GrpcMetadataCarrier{Md: &incomingMD}
+		// grpc related meta
+		beforeCtx.Input.Attributes = append(beforeCtx.Input.Attributes, grpcInfoToAttributes(
+			ctx, info.FullMethod, "UnaryServer")...)
+
+		set.Before(beforeCtx)
+
+		// new context and span
+		ctx = beforeCtx.Output.NewCtx
+		if beforeCtx.Output.Span != nil {
+			rkgrpcinter.AddToServerContextPayload(ctx, rkmid.SpanKey, beforeCtx.Output.Span)
+			rkgrpcctx.AddHeaderToClient(ctx, rkmid.HeaderTraceId, beforeCtx.Output.Span.SpanContext().TraceID().String())
+		}
+
+		// call handler
 		resp, err := handler(ctx, req)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcErrorKey, err)
 
-		// After invoking
-		serverAfter(span, err)
+		var afterCtx *rkmidtrace.AfterCtx
+		if err != nil {
+			s, _ := status.FromError(err)
+			afterCtx = set.AfterCtx(int(codes.Error), s.Message())
+			afterCtx.Input.Attributes = append(afterCtx.Input.Attributes,
+				attribute.Int("grpc.code", int(s.Code())),
+				attribute.String("grpc.status", s.Code().String()))
+		} else {
+			afterCtx = set.AfterCtx(200, "")
+			afterCtx.Input.Attributes = append(afterCtx.Input.Attributes,
+				attribute.Int("grpc.code", int(codes.Ok)),
+				attribute.String("grpc.status", codes.Ok.String()))
+		}
+
+		set.After(beforeCtx, afterCtx)
 
 		return resp, err
 	}
 }
 
 // StreamServerInterceptor Create new stream server interceptor.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidtrace.Option) grpc.StreamServerInterceptor {
+	set := rkmidtrace.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTracerKey, set.Tracer)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTracerProviderKey, set.Provider)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcPropagatorKey, set.Propagator)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.TracerKey, set.GetTracer())
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.TracerProviderKey, set.GetProvider())
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.PropagatorKey, set.GetPropagator())
 
-		// Before invoking
-		ctx, span := serverBefore(wrappedStream.WrappedContext, set, info.FullMethod, rkgrpcinter.RpcTypeStreamServer)
-		wrappedStream.WrappedContext = ctx
+		beforeCtx := set.BeforeCtx(nil, false)
+		beforeCtx.Input.UrlPath = info.FullMethod
+		beforeCtx.Input.RequestCtx = wrappedStream.WrappedContext
+		beforeCtx.Input.SpanName = info.FullMethod
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcSpanKey, span)
+		// metadata carrier
+		incomingMD, _ := metadata.FromIncomingContext(wrappedStream.WrappedContext)
+		beforeCtx.Input.Carrier = &rkgrpcctx.GrpcMetadataCarrier{Md: &incomingMD}
 
-		// Invoking
+		// grpc related meta
+		beforeCtx.Input.Attributes = append(beforeCtx.Input.Attributes, grpcInfoToAttributes(
+			wrappedStream.WrappedContext, info.FullMethod, "UnaryServer")...)
+
+		set.Before(beforeCtx)
+
+		// new context and span
+		wrappedStream.WrappedContext = beforeCtx.Output.NewCtx
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.SpanKey, beforeCtx.Output.Span)
+
+		// call handler
 		err := handler(srv, wrappedStream)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcErrorKey, err)
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.GrpcErrorKey, err)
 
-		// After invoking
-		serverAfter(span, err)
+		var afterCtx *rkmidtrace.AfterCtx
+		attrs := make([]attribute.KeyValue, 0)
+		if err != nil {
+			s, _ := status.FromError(err)
+			afterCtx = set.AfterCtx(int(codes.Error), s.Message())
+			attrs = append(attrs,
+				attribute.Int("grpc.code", int(s.Code())),
+				attribute.String("grpc.status", s.Code().String()))
+		} else {
+			afterCtx = set.AfterCtx(200, "")
+			attrs = append(attrs,
+				attribute.Int("grpc.code", int(codes.Ok)),
+				attribute.String("grpc.status", codes.Ok.String()))
+		}
+
+		set.After(beforeCtx, afterCtx)
 
 		return err
 	}
-}
-
-// Convert locale information into attributes.
-func localeToAttributes() []attribute.KeyValue {
-	res := []attribute.KeyValue{
-		attribute.String(rkgrpcinter.Realm.Key, rkgrpcinter.Realm.String),
-		attribute.String(rkgrpcinter.Region.Key, rkgrpcinter.Region.String),
-		attribute.String(rkgrpcinter.AZ.Key, rkgrpcinter.AZ.String),
-		attribute.String(rkgrpcinter.Domain.Key, rkgrpcinter.Domain.String),
-	}
-
-	return res
 }
 
 // Convert grpc information into attributes.
@@ -104,50 +149,5 @@ func grpcInfoToAttributes(ctx context.Context, method, rpcType string) []attribu
 		attribute.String("gw.scheme", gwScheme),
 		attribute.String("gw.userAgent", gwUserAgent),
 		attribute.String("server.type", rpcType),
-	}
-}
-
-// Handle logic before handle requests.
-func serverBefore(ctx context.Context, set *optionSet, method, rpcType string) (context.Context, oteltrace.Span) {
-	opts := []oteltrace.SpanStartOption{
-		oteltrace.WithSpanKind(oteltrace.SpanKindServer),
-		oteltrace.WithAttributes(localeToAttributes()...),
-		oteltrace.WithAttributes(grpcInfoToAttributes(ctx, method, rpcType)...),
-	}
-
-	// extract tracer from incoming metadata
-	incomingMD, _ := metadata.FromIncomingContext(ctx)
-	spanCtx := oteltrace.SpanContextFromContext(set.Propagator.Extract(ctx, &rkgrpcctx.GrpcMetadataCarrier{Md: &incomingMD}))
-
-	// create span name
-	spanName := method
-	if len(spanName) < 1 {
-		spanName = "rk-span-default"
-	}
-
-	// create span
-	ctx, span := set.Tracer.Start(oteltrace.ContextWithRemoteSpanContext(ctx, spanCtx), spanName, opts...)
-
-	// insert into context
-	rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcctx.TraceIdKey, span.SpanContext().TraceID().String())
-	rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.TraceIdKey, span.SpanContext().TraceID().String())
-	rkgrpcctx.GetEvent(ctx).SetTraceId(span.SpanContext().TraceID().String())
-
-	// return new context with tracer and traceId
-	return ctx, span
-}
-
-// Handle logic after handle requests.
-func serverAfter(span oteltrace.Span, err error) {
-	defer span.End()
-	if err != nil {
-		s, _ := status.FromError(err)
-		span.SetStatus(codes.Error, s.Message())
-		span.SetAttributes(attribute.Int("grpc.code", int(s.Code())))
-		span.SetAttributes(attribute.String("grpc.status", s.Code().String()))
-	} else {
-		span.SetStatus(codes.Ok, "")
-		span.SetAttributes(attribute.Int("grpc.code", int(codes.Ok)))
-		span.SetAttributes(attribute.String("grpc.status", codes.Ok.String()))
 	}
 }

@@ -7,89 +7,84 @@ package rkgrpcjwt
 
 import (
 	"context"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
+	rkmidjwt "github.com/rookie-ninja/rk-entry/middleware/jwt"
 	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
+	"net/http"
+	"net/url"
 )
 
 // UnaryServerInterceptor create new unary server interceptor.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+func UnaryServerInterceptor(opts ...rkmidjwt.Option) grpc.UnaryServerInterceptor {
+	set := rkmidjwt.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcMethodKey, info.FullMethod)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
+		//rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		//rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcMethodKey, info.FullMethod)
 
-		var err error
-		// Before invoking
-		if ctx, err = serverBefore(ctx, set, info.FullMethod); err != nil {
-			return nil, err
+		beforeCtx := set.BeforeCtx(createReqByCopyingHeader(ctx, info.FullMethod), nil)
+		set.Before(beforeCtx)
+
+		// case 1: error response
+		if beforeCtx.Output.ErrResp != nil {
+			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
 		}
 
-		// Invoking
+		// insert into context
+		ctx = context.WithValue(ctx, rkmid.JwtTokenKey, beforeCtx.Output.JwtToken)
+
+		// case 2: call next
 		return handler(ctx, req)
 	}
 }
 
 // StreamServerInterceptor create new stream server interceptor.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidjwt.Option) grpc.StreamServerInterceptor {
+	set := rkmidjwt.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcMethodKey, info.FullMethod)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcMethodKey, info.FullMethod)
 
-		// Before invoking
-		if ctx, err := serverBefore(wrappedStream.WrappedContext, set, info.FullMethod); err != nil {
-			return err
-		} else {
-			wrappedStream.WrappedContext = ctx
+		beforeCtx := set.BeforeCtx(createReqByCopyingHeader(wrappedStream.WrappedContext, info.FullMethod), nil)
+		set.Before(beforeCtx)
+
+		// case 1: error response
+		if beforeCtx.Output.ErrResp != nil {
+			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
 		}
+
+		// insert into context
+		wrappedStream.WrappedContext = context.WithValue(wrappedStream.WrappedContext, rkmid.JwtTokenKey, beforeCtx.Output.JwtToken)
 
 		// Invoking
 		return handler(srv, wrappedStream)
 	}
 }
 
-func serverBefore(ctx context.Context, set *optionSet, method string) (context.Context, error) {
-	if set.Skipper(method) {
-		return ctx, nil
+func createReqByCopyingHeader(ctx context.Context, method string) *http.Request {
+	req := &http.Request{
+		URL: &url.URL{
+			Path: method,
+		},
+		Header: http.Header{},
 	}
 
-	// extract token from extractor
-	var auth string
-	var err error
-	for _, extractor := range set.extractors {
-		// Extract token from extractor, if it's not fail break the loop and
-		// set auth
-		auth, err = extractor(ctx)
-		if err == nil {
-			break
+	for k, list := range rkgrpcctx.GetIncomingHeaders(ctx) {
+		if len(list) > 0 {
+			req.Header.Set(k, list[0])
 		}
 	}
 
-	if err != nil {
-		return ctx, err
-		//return ctx, rkerror.Unauthenticated("invalid or expired jwt", err).Err()
-	}
-
-	// parse token
-	token, err := set.ParseTokenFunc(auth, ctx)
-
-	if err != nil {
-		return ctx, rkgrpcerr.Unauthenticated("invalid or expired jwt", err).Err()
-	}
-
-	// insert into context
-	ctx = context.WithValue(ctx, rkgrpcinter.RpcJwtTokenKey, token)
-
-	return ctx, nil
+	return req
 }

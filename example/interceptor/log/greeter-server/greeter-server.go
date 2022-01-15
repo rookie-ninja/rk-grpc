@@ -26,19 +26,19 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			rkgrpclog.UnaryServerInterceptor(
 			// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-			// rkgrpclog.WithEntryNameAndType("greeter", "grpc"),
+			// rkmidlog.WithEntryNameAndType("greeter", "grpc"),
 			//
 			// Zap logger would be logged as JSON format.
-			// rkgrpclog.WithZapLoggerEncoding(rkgrpclog.ENCODING_JSON),
+			// rkmidlog.WithZapLoggerEncoding("json"),
 			//
 			// Event logger would be logged as JSON format.
-			// rkgrpclog.WithEventLoggerEncoding(rkgrpclog.ENCODING_JSON),
+			// rkmidlog.WithEventLoggerEncoding("json"),
 			//
 			// Zap logger would be logged to specified path.
-			// rkgrpclog.WithZapLoggerOutputPaths("logs/server-zap.log"),
+			// rkmidlog.WithZapLoggerOutputPaths("logs/server-zap.log"),
 			//
 			// Event logger would be logged to specified path.
-			// rkgrpclog.WithEventLoggerOutputPaths("logs/server-event.log"),
+			// rkmidlog.WithEventLoggerOutputPaths("logs/server-event.log"),
 			),
 		),
 	}
@@ -61,8 +61,8 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	// ******************************************
 	//
 	// RequestId will be printed if enabled by bellow codes.
-	// 1: Enable rkgrpcextension.UnaryServerInterceptor() in server side.
-	// 2: rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.RequestIdKey, rkcommon.GenerateRequestId())
+	// 1: Enable rkgrpcmeta.UnaryServerInterceptor() in server side.
+	// 2: rkgrpcctx.AddHeaderToClient(ctx, rkmid.RequestIdKey, rkcommon.GenerateRequestId())
 	//
 	rkgrpcctx.GetLogger(ctx).Info("Received request from client.")
 
@@ -99,7 +99,7 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	//
 	// RequestId will be printed on both client and server side.
 	//
-	// rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.RequestIdKey, rkcommon.GenerateRequestId())
+	// rkgrpcctx.AddHeaderToClient(ctx, rkmid.RequestIdKey, rkcommon.GenerateRequestId())
 
 	return &proto.HelloResponse{
 		Message: fmt.Sprintf("Hello %s!", request.GetName()),

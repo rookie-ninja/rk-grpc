@@ -8,101 +8,97 @@ package rkgrpcauth
 
 import (
 	"context"
-	"fmt"
+	"github.com/rookie-ninja/rk-entry/middleware"
+	"github.com/rookie-ninja/rk-entry/middleware/auth"
 	"github.com/rookie-ninja/rk-grpc/boot/error"
 	"github.com/rookie-ninja/rk-grpc/interceptor"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"google.golang.org/grpc"
-	"strings"
+	"google.golang.org/grpc/metadata"
 )
 
 // UnaryServerInterceptor create new unary server interceptor.
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeUnaryServer, opts...)
+func UnaryServerInterceptor(opts ...rkmidauth.Option) grpc.UnaryServerInterceptor {
+	set := rkmidauth.NewOptionSet(opts...)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		ctx = rkgrpcinter.WrapContextForServer(ctx)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
-		rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcMethodKey, info.FullMethod)
+		rkgrpcinter.AddToServerContextPayload(ctx, rkmid.EntryNameKey, set.GetEntryName())
+		//rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.GrpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		//rkgrpcinter.AddToServerContextPayload(ctx, rkgrpcinter.RpcMethodKey, info.FullMethod)
 
-		// Before invoking
-		if err := serverBefore(ctx, set, info.FullMethod); err != nil {
-			return nil, err
+		// 1: create beforeCtx
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
+
+		// 2: assign values
+		md := rkgrpcctx.GetIncomingHeaders(ctx)
+
+		beforeCtx.Input.BasicAuthHeader = getFirstHeader(md, rkmid.HeaderAuthorization)
+		beforeCtx.Input.ApiKeyHeader = getFirstHeader(md, rkmid.HeaderApiKey)
+
+		// 3: call before
+		set.Before(beforeCtx)
+
+		// case 1: return to user if error occur
+		if beforeCtx.Output.ErrResp != nil {
+			for k, v := range beforeCtx.Output.HeadersToReturn {
+				rkgrpcctx.AddHeaderToClient(ctx, k, v)
+			}
+
+			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
 		}
 
-		// Invoking
+		// case 2: authorized, call next
 		return handler(ctx, req)
 	}
 }
 
 // StreamServerInterceptor create new stream server interceptor.
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	set := newOptionSet(rkgrpcinter.RpcTypeStreamServer, opts...)
+func StreamServerInterceptor(opts ...rkmidauth.Option) grpc.StreamServerInterceptor {
+	set := rkmidauth.NewOptionSet(opts...)
 
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Before invoking
 		wrappedStream := rkgrpcctx.WrapServerStream(stream)
 		wrappedStream.WrappedContext = rkgrpcinter.WrapContextForServer(wrappedStream.WrappedContext)
 
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcEntryNameKey, set.EntryName)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
-		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcMethodKey, info.FullMethod)
+		rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcTypeKey, rkgrpcinter.RpcTypeUnaryServer)
+		//rkgrpcinter.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcinter.RpcMethodKey, info.FullMethod)
 
-		// Before invoking
-		if err := serverBefore(wrappedStream.WrappedContext, set, info.FullMethod); err != nil {
-			return err
+		// 1: create beforeCtx
+		beforeCtx := set.BeforeCtx(nil)
+		beforeCtx.Input.UrlPath = info.FullMethod
+
+		// 2: assign values
+		md := rkgrpcctx.GetIncomingHeaders(wrappedStream.WrappedContext)
+		beforeCtx.Input.BasicAuthHeader = getFirstHeader(md, rkmid.HeaderAuthorization)
+		beforeCtx.Input.ApiKeyHeader = getFirstHeader(md, rkmid.HeaderApiKey)
+
+		// 3: call before
+		set.Before(beforeCtx)
+
+		// case 1: return to user if error occur
+		if beforeCtx.Output.ErrResp != nil {
+			for k, v := range beforeCtx.Output.HeadersToReturn {
+				rkgrpcctx.AddHeaderToClient(wrappedStream.WrappedContext, k, v)
+			}
+
+			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
 		}
 
-		// Invoking
+		// case 2: authorized, call next
 		return handler(srv, wrappedStream)
 	}
 }
 
-// Handle logic before handle requests.
-func serverBefore(ctx context.Context, set *optionSet, method string) error {
-	if !set.ShouldAuth(method) {
-		return nil
+func getFirstHeader(md metadata.MD, key string) string {
+	headers := md.Get(key)
+
+	if len(headers) > 0 {
+		return headers[0]
 	}
 
-	headers := rkgrpcctx.GetIncomingHeaders(ctx)
-
-	authorizationHeader := headers.Get(rkgrpcinter.RpcAuthorizationHeaderKey)
-	apiKeyHeader := headers.Get(rkgrpcinter.RpcApiKeyHeaderKey)
-
-	if len(authorizationHeader) > 0 {
-		// Basic auth type
-		tokens := strings.SplitN(authorizationHeader[0], " ", 2)
-		if len(tokens) != 2 {
-			return rkgrpcerr.Unauthenticated("Invalid Basic Auth format").Err()
-		}
-
-		if !set.Authorized(tokens[0], tokens[1]) {
-			if tokens[0] == typeBasic {
-				rkgrpcctx.AddHeaderToClient(ctx, "WWW-Authenticate", fmt.Sprintf(`%s realm="%s"`, typeBasic, set.BasicRealm))
-			}
-
-			return rkgrpcerr.Unauthenticated("Invalid credential").Err()
-		}
-	} else if len(apiKeyHeader) > 0 {
-		// API key auth type
-		if !set.Authorized(typeApiKey, apiKeyHeader[0]) {
-			return rkgrpcerr.Unauthenticated("Invalid X-API-Key").Err()
-		}
-	} else {
-		authHeaders := []string{}
-		if len(set.BasicAccounts) > 0 {
-			rkgrpcctx.AddHeaderToClient(ctx, "WWW-Authenticate", fmt.Sprintf(`%s realm="%s"`, typeBasic, set.BasicRealm))
-			authHeaders = append(authHeaders, "Basic Auth")
-		}
-		if len(set.ApiKey) > 0 {
-			authHeaders = append(authHeaders, "X-API-Key")
-		}
-
-		errMsg := fmt.Sprintf("Missing authorization, provide one of bellow auth header:[%s]", strings.Join(authHeaders, ","))
-
-		return rkgrpcerr.Unauthenticated(errMsg).Err()
-	}
-
-	return nil
+	return ""
 }

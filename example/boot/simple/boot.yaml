@@ -5,6 +5,8 @@ grpc:
     enabled: true                     # Required
     enableReflection: true            # Optional, default: false
     enableRkGwOption: true            # Optional, default: false
+    gwMappingFilePaths:
+      - "example/boot/simple/api/v1/gw_mapping.yaml"
     commonService:
       enabled: true                   # Optional, default: false
     tv:
@@ -20,3 +22,9 @@ grpc:
         enabled: true                 # Optional, default: false
       meta:
         enabled: true                 # Optional, default: false
+      auth:
+        enabled: true                                     # Optional, default: false
+        basic:
+          - "user:pass"                                   # Optional, default: []
+        apiKey:
+          - "keys"                                        # Optional, default: []

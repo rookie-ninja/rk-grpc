@@ -324,39 +324,6 @@ $ curl localhost:8080/rk/v1/healthy
 {"healthy":true}
 ```
 
-```shell script
-# List grpc services at port 8080 without TLS
-# Expect RkCommonService since we enabled common services.
-$ grpcurl -plaintext localhost:8080 list                           
-api.v1.Greeter
-grpc.reflection.v1alpha.ServerReflection
-rk.api.v1.RkCommonService
-
-# List grpc methods in rk.api.v1.RkCommonService
-$ grpcurl -plaintext localhost:8080 list rk.api.v1.RkCommonService            
-rk.api.v1.RkCommonService.Apis
-rk.api.v1.RkCommonService.Certs
-rk.api.v1.RkCommonService.Configs
-rk.api.v1.RkCommonService.Deps
-rk.api.v1.RkCommonService.Entries
-rk.api.v1.RkCommonService.Gc
-rk.api.v1.RkCommonService.GwErrorMapping
-rk.api.v1.RkCommonService.Healthy
-rk.api.v1.RkCommonService.Info
-rk.api.v1.RkCommonService.License
-rk.api.v1.RkCommonService.Logs
-rk.api.v1.RkCommonService.Readme
-rk.api.v1.RkCommonService.Req
-rk.api.v1.RkCommonService.Sys
-rk.api.v1.RkCommonService.Git
-
-# Send request to rk.api.v1.RkCommonService.Healthy
-$ grpcurl -plaintext localhost:8080 rk.api.v1.RkCommonService.Healthy
-{
-    "healthy": true
-}
-```
-
 #### 6.2 Swagger UI
 Please refer [documentation](https://rkdev.info/docs/bootstrapper/user-guide/grpc-golang/basic/swagger-ui/) for details of configuration.
 
@@ -552,40 +519,23 @@ Please refer to bellow repository for detailed explanations.
 | grpc.gwOption.unmarshal.discardUnknown | Enable discardUnknown in [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) unmarshaler | bool | false |
 
 ### Common Service
-```yaml
-http:
-  rules:
-    - selector: rk.api.v1.RkCommonService.Healthy
-      get: /rk/v1/healthy
-    - selector: rk.api.v1.RkCommonService.Gc
-      get: /rk/v1/gc
-    - selector: rk.api.v1.RkCommonService.Info
-      get: /rk/v1/info
-    - selector: rk.api.v1.RkCommonService.Configs
-      get: /rk/v1/configs
-    - selector: rk.api.v1.RkCommonService.Apis
-      get: /rk/v1/apis
-    - selector: rk.api.v1.RkCommonService.Sys
-      get: /rk/v1/sys
-    - selector: rk.api.v1.RkCommonService.Req
-      get: /rk/v1/req
-    - selector: rk.api.v1.RkCommonService.Entries
-      get: /rk/v1/entries
-    - selector: rk.api.v1.RkCommonService.Certs
-      get: /rk/v1/certs
-    - selector: rk.api.v1.RkCommonService.Logs
-      get: /rk/v1/logs
-    - selector: rk.api.v1.RkCommonService.Deps
-      get: /rk/v1/deps
-    - selector: rk.api.v1.RkCommonService.License
-      get: /rk/v1/license
-    - selector: rk.api.v1.RkCommonService.Readme
-      get: /rk/v1/readme
-    - selector: rk.api.v1.RkCommonService.Git
-      get: /rk/v1/git
-    - selector: rk.api.v1.RkCommonService.GwErrorMapping
-      get: /rk/v1/gwErrorMapping
-```
+| Path | Description |
+| ---- | ---- |
+| /rk/v1/apis | List APIs in current GinEntry. |
+| /rk/v1/certs | List CertEntry. |
+| /rk/v1/configs | List ConfigEntry. |
+| /rk/v1/deps | List dependencies related application, entire contents of go.mod file would be returned. |
+| /rk/v1/entries | List all Entries. |
+| /rk/v1/gc | Trigger GC |
+| /rk/v1/healthy | Get application healthy status. |
+| /rk/v1/info | Get application and process info. |
+| /rk/v1/license | Get license related application, entire contents of LICENSE file would be returned. |
+| /rk/v1/logs | List logger related entries. |
+| /rk/v1/git | Get git information. |
+| /rk/v1/readme | Get contents of README file. |
+| /rk/v1/req | List prometheus metrics of requests. |
+| /rk/v1/sys | Get OS stat. |
+| /rk/v1/tv | Get HTML page of /tv. |
 
 | name | description | type | default value |
 | ------ | ------ | ------ | ------ |
@@ -1015,6 +965,15 @@ grpc:
 #        cookieHttpOnly: false                             # Optional, default: false
 #        cookieSameSite: "default"                         # Optional, default: "default", options: lax, strict, none, default
 #        ignorePrefix: []                                  # Optional, default: []
+#      cors:
+#        enabled: true                                     # Optional, default: false
+#        allowOrigins:
+#          - "http://localhost:*"                          # Optional, default: *
+#        allowCredentials: false                           # Optional, default: false
+#        allowHeaders: []                                  # Optional, default: []
+#        allowMethods: []                                  # Optional, default: []
+#        exposeHeaders: []                                 # Optional, default: []
+#        maxAge: 0                                         # Optional, default: 0
 ```
 
 ## Development Status: Stable
@@ -1027,12 +986,6 @@ Simply run make all to validate your changes. Or run codes in example/ folder.
 Run unit-test, golangci-lint, doctoc and gofmt.
 
 - make buf
-
-Compile internal protocol buffer files.
-
-- make pkger
-
-If proto or files in boot/assets were modified, then we need to run it.
 
 ## Test instruction
 Run unit test with **make test** command.

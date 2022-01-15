@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rk.api.v1;
 
-option go_package = "rk/api/v1/rk_grpc_common_v1";
+option go_package = "rk/api/v1/util";
 
 import "googleapis/google/api/http.proto";
 

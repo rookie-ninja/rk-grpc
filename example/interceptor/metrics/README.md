@@ -42,11 +42,11 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
             // Add metrics interceptor
             rkgrpcmetrics.UnaryServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidmetrics.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // Provide new prometheus registerer.
                 // Default value is prometheus.DefaultRegisterer
-                // rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()),
+                // rkmidmetrics.WithRegisterer(prometheus.NewRegistry()),
             ),
         ),
     }
@@ -59,51 +59,13 @@ import     "github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
             // Add metrics interceptor
             rkgrpcmetrics.StreamServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidmetrics.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // Provide new prometheus registerer.
                 // Default value is prometheus.DefaultRegisterer
-                // rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()),
+                // rkmidmetrics.WithRegisterer(prometheus.NewRegistry()),
             ),
         ),
-    }
-
-    // ************************************
-    // ********** Unary Client ************
-    // ************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainUnaryInterceptor(
-            // Add metrics interceptor
-            rkgrpcmetrics.UnaryClientInterceptor(
-                // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
-                //
-                // Provide new prometheus registerer.
-                // Default value is prometheus.DefaultRegisterer
-                // rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()),
-            ),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
-    }
-
-    // *************************************
-    // ********** Stream Client ************
-    // *************************************
-    opts := []grpc.DialOption{
-        grpc.WithChainStreamInterceptor(
-            // Add metrics interceptor
-            rkgrpcmetrics.StreamClientInterceptor(
-                // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpcmetrics.WithEntryNameAndType("greeter", "grpc"),
-                //
-                // Provide new prometheus registerer.
-                // Default value is prometheus.DefaultRegisterer
-                // rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry()),
-            ),
-        ),
-        grpc.WithInsecure(),
-        grpc.WithBlock(),
     }
 ```
 
@@ -114,8 +76,8 @@ In order to define prometheus style metrics, we need to define <namespace> and <
 
 | Name | Description | Default Values |
 | ---- | ---- | ---- |
-| rkgrpcmetrics.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple extension interceptors needs to be used. | grpc, grpc |
-| rkgrpcmetrics.WithRegisterer(registerer prometheus.Registerer) | Provide prometheus registerer. | prometheus.DefaultRegisterer |
+| rkmidmetrics.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple extension interceptors needs to be used. | grpc, grpc |
+| rkmidmetrics.WithRegisterer(registerer prometheus.Registerer) | Provide prometheus registerer. | prometheus.DefaultRegisterer |
 
 ![arch](img/arch.png)
 
@@ -132,7 +94,7 @@ func main() {
         grpc.ChainUnaryInterceptor(
             // Add metrics interceptor with entry name and entry type.
             // subsystem would be replaced with newEntry.
-            rkgrpcmetrics.UnaryServerInterceptor(rkgrpcmetrics.WithEntryNameAndType("newEntry", "grpc")),
+            rkgrpcmetrics.UnaryServerInterceptor(rkmidmetrics.WithEntryNameAndType("newEntry", "grpc")),
         ),
     }
 
@@ -150,7 +112,7 @@ func main() {
     opts := []grpc.ServerOption{
         grpc.ChainUnaryInterceptor(
             // Add metrics interceptor
-            rkgrpcmetrics.UnaryServerInterceptor(rkgrpcmetrics.WithRegisterer(prometheus.NewRegistry())),
+            rkgrpcmetrics.UnaryServerInterceptor(rkmidmetrics.WithRegisterer(prometheus.NewRegistry())),
         ),
     }
 ```
@@ -178,39 +140,17 @@ $ go run greeter-client.go
 ```shell script
 $ curl localhost:8081/metrics
 ...
-# HELP rk_grpc_elapsedNano Summary for name:elapsedNano and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_elapsedNano summary
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.5"} 3778
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.9"} 3778
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.99"} 3778
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.999"} 3778
-rk_grpc_elapsedNano_sum{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 3778
-rk_grpc_elapsedNano_count{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
-# HELP rk_grpc_errors counter for name:errors and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_errors counter
-rk_grpc_errors{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
-# HELP rk_grpc_resCode counter for name:resCode and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_resCode counter
-rk_grpc_resCode{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryServer",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
-```
-- Client: localhost:8082/metrics
-```shell script
-$ curl localhost:8082/metrics
-...
-# HELP rk_grpc_elapsedNano Summary for name:elapsedNano and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_elapsedNano summary
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.5"} 2.062687e+06
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.9"} 2.062687e+06
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.99"} 2.062687e+06
-rk_grpc_elapsedNano{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.999"} 2.062687e+06
-rk_grpc_elapsedNano_sum{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 2.062687e+06
-rk_grpc_elapsedNano_count{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
-# HELP rk_grpc_errors counter for name:errors and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_errors counter
-rk_grpc_errors{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
-# HELP rk_grpc_resCode counter for name:resCode and labels:[entryName entryType realm region az domain instance appVersion appName grpcService grpcMethod restMethod restPath grpcType resCode]
-# TYPE rk_grpc_resCode counter
-rk_grpc_resCode{appName="rk",appVersion="v0.0.0",az="*",domain="*",entryName="grpc",entryType="grpc",grpcMethod="SayHello",grpcService="Greeter",grpcType="unaryClient",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
+# HELP rk_greeter_elapsedNano Summary for name:elapsedNano and labels:[entryName entryType realm region az domain instance appVersion appName restMethod restPath resCode]
+# TYPE rk_greeter_elapsedNano summary
+rk_greeter_elapsedNano{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.5"} 8978
+rk_greeter_elapsedNano{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.9"} 8978
+rk_greeter_elapsedNano{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.99"} 8978
+rk_greeter_elapsedNano{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath="",quantile="0.999"} 8978
+rk_greeter_elapsedNano_sum{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 8978
+rk_greeter_elapsedNano_count{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
+# HELP rk_greeter_resCode counter for name:resCode and labels:[entryName entryType realm region az domain instance appVersion appName restMethod restPath resCode]
+# TYPE rk_greeter_resCode counter
+rk_greeter_resCode{appName="rk",appVersion="",az="*",domain="*",entryName="greeter",entryType="grpc",instance="lark.local",realm="*",region="*",resCode="OK",restMethod="",restPath=""} 1
 ```
 
 ### Code

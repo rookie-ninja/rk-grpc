@@ -77,8 +77,8 @@ Meta interceptor is only available on server side. The interceptor will send bel
 
 | Name | Description | Default Values |
 | ---- | ---- | ---- |
-| rkgrpcmeta.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple meta interceptors needs to be used. | grpc, grpc |
-| rkgrpcmeta.WithPrefix(prefix string) | Provide prefix of meta header | RK |
+| rkmidmeta.WithEntryNameAndType(entryName, entryType string) | Provide entry name and type if there are multiple meta interceptors needs to be used. | grpc, grpc |
+| rkmidmeta.WithPrefix(prefix string) | Provide prefix of meta header | RK |
 
 ```go
     // ********************************************
@@ -90,22 +90,23 @@ Meta interceptor is only available on server side. The interceptor will send bel
             // Add meta interceptor
             rkgrpcmeta.UnaryServerInterceptor(
                 // Entry name and entry type will be used for distinguishing interceptors. Recommended.
-                // rkgrpcmeta.WithEntryNameAndType("greeter", "grpc"),
+                // rkmidmeta.WithEntryNameAndType("greeter", "grpc"),
                 //
                 // We will replace X-<Prefix>-XXX with prefix user provided.
-                // rkgrpcmeta.WithPrefix("Dog"),
+                // rkmidmeta.WithPrefix("Dog"),
             ),
         ),
     }
 ```
 ```shell script
 # Print out headers from server on client side.
-x-rk-app-unix-time: [2021-06-22T14:42:03.855569+08:00]
-x-request-id: [f562f124-abbc-4804-b8a4-40848910b744]
+x-request-id: [c2df6fbd-552d-4425-8d93-0e665e2ba9ee]
+x-rk-app-unix-time: [2022-01-15T21:32:46.912377+08:00]
+x-rk-received-time: [2022-01-15T21:32:46.912377+08:00]
 x-rk-app-name: [rk]
-x-rk-received-time: [2021-06-22T14:42:03.855569+08:00]
+x-rk-app-version: []
 content-type: [application/grpc]
-x-rk-app-version: [v0.0.0]
+x-rk-app-locale: [*::*::*::*]
 ```
 
 ### Context Usage
@@ -124,36 +125,38 @@ requestId to client.
 Otherwise, if log interceptor was enabled, we will pick the latest one and attach to event logger and zap logger.
 
 ```go
-    rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.RequestIdKey, "this-is-my-request-id-overridden")
+    rkgrpcctx.AddHeaderToClient(ctx, rkmid.HeaderRequestId, "this-is-my-request-id-overridden")
 ```
 
 ```shell script
 # Headers sent from server.
-x-rk-app-name: [rkApp]
-x-rk-app-version: [v0.0.0]
-x-rk-app-unix-time: [2021-06-22T18:55:57.080544+08:00]
-x-rk-received-time: [2021-06-22T18:55:57.080544+08:00]
-x-request-id: [ff111c1d-368e-4dc5-b50d-761499476166 this-is-my-request-id-overridden]
+x-rk-app-unix-time: [2022-01-15T21:33:56.912831+08:00]
+x-request-id: [0a7d5da1-1104-48dc-a018-bba1272b22c4 this-is-my-request-id-overridden]
 content-type: [application/grpc]
+x-rk-app-name: [rk]
+x-rk-app-version: []
+x-rk-app-locale: [*::*::*::*]
+x-rk-received-time: [2022-01-15T21:33:56.912831+08:00]
+x-rk-app-locale: [*::*::*::*]
 ```
 
 If log interceptor was enabled, we will pick the latest one and attach to event logger and zap logger.
 ```shell script
 # Event logger
 ------------------------------------------------------------------------
-endTime=2021-06-22T18:55:57.080558+08:00
-startTime=2021-06-22T18:55:57.08053+08:00
-elapsedNano=28018
+endTime=2022-01-15T21:33:56.913007+08:00
+startTime=2022-01-15T21:33:56.912816+08:00
+elapsedNano=191231
 timezone=CST
 ids={"eventId":"this-is-my-request-id-overridden","requestId":"this-is-my-request-id-overridden"}
-app={"appName":"rkApp","appVersion":"v0.0.0","entryName":"grpcEntry","entryType":"grpc"}
+app={"appName":"rk","appVersion":"","entryName":"c7hcqgbd0cvksb3uq6rg","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
 error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:64499
+remoteAddr=127.0.0.1:62939
 operation=/Greeter/SayHello
 resCode=OK
 eventStatus=Ended
@@ -186,6 +189,7 @@ x-rk-app-unix-time: [2021-06-22T19:10:29.831625+08:00]
 x-rk-received-time: [2021-06-22T19:10:29.831625+08:00]
 x-request-id: [53365a2c-b0e1-4977-8b84-2b2374434a0f this-is-my-request-id-overridden]
 content-type: [application/grpc]
+x-rk-app-locale: [*::*::*::*]
 ```
 
 ## Example
@@ -203,53 +207,44 @@ $ go run greeter-client.go
 
 #### Output
 - Server side (zap & event)
+
 ```shell script
-2021-06-24T00:56:04.977+0800    INFO    meta/greeter-server.go:61  Received request from client.   {"requestId": "634809bc-e37d-4b7f-afaf-332ba81e02aa"}
-```
-```shell script
+2022-01-15T21:35:31.746+0800    INFO    server/greeter-server.go:69     Received request from client.   {"requestId": "a46e7010-125d-42ea-82e9-fc1e2477794e"}
+domain: [test]
+:authority: [localhost:8080]
+content-type: [application/grpc]
+user-agent: [grpc-go/1.42.0]
 ------------------------------------------------------------------------
-endTime=2021-06-24T00:56:04.977444+08:00
-startTime=2021-06-24T00:56:04.977341+08:00
-elapsedNano=102533
+endTime=2022-01-15T21:35:31.746571+08:00
+startTime=2022-01-15T21:35:31.746488+08:00
+elapsedNano=83267
 timezone=CST
-ids={"eventId":"634809bc-e37d-4b7f-afaf-332ba81e02aa","requestId":"634809bc-e37d-4b7f-afaf-332ba81e02aa"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
+ids={"eventId":"this-is-my-request-id-overridden","requestId":"this-is-my-request-id-overridden"}
+app={"appName":"rk","appVersion":"","entryName":"c7hcqgbd0cvksb3uq6rg","entryType":""}
 env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":""}
+payloads={"apiMethod":"","apiPath":"/Greeter/SayHello","apiProtocol":"","apiQuery":"","grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"UnaryServer","gwMethod":"","gwPath":"","gwScheme":"","gwUserAgent":"","userAgent":""}
 error={}
 counters={}
 pairs={}
 timing={}
-remoteAddr=localhost:55225
+remoteAddr=127.0.0.1:62945
 operation=/Greeter/SayHello
 resCode=OK
 eventStatus=Ended
 EOE
+
 ```
 
 - Client side (zap & event)
 ```shell script
-2021-06-24T00:56:04.979+0800    INFO    meta/greeter-client.go:42  [Message]: Hello rk-dev!        {"requestId": "634809bc-e37d-4b7f-afaf-332ba81e02aa"}
-```
-```shell script
-------------------------------------------------------------------------
-endTime=2021-06-24T00:56:04.979146+08:00
-startTime=2021-06-24T00:56:04.976445+08:00
-elapsedNano=2701892
-timezone=CST
-ids={"eventId":"634809bc-e37d-4b7f-afaf-332ba81e02aa","requestId":"634809bc-e37d-4b7f-afaf-332ba81e02aa"}
-app={"appName":"rk","appVersion":"v0.0.0","entryName":"grpc","entryType":"grpc"}
-env={"arch":"amd64","az":"*","domain":"*","hostname":"lark.local","localIP":"10.8.0.2","os":"darwin","realm":"*","region":"*"}
-payloads={"grpcMethod":"SayHello","grpcService":"Greeter","grpcType":"unaryClient","remoteIp":"localhost","remotePort":"8080"}
-error={}
-counters={}
-pairs={}
-timing={}
-remoteAddr=localhost:8080
-operation=/Greeter/SayHello
-resCode=OK
-eventStatus=Ended
-EOE
+2022-01-15T21:35:31.747+0800    INFO    client/greeter-client.go:38     [Message]: Hello rk-dev!
+x-rk-app-locale: [*::*::*::*]
+x-request-id: [a46e7010-125d-42ea-82e9-fc1e2477794e this-is-my-request-id-overridden]
+x-rk-app-unix-time: [2022-01-15T21:35:31.746493+08:00]
+x-rk-app-name: [rk]
+x-rk-app-version: []
+x-rk-received-time: [2022-01-15T21:35:31.746493+08:00]
+content-type: [application/grpc]
 ```
 
 #### Code

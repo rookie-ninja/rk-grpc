@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-entry/middleware/auth"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/auth"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
@@ -26,8 +27,8 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			rkgrpclog.UnaryServerInterceptor(),
 			rkgrpcauth.UnaryServerInterceptor(
-				rkgrpcauth.WithBasicAuth("rk-user:rk-pass"),
-				rkgrpcauth.WithApiKeyAuth("rk-api-key"),
+				rkmidauth.WithBasicAuth("rk-user:rk-pass"),
+				rkmidauth.WithApiKeyAuth("rk-api-key"),
 			),
 		),
 	}

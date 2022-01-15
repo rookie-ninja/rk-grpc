@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rookie-ninja/rk-entry/entry"
+	rkmid "github.com/rookie-ninja/rk-entry/middleware"
 	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
 	"github.com/rookie-ninja/rk-grpc/interceptor/context"
 	"github.com/rookie-ninja/rk-grpc/interceptor/log/zap"
@@ -36,10 +37,10 @@ func main() {
 			// Add extension interceptor
 			rkgrpcmeta.UnaryServerInterceptor(
 			// Entry name and entry type will be used for distinguishing interceptors. Recommended.
-			// rkgrpcmeta.WithEntryNameAndType("greeter", "grpc"),
+			// rkmidmeta.WithEntryNameAndType("greeter", "grpc"),
 			//
 			// We will replace X-<Prefix>-XXX with prefix user provided.
-			// rkgrpcmeta.WithPrefix("Dog"),
+			// rkmidmeta.WithPrefix("Dog"),
 			),
 		),
 	}
@@ -63,7 +64,7 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	//
 	// RequestId will be printed if enabled by bellow codes.
 	// 1: Enable rkgrpcmeta.UnaryServerInterceptor() in server side.
-	// 2: rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.RequestIdKey, rkcommon.GenerateRequestId())
+	// 2: rkgrpcctx.AddHeaderToClient(ctx, rkmid.RequestIdKey, rkcommon.GenerateRequestId())
 	//
 	rkgrpcctx.GetLogger(ctx).Info("Received request from client.")
 
@@ -74,7 +75,11 @@ func (server *GreeterServer) SayHello(ctx context.Context, request *proto.HelloR
 	//
 	// However, log interceptor would pick the latest one to attach into zap and event.
 	//
-	// rkgrpcctx.AddHeaderToClient(ctx, rkgrpcctx.RequestIdKey, "this-is-my-request-id-overridden")
+	rkgrpcctx.AddHeaderToClient(ctx, rkmid.HeaderRequestId, "this-is-my-request-id-overridden")
+
+	for k, v := range rkgrpcctx.GetIncomingHeaders(ctx) {
+		fmt.Println(fmt.Sprintf("%s: %s", k, v))
+	}
 
 	return &proto.HelloResponse{
 		Message: fmt.Sprintf("Hello %s!", request.GetName()),

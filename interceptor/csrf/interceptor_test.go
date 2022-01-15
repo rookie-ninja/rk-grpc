@@ -6,11 +6,44 @@
 package rkgrpccsrf
 
 import (
+	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-entry/middleware"
+	"github.com/rookie-ninja/rk-entry/middleware/csrf"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+func TestInterceptor(t *testing.T) {
+	defer assertNotPanic(t)
+
+	beforeCtx := rkmidcsrf.NewBeforeCtx()
+	mock := rkmidcsrf.NewOptionSetMock(beforeCtx)
+
+	// case 1: with error response
+	inter := Interceptor(userHandler, rkmidcsrf.WithMockOptionSet(mock))
+	req := httptest.NewRequest(http.MethodGet, "/ut", nil)
+	w := httptest.NewRecorder()
+
+	// assign any of error response
+	beforeCtx.Output.ErrResp = rkerror.New(rkerror.WithHttpCode(http.StatusForbidden))
+	inter.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusForbidden, w.Code)
+
+	// case 2: happy case
+	beforeCtx.Output.ErrResp = nil
+	beforeCtx.Output.VaryHeaders = []string{"value"}
+	beforeCtx.Output.Cookie = &http.Cookie{}
+	req = httptest.NewRequest(http.MethodGet, "/ut", nil)
+	w = httptest.NewRecorder()
+	inter.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotEmpty(t, w.Header().Get(rkmid.HeaderVary))
+	assert.NotNil(t, w.Header().Get("Set-Cookie"))
+}
+
+// ************ Test utility ************
 
 func assertNotPanic(t *testing.T) {
 	if r := recover(); r != nil {
@@ -29,90 +62,3 @@ func (h *user) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 var userHandler *user
-
-func getReqAndResp(method string, headers ...header) (*httptest.ResponseRecorder, *http.Request) {
-	req := httptest.NewRequest(method, "/get", nil)
-	for _, h := range headers {
-		req.Header.Add(h.Key, h.Value)
-	}
-	w := httptest.NewRecorder()
-	return w, req
-}
-
-type header struct {
-	Key   string
-	Value string
-}
-
-func TestInterceptor(t *testing.T) {
-	defer assertNotPanic(t)
-
-	// match 1
-	handler := Interceptor(userHandler, WithSkipper(func(request *http.Request) bool {
-		return true
-	}))
-	w, r := getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// match 2.1
-	handler = Interceptor(userHandler)
-	w, r = getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "_csrf")
-
-	// match 2.2
-	handler = Interceptor(userHandler)
-	w, r = getReqAndResp(http.MethodGet)
-	r.AddCookie(&http.Cookie{
-		Name:  "_csrf",
-		Value: "ut-csrf-token",
-	})
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "_csrf")
-
-	// match 3.1
-	handler = Interceptor(userHandler)
-	w, r = getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// match 3.2
-	handler = Interceptor(userHandler)
-	w, r = getReqAndResp(http.MethodPost)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-
-	// match 3.3
-	handler = Interceptor(userHandler)
-	w, r = getReqAndResp(http.MethodPost)
-	r.Header.Set(headerXCSRFToken, "ut-csrf-token")
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusForbidden, w.Code)
-
-	// match 4.1
-	handler = Interceptor(userHandler,
-		WithCookiePath("ut-path"))
-	w, r = getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "ut-path")
-
-	// match 4.2
-	handler = Interceptor(userHandler,
-		WithCookieDomain("ut-domain"))
-	w, r = getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "ut-domain")
-
-	// match 4.3
-	handler = Interceptor(userHandler,
-		WithCookieSameSite("strict"))
-	w, r = getReqAndResp(http.MethodGet)
-	handler.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "Strict")
-}

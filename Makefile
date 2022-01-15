@@ -32,9 +32,3 @@ buf:
 	@buf generate --path boot/api/v1
 	@echo "------------------------------------[Done]"
 
-.PHONY: pkger
-pkger:
-	@echo "[pkger] Running pkger..."
-	@pkger -o boot
-	@echo "------------------------------------[Done]"
-
