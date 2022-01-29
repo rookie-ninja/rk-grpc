@@ -81,15 +81,13 @@ const (
 // BootConfig Boot config which is for grpc entry.
 type BootConfig struct {
 	Grpc []struct {
-		Name               string `yaml:"name" json:"name"`
-		Description        string `yaml:"description" json:"description"`
-		Port               uint64 `yaml:"port" json:"port"`
-		Enabled            bool   `yaml:"enabled" json:"enabled"`
-		EnableReflection   bool   `yaml:"enableReflection" json:"enableReflection"`
-		NoRecvMsgSizeLimit bool   `yaml:"noRecvMsgSizeLimit" json:"noRecvMsgSizeLimit"`
-		Cert               struct {
-			Ref string `yaml:"ref" json:"ref"`
-		} `yaml:"cert" json:"cert"`
+		Name               string                          `yaml:"name" json:"name"`
+		Description        string                          `yaml:"description" json:"description"`
+		Port               uint64                          `yaml:"port" json:"port"`
+		Enabled            bool                            `yaml:"enabled" json:"enabled"`
+		EnableReflection   bool                            `yaml:"enableReflection" json:"enableReflection"`
+		NoRecvMsgSizeLimit bool                            `yaml:"noRecvMsgSizeLimit" json:"noRecvMsgSizeLimit"`
+		CertEntry          string                          `yaml:"certEntry" json:"certEntry"`
 		CommonService      rkentry.BootConfigCommonService `yaml:"commonService" json:"commonService"`
 		Sw                 rkentry.BootConfigSw            `yaml:"sw" json:"sw"`
 		Tv                 rkentry.BootConfigTv            `yaml:"tv" json:"tv"`
@@ -113,12 +111,8 @@ type BootConfig struct {
 			TracingTelemetry rkmidtrace.BootConfig   `yaml:"tracingTelemetry" json:"tracingTelemetry"`
 		} `yaml:"interceptors" json:"interceptors"`
 		Logger struct {
-			ZapLogger struct {
-				Ref string `yaml:"ref" json:"ref"`
-			} `yaml:"zapLogger" json:"zapLogger"`
-			EventLogger struct {
-				Ref string `yaml:"ref" json:"ref"`
-			} `yaml:"eventLogger" json:"eventLogger"`
+			ZapLogger   string `yaml:"zapLogger" json:"zapLogger"`
+			EventLogger string `yaml:"eventLogger" json:"eventLogger"`
 		} `yaml:"logger" json:"logger"`
 	} `yaml:"grpc" json:"grpc"`
 }
@@ -193,12 +187,12 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			continue
 		}
 
-		zapLoggerEntry := rkentry.GlobalAppCtx.GetZapLoggerEntry(element.Logger.ZapLogger.Ref)
+		zapLoggerEntry := rkentry.GlobalAppCtx.GetZapLoggerEntry(element.Logger.ZapLogger)
 		if zapLoggerEntry == nil {
 			zapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
 		}
 
-		eventLoggerEntry := rkentry.GlobalAppCtx.GetEventLoggerEntry(element.Logger.EventLogger.Ref)
+		eventLoggerEntry := rkentry.GlobalAppCtx.GetEventLoggerEntry(element.Logger.EventLogger)
 		if eventLoggerEntry == nil {
 			eventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
 		}
@@ -296,7 +290,7 @@ func RegisterGrpcEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			WithStaticFileHandlerEntry(staticEntry),
 			WithEnableReflection(element.EnableReflection),
 			WithGwMappingFilePaths(element.GwMappingFilePaths...),
-			WithCertEntry(rkentry.GlobalAppCtx.GetCertEntry(element.Cert.Ref)))
+			WithCertEntry(rkentry.GlobalAppCtx.GetCertEntry(element.CertEntry)))
 
 		// Did we disabled message size for receiving?
 		if element.NoRecvMsgSizeLimit {
@@ -461,6 +455,10 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 			}
 		}
 	}
+
+	// add entry name and entry type into loki syncer if enabled
+	entry.ZapLoggerEntry.AddEntryLabelToLokiSyncer(entry)
+	entry.EventLoggerEntry.AddEntryLabelToLokiSyncer(entry)
 
 	rkentry.GlobalAppCtx.AddEntry(entry)
 
