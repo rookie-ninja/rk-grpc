@@ -498,9 +498,9 @@ User can start multiple [gRPC](https://grpc.io/docs/languages/go/) and [grpc-gat
 | grpc.enableRkGwOption | Enable RK style [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) server options. [detail](boot/gw_server_options.go) | false |
 | grpc.noRecvMsgSizeLimit | Disable [gRPC](https://grpc.io/docs/languages/go/) server side receive message size limit | false |
 | grpc.gwMappingFilePaths | The grpc [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) mapping file path. [example](boot/api/v1/gw_mapping.yaml) | string array | [] |
-| grpc.cert.ref | Reference of cert entry declared in [cert entry](https://github.com/rookie-ninja/rk-entry#certentry) | string | "" |
-| grpc.logger.zapLogger.ref | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
-| grpc.logger.eventLogger.ref | Reference of eventLoggerEntry declared in [eventLoggerEntry](https://github.com/rookie-ninja/rk-entry#eventloggerentry) | string | "" |
+| grpc.certEntry | Reference of cert entry declared in [cert entry](https://github.com/rookie-ninja/rk-entry#certentry) | string | "" |
+| grpc.logger.zapLogger | Reference of zapLoggerEntry declared in [zapLoggerEntry](https://github.com/rookie-ninja/rk-entry#zaploggerentry) | string | "" |
+| grpc.logger.eventLogger | Reference of eventLoggerEntry declared in [eventLoggerEntry](https://github.com/rookie-ninja/rk-entry#eventloggerentry) | string | "" |
 
 ### gRPC gateway options
 Please refer to bellow repository for detailed explanations.
@@ -810,6 +810,17 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #      maxbackups: 3                                       # Optional, default: 3 (days)
 #      localtime: true                                     # Optional, default: true
 #      compress: true                                      # Optional, default: true
+#    loki:
+#      enabled: true                                       # Optional, default: false
+#      addr: localhost:3100                                # Optional, default: localhost:3100
+#      path: /loki/api/v1/push                             # Optional, default: /loki/api/v1/push
+#      username: ""                                        # Optional, default: ""
+#      password: ""                                        # Optional, default: ""
+#      maxBatchWaitMs: 3000                                # Optional, default: 3000
+#      maxBatchSize: 1000                                  # Optional, default: 1000
+#      insecureSkipVerify: false                           # Optional, default: false
+#      labels:                                             # Optional, default: empty map
+#        my_label_key: my_label_value
 #eventLogger:
 #  - name: event-logger                                    # Required
 #    encoding: "json"                                      # Optional, default: console, options: [json, console]
@@ -821,6 +832,17 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #      maxbackups: 3                                       # Optional, default: 3 (days)
 #      localtime: true                                     # Optional, default: true
 #      compress: true                                      # Optional, default: true
+#    loki:
+#      enabled: true                                       # Optional, default: false
+#      addr: localhost:3100                                # Optional, default: localhost:3100
+#      path: /loki/api/v1/push                             # Optional, default: /loki/api/v1/push
+#      username: ""                                        # Optional, default: ""
+#      password: ""                                        # Optional, default: ""
+#      maxBatchWaitMs: 3000                                # Optional, default: 3000
+#      maxBatchSize: 1000                                  # Optional, default: 1000
+#      insecureSkipVerify: false                           # Optional, default: false
+#      labels:                                             # Optional, default: empty map
+#        my_label_key: my_label_value
 #cred:
 #  - name: "local-cred"                                    # Required
 #    description: "Description of entry"                   # Optional
@@ -861,8 +883,7 @@ grpc:
 #        discardUnknown: false                             # Optional, default: false
 #    noRecvMsgSizeLimit: true                              # Optional, default: false
 #    gwMappingFilePaths: []                                # Optional
-#    cert:
-#      ref: "local-cert"                                   # Optional, default: "", reference of cert entry declared above
+#    certEntry: "local-cert"                               # Optional, default: "", reference of cert entry declared above
 #    sw:
 #      enabled: true                                       # Optional, default: false
 #      path: "sw"                                          # Optional, default: "sw"
@@ -889,10 +910,8 @@ grpc:
 #        cert:                                             # Optional
 #          ref: "local-test"                               # Optional, default: "", reference of cert entry declared above
 #    logger:
-#      zapLogger:
-#        ref: zap-logger                                   # Optional, default: logger of STDOUT, reference of logger entry declared above
-#      eventLogger:
-#        ref: event-logger                                 # Optional, default: logger of STDOUT, reference of logger entry declared above
+#      zapLogger: zap-logger                               # Optional, default: logger of STDOUT, reference of logger entry declared above
+#      eventLogger: event-logger                           # Optional, default: logger of STDOUT, reference of logger entry declared above
 #    interceptors:
 #      loggingZap:
 #        enabled: true                                     # Optional, default: false

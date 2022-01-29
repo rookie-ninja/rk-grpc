@@ -107,8 +107,7 @@ grpc:
   enabled: true
   commonService:
     enabled: true                                  # Optional, default: false
-  cert:
-    ref: "local-cert"                              # Optional, default: "", reference of cert entry declared above
+  certEntry: "local-cert"                          # Optional, default: "", reference of cert entry declared above
   noRecvMsgSizeLimit: true
   enableRkGwOption: true
   gwOption:
@@ -152,10 +151,8 @@ grpc:
       cert:
         ref: "local-cert"                          # Optional, default: "", reference of cert entry declared above
   logger:
-    zapLogger:
-      ref: zap-logger                              # Optional, default: logger of STDOUT, reference of logger entry declared above
-    eventLogger:
-      ref: event-logger                            # Optional, default: logger of STDOUT, reference of logger entry declared above
+    zapLogger: zap-logger                          # Optional, default: logger of STDOUT, reference of logger entry declared above
+    eventLogger: event-logger                      # Optional, default: logger of STDOUT, reference of logger entry declared above
   interceptors:
     loggingZap:
       enabled: true                                # Optional, default: false
