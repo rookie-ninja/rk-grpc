@@ -9,9 +9,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/rookie-ninja/rk-common v1.2.3
-	github.com/rookie-ninja/rk-entry v1.0.8
-	github.com/rookie-ninja/rk-logger v1.2.7
-	github.com/rookie-ninja/rk-query v1.2.7
+	github.com/rookie-ninja/rk-entry v1.0.9
+	github.com/rookie-ninja/rk-logger v1.2.8
+	github.com/rookie-ninja/rk-query v1.2.8
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/otel v1.3.0
