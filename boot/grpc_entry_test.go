@@ -1,3 +1,4 @@
+//go:build !race
 // +build !race
 
 // Copyright (c) 2021 rookie-ninja
@@ -10,21 +11,19 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-entry/middleware/cors"
-	"github.com/rookie-ninja/rk-entry/middleware/csrf"
-	rkmidmetrics "github.com/rookie-ninja/rk-entry/middleware/metrics"
-	"github.com/rookie-ninja/rk-entry/middleware/secure"
-	testdata "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
-	"github.com/rookie-ninja/rk-grpc/interceptor/meta"
-	rkgrpcmetrics "github.com/rookie-ninja/rk-grpc/interceptor/metrics/prom"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
+	"github.com/rookie-ninja/rk-entry/v2/middleware/cors"
+	"github.com/rookie-ninja/rk-entry/v2/middleware/csrf"
+	"github.com/rookie-ninja/rk-entry/v2/middleware/secure"
+	testdata "github.com/rookie-ninja/rk-grpc/v2/example/middleware/proto/testdata"
+	"github.com/rookie-ninja/rk-grpc/v2/middleware/meta"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -32,7 +31,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path"
 	"strconv"
@@ -40,66 +38,14 @@ import (
 	"time"
 )
 
-//func TestRegisterGrpcEntry_WithoutOptions(t *testing.T) {
-//	entry := RegisterGrpcEntry()
-//
-//	assert.NotNil(t, entry)
-//
-//	entryDefaultName := "GrpcServer-" + strconv.FormatUint(entry.Port, 10)
-//	assert.Equal(t, entry, rkentry.GlobalAppCtx.GetEntry(entryDefaultName))
-//	assert.True(t, rkentry.GlobalAppCtx.RemoveEntry(entryDefaultName))
-//
-//	assert.Len(t, entry.UnaryInterceptors, 1)
-//	assert.Len(t, entry.StreamInterceptors, 1)
-//	assert.NotNil(t, entry.ZapLoggerEntry)
-//	assert.NotNil(t, entry.EventLoggerEntry)
-//}
-//
-//func TestRegisterGrpcEntry_HappyCase(t *testing.T) {
-//	entryName := "ut-grpc-entry"
-//	zapLoggerEntry := rkentry.NoopZapLoggerEntry()
-//	eventLoggerEntry := rkentry.NoopEventLoggerEntry()
-//	grpcPort := uint64(2020)
-//	serverOpt := grpc.InitialWindowSize(1)
-//	loggingInterUnary := rkgrpclog.UnaryServerInterceptor()
-//	loggingInterStream := rkgrpclog.StreamServerInterceptor()
-//	certEntry := &rkentry.CertEntry{}
-//	commonServiceEntry := RegisterCommonServiceEntry()
-//
-//	entry := RegisterGrpcEntry(
-//		WithNameGrpc(entryName),
-//		WithZapLoggerEntryGrpc(zapLoggerEntry),
-//		WithEventLoggerEntryGrpc(eventLoggerEntry),
-//		WithPortGrpc(grpcPort),
-//		WithServerOptionsGrpc(serverOpt),
-//		WithUnaryInterceptorsGrpc(loggingInterUnary),
-//		WithStreamInterceptorsGrpc(loggingInterStream),
-//		WithCertEntryGrpc(certEntry),
-//		WithCommonServiceEntryGrpc(commonServiceEntry))
-//
-//	assert.NotNil(t, entry)
-//
-//	assert.Equal(t, entry, rkentry.GlobalAppCtx.GetEntry(entryName))
-//	assert.Equal(t, zapLoggerEntry, entry.ZapLoggerEntry)
-//	assert.Equal(t, eventLoggerEntry, entry.EventLoggerEntry)
-//	assert.Equal(t, grpcPort, entry.Port)
-//	assert.Len(t, entry.ServerOpts, 1)
-//	assert.Len(t, entry.UnaryInterceptors, 2)
-//	assert.Len(t, entry.StreamInterceptors, 2)
-//	assert.Equal(t, certEntry, entry.CertEntry)
-//	assert.Equal(t, commonServiceEntry, entry.CommonServiceEntry)
-//
-//	assert.True(t, rkentry.GlobalAppCtx.RemoveEntry(entryName))
-//}
-//
 func TestRegisterGrpcEntriesWithConfig_HappyCase(t *testing.T) {
 	defer assertNotPanic(t)
 
 	configFile := `
 ---
-zapLogger:
+logger:
 - name: zap-logger
-eventLogger:
+event:
 - name: event-logger
 grpc:
 - name: greeter
@@ -121,7 +67,7 @@ grpc:
     unmarshal:
       allowPartial: true
       discardUnknown: true
-  tv:
+  docs:
     enabled: true                                  # Optional, default: false
   sw:
     enabled: true                                  # Optional, default: false
@@ -150,13 +96,12 @@ grpc:
       intervalMS: 1000                             # Optional, default: 1000
       cert:
         ref: "local-cert"                          # Optional, default: "", reference of cert entry declared above
-  logger:
-    zapLogger: zap-logger                          # Optional, default: logger of STDOUT, reference of logger entry declared above
-    eventLogger: event-logger                      # Optional, default: logger of STDOUT, reference of logger entry declared above
-  interceptors:
-    loggingZap:
+  loggerEntry: zap-logger                          # Optional, default: logger of STDOUT, reference of logger entry declared above
+  eventEntry: event-logger                         # Optional, default: logger of STDOUT, reference of logger entry declared above
+  middleware:
+    logging:
       enabled: true                                # Optional, default: false
-    metricsProm:
+    prom:
       enabled: true                                # Optional, default: false
     auth:
       enabled: true                                # Optional, default: false
@@ -164,7 +109,7 @@ grpc:
         - "user:pass"                              # Optional, default: ""
     meta:
       enabled: true                                # Optional, default: false
-    tracingTelemetry:
+    trace:
       enabled: true                                # Optional, default: false
       exporter:                                    # Optional, default will create a stdout exporter
         file:
@@ -188,24 +133,21 @@ grpc:
       enabled: true
 `
 
-	// Create bootstrap config file at ut temp dir
-	configFilePath := createFileAtTestTempDir(t, configFile)
-
 	// Register internal entries
-	rkentry.RegisterInternalEntriesFromConfig(configFilePath)
+	rkentry.BootstrapPreloadEntryYAML([]byte(configFile))
 
 	// Register entries with config file
-	entries := RegisterGrpcEntriesWithConfig(configFilePath)
+	entries := RegisterGrpcEntryYAML([]byte(configFile))
 	assert.Len(t, entries, 1)
 	entry := entries["greeter"].(*GrpcEntry)
 
-	assert.Equal(t, "zap-logger", entry.ZapLoggerEntry.GetName())
-	assert.Equal(t, "event-logger", entry.EventLoggerEntry.GetName())
+	assert.Equal(t, "zap-logger", entry.LoggerEntry.GetName())
+	assert.Equal(t, "event-logger", entry.EventEntry.GetName())
 	assert.Equal(t, "greeter", entry.GetName())
 	assert.Equal(t, uint64(1949), entry.Port)
 	assert.NotNil(t, entry.CommonServiceEntry)
-	assert.NotNil(t, entry.SwEntry)
-	assert.NotNil(t, entry.TvEntry)
+	assert.NotNil(t, entry.SWEntry)
+	assert.NotNil(t, entry.DocsEntry)
 	assert.NotNil(t, entry.PromEntry)
 
 	assert.True(t, len(entry.UnaryInterceptors) > 0)
@@ -232,54 +174,58 @@ func TestRegisterGrpcEntry(t *testing.T) {
 	assert.False(t, entry.IsTlsEnabled())
 	assert.False(t, entry.IsCommonServiceEnabled())
 	assert.False(t, entry.IsProxyEnabled())
-	assert.False(t, entry.IsSwEnabled())
+	assert.False(t, entry.IsSWEnabled())
 	assert.False(t, entry.IsStaticFileHandlerEnabled())
-	assert.False(t, entry.IsTvEnabled())
+	assert.False(t, entry.IsDocsEnabled())
 	assert.False(t, entry.IsPromEnabled())
+
+	certEntry := rkentry.RegisterCertEntry(&rkentry.BootCert{
+		Cert: []*rkentry.BootCertE{
+			{
+				Name: "ut-cert",
+			},
+		},
+	})[0]
+	certificate, _ := tls.X509KeyPair(generateCerts())
+	certEntry.Certificate = &certificate
 
 	// with options, invalid tls
 	entry = RegisterGrpcEntry(
 		WithName("name"),
 		WithDescription("desc"),
-		WithZapLoggerEntry(nil),
-		WithEventLoggerEntry(nil),
+		WithLoggerEntry(rkentry.LoggerEntryNoop),
+		WithEventEntry(rkentry.EventEntryNoop),
 		WithPort(8080),
 		WithServerOptions(grpc.MaxRecvMsgSize(10)),
 		WithUnaryInterceptors(rkgrpcmeta.UnaryServerInterceptor()),
 		WithStreamInterceptors(rkgrpcmeta.StreamServerInterceptor()),
 		WithGrpcRegF(func(server *grpc.Server) {}),
-		WithCertEntry(rkentry.RegisterCertEntry()),
-		WithCommonServiceEntry(rkentry.RegisterCommonServiceEntry()),
+		WithCertEntry(certEntry),
+		WithCommonServiceEntry(rkentry.RegisterCommonServiceEntry(&rkentry.BootCommonService{
+			Enabled: true,
+		})),
 		WithEnableReflection(true),
-		WithSwEntry(rkentry.RegisterSwEntry()),
-		WithTvEntry(rkentry.RegisterTvEntry()),
+		WithSwEntry(rkentry.RegisterSWEntry(&rkentry.BootSW{
+			Enabled: true,
+		})),
 		WithProxyEntry(NewProxyEntry()),
-		WithPromEntry(rkentry.RegisterPromEntry()),
-		WithStaticFileHandlerEntry(rkentry.RegisterStaticFileHandlerEntry()),
+		WithPromEntry(rkentry.RegisterPromEntry(&rkentry.BootProm{
+			Enabled: true,
+		})),
+		WithStaticFileHandlerEntry(rkentry.RegisterStaticFileHandlerEntry(&rkentry.BootStaticFileHandler{
+			Enabled: true,
+		})),
 		WithGwRegF(func(ctx context.Context, mux *gwruntime.ServeMux, s string, options []grpc.DialOption) error {
 			return nil
 		}),
 		WithGrpcDialOptions(grpc.WithBlock()),
 		WithGwMuxOptions(gwruntime.WithDisablePathLengthFallback()),
-		WithGwMappingFilePaths(""),
 	)
 	assert.True(t, entry.IsCommonServiceEnabled())
 	assert.True(t, entry.IsProxyEnabled())
-	assert.True(t, entry.IsSwEnabled())
+	assert.True(t, entry.IsSWEnabled())
 	assert.True(t, entry.IsStaticFileHandlerEnabled())
-	assert.True(t, entry.IsTvEnabled())
 	assert.True(t, entry.IsPromEnabled())
-	assert.NotNil(t, entry)
-
-	// with valid tls
-	certEntry := rkentry.RegisterCertEntry()
-	certEntry.Store.ServerCert, certEntry.Store.ServerKey = generateCerts()
-	entry = RegisterGrpcEntry(
-		WithName("name"),
-		WithPort(8080),
-		WithCertEntry(certEntry),
-	)
-
 	assert.True(t, entry.IsTlsEnabled())
 	assert.NotNil(t, entry)
 }
@@ -353,11 +299,17 @@ func TestRegisterGrpcEntry_EntryFunc(t *testing.T) {
 	entry.Interrupt(context.TODO())
 
 	// case 4, 5, 6, 7, 8
-	certEntry := rkentry.RegisterCertEntry()
-	certEntry.Store.ServerCert, certEntry.Store.ServerKey = generateCerts()
+	certEntry := rkentry.RegisterCertEntry(&rkentry.BootCert{
+		Cert: []*rkentry.BootCertE{
+			{
+				Name: "ut-cert",
+			},
+		},
+	})
+	certEntry[0].Bootstrap(context.TODO())
 	entry = RegisterGrpcEntry(
 		WithServerOptions(grpc.MaxRecvMsgSize(10)),
-		WithCertEntry(certEntry))
+		WithCertEntry(certEntry[0]))
 	entry.Bootstrap(context.TODO())
 	assert.NotEmpty(t, entry.String())
 	time.Sleep(1 * time.Second)
@@ -374,11 +326,18 @@ func TestRegisterGrpcEntry_EntryFunc(t *testing.T) {
 
 	// case 11, 12, 13, 14, 15, 16, 17, 18, 19
 	entry = RegisterGrpcEntry(
-		WithSwEntry(rkentry.RegisterSwEntry()),
-		WithTvEntry(rkentry.RegisterTvEntry()),
-		WithStaticFileHandlerEntry(rkentry.RegisterStaticFileHandlerEntry()),
-		WithPromEntry(rkentry.RegisterPromEntry()),
-		WithCommonServiceEntry(rkentry.RegisterCommonServiceEntry()))
+		WithSwEntry(rkentry.RegisterSWEntry(&rkentry.BootSW{
+			Enabled: true,
+		})),
+		WithStaticFileHandlerEntry(rkentry.RegisterStaticFileHandlerEntry(&rkentry.BootStaticFileHandler{
+			Enabled: true,
+		})),
+		WithPromEntry(rkentry.RegisterPromEntry(&rkentry.BootProm{
+			Enabled: true,
+		})),
+		WithCommonServiceEntry(rkentry.RegisterCommonServiceEntry(&rkentry.BootCommonService{
+			Enabled: true,
+		})))
 	corsOpt := rkmidcors.WithEntryNameAndType("", "")
 	csrfOpt := rkmidcsrf.WithEntryNameAndType("", "")
 	secOpt := rkmidsec.WithEntryNameAndType("", "")
@@ -415,203 +374,11 @@ func TestGrpcEntry_startHttpServer_Panic(t *testing.T) {
 	defer lis.Close()
 }
 
-func TestGetGrpcEntry_parseGwMapping(t *testing.T) {
-	entry := RegisterGrpcEntry()
-
-	// case 1: failed to read file
-	entry.GwMappingFilePaths = []string{""}
-	entry.parseGwMapping()
-	assert.Empty(t, entry.GwHttpToGrpcMapping)
-
-	// case 2: invalid yaml format
-	invalidYamlStr := `invalid yaml`
-	entry.GwMappingFilePaths = []string{createFileAtTestTempDir(t, invalidYamlStr)}
-	entry.parseGwMapping()
-	assert.Empty(t, entry.GwHttpToGrpcMapping)
-
-	// case 3: failed to unmarshal
-	validYamlStr := `
----
-key: value
-`
-	entry.GwMappingFilePaths = []string{createFileAtTestTempDir(t, validYamlStr)}
-	entry.parseGwMapping()
-	entry.parseGwMapping()
-	assert.Empty(t, entry.GwHttpToGrpcMapping)
-
-	// case 4: happy case
-	validYamlStr = `
----
-type: google.api.Service
-config_version: 3
-http:
-  rules:
-    - selector: api.v1.Greeter.Get
-      get: /v1/get
-    - selector: api.v1.Greeter.Put
-      put: /v1/put
-    - selector: api.v1.Greeter.Post
-      post: /v1/post
-    - selector: api.v1.Greeter.Delete
-      delete: /v1/delete
-    - selector: api.v1.Greeter.Patch
-      patch: /v1/patch
-`
-	entry.GwMappingFilePaths = []string{createFileAtTestTempDir(t, validYamlStr)}
-	entry.parseGwMapping()
-	assert.Equal(t, "/v1/get", entry.GwHttpToGrpcMapping["api.v1.Greeter.Get"].Pattern)
-	assert.Equal(t, "GET", entry.GwHttpToGrpcMapping["api.v1.Greeter.Get"].Method)
-
-	assert.Equal(t, "/v1/put", entry.GwHttpToGrpcMapping["api.v1.Greeter.Put"].Pattern)
-	assert.Equal(t, "PUT", entry.GwHttpToGrpcMapping["api.v1.Greeter.Put"].Method)
-
-	assert.Equal(t, "/v1/post", entry.GwHttpToGrpcMapping["api.v1.Greeter.Post"].Pattern)
-	assert.Equal(t, "POST", entry.GwHttpToGrpcMapping["api.v1.Greeter.Post"].Method)
-
-	assert.Equal(t, "/v1/delete", entry.GwHttpToGrpcMapping["api.v1.Greeter.Delete"].Pattern)
-	assert.Equal(t, "DELETE", entry.GwHttpToGrpcMapping["api.v1.Greeter.Delete"].Method)
-
-	assert.Equal(t, "/v1/patch", entry.GwHttpToGrpcMapping["api.v1.Greeter.Patch"].Pattern)
-	assert.Equal(t, "PATCH", entry.GwHttpToGrpcMapping["api.v1.Greeter.Patch"].Method)
-
-	assert.NotEmpty(t, entry.GwHttpToGrpcMapping)
-
-}
-
 func TestGetGrpcEntry(t *testing.T) {
 	RegisterGrpcEntry(WithName("ut"))
 
 	assert.NotNil(t, GetGrpcEntry("ut"))
 	assert.Nil(t, GetGrpcEntry("not-exist"))
-}
-
-func TestGrpcEntry_Apis(t *testing.T) {
-	entry := RegisterGrpcEntry()
-	entry.Server = grpc.NewServer()
-
-	// without apis
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/ut", nil)
-	entry.Apis(w, req)
-
-	apisResponse := &rkentry.ApisResponse{}
-	json.Unmarshal(w.Body.Bytes(), apisResponse)
-	assert.Empty(t, apisResponse.Entries)
-
-	// with apis
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/ut", nil)
-	testdata.RegisterGreeterServer(entry.Server, &GreeterServer{})
-	entry.Apis(w, req)
-
-	apisResponse = &rkentry.ApisResponse{}
-	json.Unmarshal(w.Body.Bytes(), apisResponse)
-	assert.NotEmpty(t, apisResponse.Entries)
-}
-
-func TestGrpcEntry_Req(t *testing.T) {
-	// without metrics set
-	entry := RegisterGrpcEntry()
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/ut", nil)
-	entry.Req(w, req)
-
-	reqResponse := &rkentry.ReqResponse{}
-	json.Unmarshal(w.Body.Bytes(), reqResponse)
-	assert.Empty(t, reqResponse.Metrics)
-
-	// with metrics
-	entry = RegisterGrpcEntry(
-		WithName("ut"),
-		WithPromEntry(rkentry.RegisterPromEntry()),
-		WithUnaryInterceptors(rkgrpcmetrics.UnaryServerInterceptor(
-			rkmidmetrics.WithEntryNameAndType("ut", GrpcEntryType))))
-	entry.Server = grpc.NewServer()
-	testdata.RegisterGreeterServer(entry.Server, &GreeterServer{})
-
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/ut", nil)
-	entry.Req(w, req)
-
-	reqResponse = &rkentry.ReqResponse{}
-	json.Unmarshal(w.Body.Bytes(), reqResponse)
-	assert.NotEmpty(t, reqResponse.Metrics)
-
-	// with metrics from tv
-	entry = RegisterGrpcEntry(
-		WithName("ut"),
-		WithPromEntry(rkentry.RegisterPromEntry()),
-		WithUnaryInterceptors(rkgrpcmetrics.UnaryServerInterceptor(
-			rkmidmetrics.WithEntryNameAndType("ut", GrpcEntryType))))
-	entry.Server = grpc.NewServer()
-	testdata.RegisterGreeterServer(entry.Server, &GreeterServer{})
-
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/ut", nil)
-	req.URL.RawQuery = "fromTv=true"
-	entry.Req(w, req)
-
-	reqResponse = &rkentry.ReqResponse{}
-	json.Unmarshal(w.Body.Bytes(), reqResponse)
-	assert.NotEmpty(t, reqResponse.Metrics)
-	assert.Equal(t, reqResponse.Metrics[0].GrpcService, reqResponse.Metrics[0].RestMethod)
-	assert.Equal(t, reqResponse.Metrics[0].GrpcMethod, reqResponse.Metrics[0].RestPath)
-}
-
-func TestGrpcEntry_GwErrorMapping(t *testing.T) {
-	entry := RegisterGrpcEntry()
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/ut", nil)
-	entry.GwErrorMapping(w, req)
-
-	res := &rkentry.GwErrorMappingResponse{}
-	json.Unmarshal(w.Body.Bytes(), res)
-	assert.NotEmpty(t, res.Mapping)
-}
-
-func TestGrpcEntry_TV(t *testing.T) {
-	// happy case
-	entry := RegisterGrpcEntry()
-	tvEntry := rkentry.RegisterTvEntry()
-	tvEntry.Bootstrap(context.TODO())
-	entry.TvEntry = tvEntry
-
-	entry.Server = grpc.NewServer()
-	testdata.RegisterGreeterServer(entry.Server, &GreeterServer{})
-
-	// 1: /apis
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/rk/v1/tv/apis", nil)
-
-	entry.TV(w, req)
-	assert.NotEmpty(t, w.Body.String())
-
-	// 2: /gwErrorMapping
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/rk/v1/tv/gwErrorMapping", nil)
-
-	entry.TV(w, req)
-	assert.NotEmpty(t, w.Body.String())
-
-	// 3: /env
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/rk/v1/tv/env", nil)
-
-	entry.TV(w, req)
-	assert.NotEmpty(t, w.Body.String())
-}
-
-func TestGrpcEntry_getSwUrl(t *testing.T) {
-	// without swagger entry enabled
-	entry := RegisterGrpcEntry()
-	assert.Empty(t, entry.getSwUrl(nil))
-
-	// with SwEntry and CertEntry
-	entry.SwEntry = rkentry.RegisterSwEntry()
-	certEntry := rkentry.RegisterCertEntry()
-	certEntry.Store.ServerCert, certEntry.Store.ServerKey = generateCerts()
-	entry.CertEntry = certEntry
-	assert.NotEmpty(t, entry.getSwUrl(httptest.NewRequest(http.MethodGet, "/", nil)))
 }
 
 // GreeterServer Implementation of GreeterServer.

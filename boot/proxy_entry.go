@@ -11,9 +11,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
-	"github.com/rookie-ninja/rk-common/common"
-	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/interceptor"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
+	"github.com/rookie-ninja/rk-entry/v2/middleware"
+	"github.com/rookie-ninja/rk-grpc/v2/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/encoding"
@@ -31,8 +31,6 @@ const (
 	ProxyEntryType = "ProxyEntry"
 	// ProxyEntryNameDefault default entry name
 	ProxyEntryNameDefault = "ProxyDefault"
-	// ProxyEntryDescription default entry description
-	ProxyEntryDescription = "Internal RK entry which implements proxy with Grpc framework."
 	// HeaderBased header based proxy pattern
 	HeaderBased = "headerBased"
 	// PathBased grpc path(method) based proxy pattern
@@ -129,7 +127,7 @@ type IpPattern struct {
 
 // Incoming remote IP should match user defined CIDR.
 func (r *rule) matchIpPattern(ctx context.Context) (bool, string) {
-	remoteIp, _, _ := rkgrpcinter.GetRemoteAddressSet(ctx)
+	remoteIp, _, _ := rkgrpcmid.GetRemoteAddressSet(ctx)
 
 	// iterate pattern slice
 	for i := range r.IpPattern {
@@ -258,35 +256,35 @@ func (r *rule) GetDirector() Director {
 }
 
 type ProxyEntry struct {
-	EntryName        string                    `json:"entryName" yaml:"entryName"`
-	EntryType        string                    `json:"entryType" yaml:"entryType"`
-	EntryDescription string                    `json:"-" yaml:"-"`
-	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"-" yaml:"-"`
-	EventLoggerEntry *rkentry.EventLoggerEntry `json:"-" yaml:"-"`
-	r                *rule                     `json:"-" yaml:"-"`
+	entryName        string               `json:"-" yaml:"-"`
+	entryType        string               `json:"-" yaml:"-"`
+	entryDescription string               `json:"-" yaml:"-"`
+	LoggerEntry      *rkentry.LoggerEntry `json:"-" yaml:"-"`
+	EventEntry       *rkentry.EventEntry  `json:"-" yaml:"-"`
+	r                *rule                `json:"-" yaml:"-"`
 }
 
 // ProxyEntryOption Proxy entry option used while initializing proxy entry via code
 type ProxyEntryOption func(*ProxyEntry)
 
-// WithNameProm Name of proxy entry
+// WithNameProxy Name of proxy entry
 func WithNameProxy(name string) ProxyEntryOption {
 	return func(entry *ProxyEntry) {
-		entry.EntryName = name
+		entry.entryName = name
 	}
 }
 
-// WithZapLoggerEntryProxy rkentry.ZapLoggerEntry of proxy entry
-func WithZapLoggerEntryProxy(zapLoggerEntry *rkentry.ZapLoggerEntry) ProxyEntryOption {
+// WithLoggerEntryProxy rkentry.LoggerEntry of proxy entry
+func WithLoggerEntryProxy(loggerEntry *rkentry.LoggerEntry) ProxyEntryOption {
 	return func(entry *ProxyEntry) {
-		entry.ZapLoggerEntry = zapLoggerEntry
+		entry.LoggerEntry = loggerEntry
 	}
 }
 
-// WithEventLoggerEntryProxy rkentry.EventLoggerEntry of proxy entry
-func WithEventLoggerEntryProxy(eventLoggerEntry *rkentry.EventLoggerEntry) ProxyEntryOption {
+// WithEventEntryProxy rkentry.EventEntry of proxy entry
+func WithEventEntryProxy(eventEntry *rkentry.EventEntry) ProxyEntryOption {
 	return func(entry *ProxyEntry) {
-		entry.EventLoggerEntry = eventLoggerEntry
+		entry.EventEntry = eventEntry
 	}
 }
 
@@ -300,23 +298,23 @@ func WithRuleProxy(r *rule) ProxyEntryOption {
 // NewProxyEntry Create a proxy entry with options
 func NewProxyEntry(opts ...ProxyEntryOption) *ProxyEntry {
 	entry := &ProxyEntry{
-		EventLoggerEntry: rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
-		ZapLoggerEntry:   rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
-		EntryName:        ProxyEntryNameDefault,
-		EntryType:        ProxyEntryType,
-		EntryDescription: ProxyEntryDescription,
+		EventEntry:       rkentry.NewEventEntryStdout(),
+		LoggerEntry:      rkentry.NewLoggerEntryStdout(),
+		entryName:        ProxyEntryNameDefault,
+		entryType:        ProxyEntryType,
+		entryDescription: "Internal RK entry which implements proxy with Grpc framework.",
 	}
 
 	for i := range opts {
 		opts[i](entry)
 	}
 
-	if entry.ZapLoggerEntry == nil {
-		entry.ZapLoggerEntry = rkentry.GlobalAppCtx.GetZapLoggerEntryDefault()
+	if entry.LoggerEntry == nil {
+		entry.LoggerEntry = rkentry.NewLoggerEntryStdout()
 	}
 
-	if entry.EventLoggerEntry == nil {
-		entry.EventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
+	if entry.EventEntry == nil {
+		entry.EventEntry = rkentry.NewEventEntryStdout()
 	}
 
 	return entry
@@ -334,17 +332,17 @@ func (entry *ProxyEntry) Interrupt(ctx context.Context) {
 
 // GetName Return name of proxy entry
 func (entry *ProxyEntry) GetName() string {
-	return entry.EntryName
+	return entry.entryName
 }
 
 // GetType Return type of prom entry
 func (entry *ProxyEntry) GetType() string {
-	return entry.EntryType
+	return entry.entryType
 }
 
 // GetDescription Get description of entry
 func (entry *ProxyEntry) GetDescription() string {
-	return entry.EntryDescription
+	return entry.entryDescription
 }
 
 // String Stringfy prom entry
@@ -356,11 +354,9 @@ func (entry *ProxyEntry) String() string {
 // MarshalJSON Marshal entry
 func (entry *ProxyEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
-		"entryName":        entry.EntryName,
-		"entryType":        entry.EntryType,
-		"entryDescription": entry.EntryDescription,
-		"eventLoggerEntry": entry.EventLoggerEntry.GetName(),
-		"zapLoggerEntry":   entry.ZapLoggerEntry.GetName(),
+		"name":        entry.entryName,
+		"type":        entry.entryType,
+		"description": entry.entryDescription,
 	}
 
 	return json.Marshal(&m)
@@ -382,7 +378,7 @@ func Codec() encoding.Codec {
 	return CodecWithFallback(&protoCodec{})
 }
 
-// CodecWithParent returns a proxying grpc.Codec with a user provided codec as parent.
+// CodecWithFallback returns a proxying grpc.Codec with a user provided codec as parent.
 //
 // This codec is *crucial* to the functioning of the proxy. It allows the proxy server to be oblivious
 // to the schema of the forwarded messages. It basically treats a gRPC message frame as raw bytes.
@@ -486,7 +482,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	}
 
 	clientCtx, clientCancel := context.WithCancel(outgoingCtx)
-	clientCtx = metadata.AppendToOutgoingContext(clientCtx, "X-Forwarded-For", rkcommon.GetLocalIP())
+	clientCtx = metadata.AppendToOutgoingContext(clientCtx, "X-Forwarded-For", rkmid.LocalIp.String)
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 

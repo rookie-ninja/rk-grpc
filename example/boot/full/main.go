@@ -6,16 +6,20 @@ package main
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot"
+	_ "embed"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
+	"github.com/rookie-ninja/rk-grpc/v2/boot"
 )
+
+//go:embed boot.yaml
+var boot []byte
 
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.RegisterInternalEntriesFromConfig("example/boot/full/boot.yaml")
+	rkentry.BootstrapPreloadEntryYAML(boot)
 
 	// Bootstrap grpc entry from boot config
-	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/full/boot.yaml")
+	res := rkgrpc.RegisterGrpcEntryYAML(boot)
 
 	// Bootstrap gin entry
 	res["greeter"].Bootstrap(context.Background())

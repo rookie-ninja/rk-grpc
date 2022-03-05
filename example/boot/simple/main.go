@@ -6,18 +6,35 @@ package main
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot"
-	proto "github.com/rookie-ninja/rk-grpc/example/boot/simple/api/gen/v1"
+	"embed"
+	_ "embed"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
+	"github.com/rookie-ninja/rk-grpc/v2/boot"
+	proto "github.com/rookie-ninja/rk-grpc/v2/example/boot/simple/api/gen/v1"
 	"google.golang.org/grpc"
 )
 
+//go:embed boot.yaml
+var boot []byte
+
+//go:embed api/gen/v1
+var docsFS embed.FS
+
+//go:embed api/gen/v1
+var staticFS embed.FS
+
+func init() {
+	rkentry.GlobalAppCtx.AddEmbedFS(rkentry.DocsEntryType, "greeter", &docsFS)
+	rkentry.GlobalAppCtx.AddEmbedFS(rkentry.SWEntryType, "greeter", &docsFS)
+	rkentry.GlobalAppCtx.AddEmbedFS(rkentry.StaticFileHandlerEntryType, "greeter", &staticFS)
+}
+
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.RegisterInternalEntriesFromConfig("example/boot/simple/boot.yaml")
+	rkentry.BootstrapPreloadEntryYAML(boot)
 
 	// Bootstrap grpc entry from boot config
-	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/simple/boot.yaml")
+	res := rkgrpc.RegisterGrpcEntryYAML(boot)
 
 	// Get GrpcEntry
 	grpcEntry := res["greeter"].(*rkgrpc.GrpcEntry)
@@ -41,7 +58,7 @@ func main() {
 // GreeterServer Implementation of GreeterServer.
 type GreeterServer struct{}
 
-// SayHello Handle SayHello method.
+// Greeter Handle Greeter method.
 func (server *GreeterServer) Greeter(context.Context, *proto.GreeterRequest) (*proto.GreeterResponse, error) {
 	return &proto.GreeterResponse{}, nil
 }

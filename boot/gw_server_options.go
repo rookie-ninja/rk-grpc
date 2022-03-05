@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/rookie-ninja/rk-common/error"
+	"github.com/rookie-ninja/rk-entry/v2/error"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -198,11 +198,8 @@ func HttpErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runt
 	contentType := marshaler.ContentType(pb)
 	w.Header().Set("Content-Type", contentType)
 
-	resp := rkerror.New()
-	resp.Err.Code = runtime.HTTPStatusFromCode(s.Code())
-	resp.Err.Message = s.Message()
+	resp := rkerror.New(runtime.HTTPStatusFromCode(s.Code()), s.Message(), s.Details()...)
 	resp.Err.Status = http.StatusText(resp.Err.Code)
-	resp.Err.Details = append(resp.Err.Details, s.Details()...)
 
 	md, _ := runtime.ServerMetadataFromContext(ctx)
 
