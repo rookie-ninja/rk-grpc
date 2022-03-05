@@ -7,7 +7,7 @@ package rkgrpc
 
 import (
 	"context"
-	rkentry "github.com/rookie-ninja/rk-entry/entry"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -197,24 +197,24 @@ func TestNewProxyEntry(t *testing.T) {
 	entry := NewProxyEntry()
 	assert.Equal(t, ProxyEntryNameDefault, entry.GetName())
 	assert.Equal(t, ProxyEntryType, entry.GetType())
-	assert.Equal(t, ProxyEntryDescription, entry.GetDescription())
-	assert.NotNil(t, entry.EventLoggerEntry)
-	assert.NotNil(t, entry.ZapLoggerEntry)
+	assert.NotEmpty(t, entry.GetDescription())
+	assert.NotNil(t, entry.EventEntry)
+	assert.NotNil(t, entry.LoggerEntry)
 
 	// with options
 	name := "ut-name"
-	zapLogger := rkentry.NoopZapLoggerEntry()
-	eventLogger := rkentry.NoopEventLoggerEntry()
+	logger := rkentry.NewLoggerEntryNoop()
+	event := rkentry.NewEventEntryNoop()
 	rule := &rule{}
 
 	entry = NewProxyEntry(
 		WithNameProxy(name),
-		WithZapLoggerEntryProxy(zapLogger),
-		WithEventLoggerEntryProxy(eventLogger),
+		WithLoggerEntryProxy(logger),
+		WithEventEntryProxy(event),
 		WithRuleProxy(rule))
-	assert.Equal(t, name, entry.EntryName)
-	assert.Equal(t, zapLogger, entry.ZapLoggerEntry)
-	assert.Equal(t, eventLogger, entry.EventLoggerEntry)
+	assert.Equal(t, name, entry.entryName)
+	assert.Equal(t, logger, entry.LoggerEntry)
+	assert.Equal(t, event, entry.EventEntry)
 	assert.Equal(t, rule, entry.r)
 }
 

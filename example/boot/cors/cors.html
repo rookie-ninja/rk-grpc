@@ -8,9 +8,9 @@
 
 <script type="text/javascript">
     window.onload = function() {
-        var apiUrl = 'http://localhost:8080/rk/v1/healthy';
+        var apiUrl = 'http://localhost:8080/rk/v1/ready';
         fetch(apiUrl).then(response => response.json()).then(data => {
-            document.getElementById("res").innerHTML = data["healthy"]
+            document.getElementById("res").innerHTML = data["ready"]
         }).catch(err => {
             document.getElementById("res").innerHTML = err
         });

@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	testdata "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
+	testdata "github.com/rookie-ninja/rk-grpc/v2/example/middleware/proto/testdata"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

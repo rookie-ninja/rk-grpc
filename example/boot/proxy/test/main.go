@@ -6,19 +6,23 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
-	"github.com/rookie-ninja/rk-entry/entry"
-	"github.com/rookie-ninja/rk-grpc/boot"
-	proto "github.com/rookie-ninja/rk-grpc/example/interceptor/proto/testdata"
+	"github.com/rookie-ninja/rk-entry/v2/entry"
+	"github.com/rookie-ninja/rk-grpc/v2/boot"
+	proto "github.com/rookie-ninja/rk-grpc/v2/example/middleware/proto/testdata"
 	"google.golang.org/grpc"
 )
 
+//go:embed boot.yaml
+var boot []byte
+
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.RegisterInternalEntriesFromConfig("example/boot/proxy/test/boot.yaml")
+	rkentry.BootstrapPreloadEntryYAML(boot)
 
 	// Bootstrap grpc entry from boot config
-	res := rkgrpc.RegisterGrpcEntriesWithConfig("example/boot/proxy/test/boot.yaml")
+	res := rkgrpc.RegisterGrpcEntryYAML(boot)
 
 	entry := res["greeter"].(*rkgrpc.GrpcEntry)
 	entry.AddRegFuncGrpc(func(server *grpc.Server) {

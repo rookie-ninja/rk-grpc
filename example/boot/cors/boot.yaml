@@ -5,9 +5,9 @@ grpc:
     enabled: true                     # Required
     commonService:
       enabled: true                   # Optional, default: false
-    interceptors:
+    middleware:
       cors:
         enabled: true
         allowOrigins:
-          - "http://localhost:8080"
-#          - "http://localhost:*"
+#          - "http://localhost:8080"
+          - "http://localhost:*"

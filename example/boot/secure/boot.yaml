@@ -7,9 +7,10 @@ grpc:
       enabled: true                                # Optional, default: false
     sw:
       enabled: true
-    interceptors:
+    middleware:
       secure:
         enabled: true                              # Optional, default: false
+#        ignore: []                                # Optional, default: []
 #        xssProtection: ""                         # Optional, default: "1; mode=block"
 #        contentTypeNosniff: ""                    # Optional, default: nosniff
 #        xFrameOptions: ""                         # Optional, default: SAMEORIGIN
@@ -19,4 +20,3 @@ grpc:
 #        contentSecurityPolicy: ""                 # Optional, default: ""
 #        cspReportOnly: false                      # Optional, default: false
 #        referrerPolicy: ""                        # Optional, default: ""
-#        ignorePrefix: []                          # Optional, default: []

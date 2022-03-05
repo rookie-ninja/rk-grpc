@@ -1,5 +1,5 @@
 .PHONY: all
-all: test lint doctoc fmt
+all: test lint fmt
 
 .PHONY: lint
 lint:
@@ -18,12 +18,6 @@ test:
 fmt:
 	@echo "[fmt] Formatting go project..."
 	@gofmt -s -w . 2>&1
-	@echo "------------------------------------[Done]"
-
-.PHONY: doctoc
-doctoc:
-	@echo "[doctoc] Running doctoc..."
-	@doctoc . 2>&1
 	@echo "------------------------------------[Done]"
 
 .PHONY: buf

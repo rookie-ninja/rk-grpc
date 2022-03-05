@@ -5,26 +5,21 @@ grpc:
     enabled: true                     # Required
     enableReflection: true            # Optional, default: false
     enableRkGwOption: true            # Optional, default: false
-    gwMappingFilePaths:
-      - "example/boot/simple/api/v1/gw_mapping.yaml"
     commonService:
       enabled: true                   # Optional, default: false
-    tv:
+    docs:
       enabled: true                   # Optional, default: false
     sw:
       enabled: true                   # Optional, default: false
     prom:
       enabled: true                   # Optional, default: false
-    interceptors:
-      loggingZap:
+    middleware:
+      logging:
         enabled: true                 # Optional, default: false
-      metricsProm:
+       # ignore: ["/api.v1.Greeter/Greeter"]
+      prom:
         enabled: true                 # Optional, default: false
       meta:
         enabled: true                 # Optional, default: false
-      auth:
-        enabled: true                                     # Optional, default: false
-        basic:
-          - "user:pass"                                   # Optional, default: []
-        apiKey:
-          - "keys"                                        # Optional, default: []
+      secure:
+        enabled: true                 # Optional, default: false
