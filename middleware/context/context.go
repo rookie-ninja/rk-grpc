@@ -8,6 +8,7 @@ package rkgrpcctx
 
 import (
 	"github.com/golang-jwt/jwt/v4"
+	rkcursor "github.com/rookie-ninja/rk-entry/v2/cursor"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-grpc/v2/middleware"
 	"github.com/rookie-ninja/rk-logger"
@@ -73,6 +74,14 @@ func AddHeaderToClient(ctx context.Context, key, value string) {
 	}
 
 	rkgrpcmid.AddToServerContextPayload(ctx, key, value)
+}
+
+// GetCursor create rkcursor.Cursor instance
+func GetCursor(ctx context.Context) *rkcursor.Cursor {
+	return rkcursor.NewCursor(
+		rkcursor.WithLogger(GetLogger(ctx)),
+		rkcursor.WithEvent(GetEvent(ctx)),
+		rkcursor.WithEntryNameAndType(GetEntryName(ctx), "gRPCEntry"))
 }
 
 // GetEvent Extract the call-scoped EventData from context.

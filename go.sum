@@ -346,12 +346,13 @@ github.com/prometheus/procfs v0.7.3 h1:4jVXhlkAyzOScmCkXBTOLRLTz8EeU+eyjrwB/EPq0
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
-github.com/rookie-ninja/rk-entry/v2 v2.0.4 h1:cY2cCD4qGxnqNIoWO/wgqmZ62NdaQaUNuUWmIc9+KUg=
-github.com/rookie-ninja/rk-entry/v2 v2.0.4/go.mod h1:6D5pPFJ58SJV0SBy26XOKNsODYVtwEHwZ9kKuwb35XU=
+github.com/rookie-ninja/rk-entry/v2 v2.0.10 h1:COcCJod5sTGeJNDZd2sIqMcQ/Rhts5zP+67VOea/PTQ=
+github.com/rookie-ninja/rk-entry/v2 v2.0.10/go.mod h1:6D5pPFJ58SJV0SBy26XOKNsODYVtwEHwZ9kKuwb35XU=
 github.com/rookie-ninja/rk-logger v1.2.10 h1:tBttXQTDBOCgEOd8i/KdkO6UqaUYuZ0q+7gJdRGVPUE=
 github.com/rookie-ninja/rk-logger v1.2.10/go.mod h1:BgOmPpVjIHCHhqo1tqf3jUd/71Rg+Ptwi6pBeaOnOQw=
-github.com/rookie-ninja/rk-query v1.2.11 h1:w2lCnzGvl4P9JDukEwdV4tfAtTsLSjFH/D8fjT4vN+U=
 github.com/rookie-ninja/rk-query v1.2.11/go.mod h1:Vrx/QyPWf5K7DztKiZWmYLbCEeOWb6wmDNI/OPVqOUQ=
+github.com/rookie-ninja/rk-query v1.2.12 h1:f+Wm/r/9vWuSrUWKF/3Qtj16vb1EvJXj5bQjxu0Frp0=
+github.com/rookie-ninja/rk-query v1.2.12/go.mod h1:Vrx/QyPWf5K7DztKiZWmYLbCEeOWb6wmDNI/OPVqOUQ=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sagikazarmark/crypt v0.4.0/go.mod h1:ALv2SRj7GxYV4HO9elxH9nS6M9gW+xDNxqmyJ6RfDFM=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
