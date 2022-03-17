@@ -762,7 +762,7 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #logger:
 #  - name: my-logger                                       # Required
 #    description: "Description of entry"                   # Optional
-#    locale: "*::*::*::*"                                  # Optional, default: "*::*::*::*"
+#    domain: "*"                                           # Optional, default: "*"
 #    zap:                                                  # Optional
 #      level: info                                         # Optional, default: info
 #      development: true                                   # Optional, default: true
@@ -807,7 +807,7 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #event:
 #  - name: my-event                                        # Required
 #    description: "Description of entry"                   # Optional
-#    locale: "*::*::*::*"                                  # Optional, default: "*::*::*::*"
+#    domain: "*"                                           # Optional, default: "*"
 #    encoding: console                                     # Optional, default: console
 #    outputPaths: ["stdout"]                               # Optional, default: [stdout]
 #    lumberjack:                                           # Optional, default: nil
@@ -831,14 +831,14 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #cert:
 #  - name: my-cert                                         # Required
 #    description: "Description of entry"                   # Optional, default: ""
-#    locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
+#    domain: "*"                                           # Optional, default: "*"
 #    caPath: "certs/ca.pem"                                # Optional, default: ""
 #    certPemPath: "certs/server-cert.pem"                  # Optional, default: ""
 #    keyPemPath: "certs/server-key.pem"                    # Optional, default: ""
 #config:
 #  - name: my-config                                       # Required
 #    description: "Description of entry"                   # Optional, default: ""
-#    locale: "*::*::*::*"                                  # Optional, default: *::*::*::*
+#    domain: "*"                                           # Optional, default: "*"
 ##    path: "config/config.yaml"                            # Optional
 #    envPrefix: ""                                         # Optional, default: ""
 #    content:                                              # Optional, defualt: empty map
@@ -885,6 +885,9 @@ grpc:
 #      path: "/static"                                     # Optional, default: /static
 #      sourceType: local                                   # Required, options: pkger, local
 #      sourcePath: "."                                     # Required, full path of source directory
+#    pprof:
+#      enabled: true                                       # Optional, default: false
+#      path: "/pprof"                                      # Optional, default: /pprof
 #    prom:
 #      enabled: true                                       # Optional, default: false
 #      path: ""                                            # Optional, default: "metrics"
@@ -996,7 +999,6 @@ grpc:
 #        allowMethods: []                                  # Optional, default: []
 #        exposeHeaders: []                                 # Optional, default: []
 #        maxAge: 0                                         # Optional, default: 0
-
 ```
 
 ## Notice of V2
