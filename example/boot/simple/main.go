@@ -8,6 +8,8 @@ import (
 	"context"
 	"embed"
 	_ "embed"
+	"errors"
+	rkcursor "github.com/rookie-ninja/rk-entry/v2/cursor"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
 	"github.com/rookie-ninja/rk-grpc/v2/boot"
 	proto "github.com/rookie-ninja/rk-grpc/v2/example/boot/simple/api/gen/v1"
@@ -60,5 +62,10 @@ type GreeterServer struct{}
 
 // Greeter Handle Greeter method.
 func (server *GreeterServer) Greeter(context.Context, *proto.GreeterRequest) (*proto.GreeterResponse, error) {
+	pointer := rkcursor.Click()
+	defer pointer.Release()
+
+	pointer.ObserveError(errors.New("hihihi"))
+
 	return &proto.GreeterResponse{}, nil
 }

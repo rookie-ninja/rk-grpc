@@ -51,6 +51,8 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/pprof"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,6 +87,7 @@ type BootConfig struct {
 		CertEntry          string                        `yaml:"certEntry" json:"certEntry"`
 		LoggerEntry        string                        `yaml:"loggerEntry" json:"loggerEntry"`
 		EventEntry         string                        `yaml:"eventEntry" json:"eventEntry"`
+		PProf              rkentry.BootPProf             `yaml:"pprof" json:"pprof"`
 		EnableRkGwOption   bool                          `yaml:"enableRkGwOption" json:"enableRkGwOption"`
 		GwOption           *gwOption                     `yaml:"gwOption" json:"gwOption"`
 		Middleware         struct {
@@ -138,6 +141,7 @@ type GrpcEntry struct {
 	PromEntry          *rkentry.PromEntry              `json:"-" yaml:"-"`
 	StaticFileEntry    *rkentry.StaticFileHandlerEntry `json:"-" yaml:"-"`
 	CommonServiceEntry *rkentry.CommonServiceEntry     `json:"-" yaml:"-"`
+	PProfEntry         *rkentry.PProfEntry             `json:"-" yaml:"-"`
 	CertEntry          *rkentry.CertEntry              `json:"-" yaml:"-"`
 	bootstrapLogOnce   sync.Once                       `json:"-" yaml:"-"`
 }
@@ -203,6 +207,9 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 
 		// Register static file handler
 		staticEntry := rkentry.RegisterStaticFileHandlerEntry(&element.Static, rkentry.WithNameStaticFileHandlerEntry(element.Name))
+
+		// Register pprof entry
+		pprofEntry := rkentry.RegisterPProfEntry(&element.PProf, rkentry.WithNamePProfEntry(element.Name))
 
 		// Did we enabled proxy?
 		var proxy *ProxyEntry
@@ -275,6 +282,7 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 			WithCommonServiceEntry(commonServiceEntry),
 			WithStaticFileHandlerEntry(staticEntry),
 			WithCertEntry(certEntry),
+			WithPProfEntry(pprofEntry),
 			WithEnableReflection(element.EnableReflection),
 			WithCertEntry(rkentry.GlobalAppCtx.GetCertEntry(element.CertEntry)))
 
@@ -556,21 +564,36 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		entry.CommonServiceEntry.Bootstrap(ctx)
 	}
 
-	// 15: Create http server
+	// 15: pprof
+	if entry.IsPProfEnabled() {
+		entry.HttpMux.HandleFunc(entry.PProfEntry.Path, pprof.Index)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "cmdline"), pprof.Cmdline)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "profile"), pprof.Profile)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "symbol"), pprof.Symbol)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "trace"), pprof.Cmdline)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "allocs"), pprof.Handler("allocs").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "block"), pprof.Handler("block").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "goroutine"), pprof.Handler("goroutine").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "heap"), pprof.Handler("heap").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "mutex"), pprof.Handler("mutex").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "threadcreate"), pprof.Handler("threadcreate").ServeHTTP)
+	}
+
+	// 16: Create http server
 	var httpHandler http.Handler
 	httpHandler = entry.HttpMux
 
-	// 16: If CORS enabled, then add interceptor for grpc-gateway
+	// 17: If CORS enabled, then add interceptor for grpc-gateway
 	if len(entry.gwCorsOptions) > 0 {
 		httpHandler = rkgrpccors.Interceptor(httpHandler, entry.gwCorsOptions...)
 	}
 
-	// 17: If Secure enabled, then add interceptor for grpc-gateway
+	// 18: If Secure enabled, then add interceptor for grpc-gateway
 	if len(entry.gwSecureOptions) > 0 {
 		httpHandler = rkgrpcsec.Interceptor(httpHandler, entry.gwSecureOptions...)
 	}
 
-	// 18: If CSRF enabled, then add interceptor for grpc-gateway
+	// 19: If CSRF enabled, then add interceptor for grpc-gateway
 	if len(entry.gwCsrfOptions) > 0 {
 		httpHandler = rkgrpccsrf.Interceptor(httpHandler, entry.gwCsrfOptions...)
 	}
@@ -580,7 +603,7 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		Handler: h2c.NewHandler(httpHandler, &http2.Server{}),
 	}
 
-	// 19: Start http server
+	// 20: Start http server
 	go func(*GrpcEntry) {
 		// Create inner listener
 		conn, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.Port, 10))
@@ -675,6 +698,9 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 			entry.LoggerEntry.Info(fmt.Sprintf("CommonSreviceEntry: %s", strings.Join(handlers, ", ")))
 		}
+		if entry.IsPProfEnabled() {
+			entry.LoggerEntry.Info(fmt.Sprintf("PProfEntry: %s://localhost:%d%s", scheme, entry.Port, entry.PProfEntry.Path))
+		}
 		entry.EventEntry.Finish(event)
 	})
 }
@@ -716,6 +742,10 @@ func (entry *GrpcEntry) Interrupt(ctx context.Context) {
 
 	if entry.IsPromEnabled() {
 		entry.PromEntry.Interrupt(ctx)
+	}
+
+	if entry.IsPProfEnabled() {
+		entry.PProfEntry.Interrupt(ctx)
 	}
 
 	if entry.HttpServer != nil {
@@ -793,6 +823,7 @@ func (entry *GrpcEntry) MarshalJSON() ([]byte, error) {
 		"commonServiceEntry":     entry.CommonServiceEntry,
 		"promEntry":              entry.PromEntry,
 		"staticFileHandlerEntry": entry.StaticFileEntry,
+		"pprofEntry":             entry.PProfEntry,
 		"reflection":             entry.EnableReflection,
 	}
 
@@ -826,6 +857,11 @@ func (entry *GrpcEntry) IsProxyEnabled() bool {
 // IsSWEnabled Is swagger enabled?
 func (entry *GrpcEntry) IsSWEnabled() bool {
 	return entry.SWEntry != nil
+}
+
+// IsPProfEnabled Is pprof enabled?
+func (entry *GrpcEntry) IsPProfEnabled() bool {
+	return entry.PProfEntry != nil
 }
 
 // IsStaticFileHandlerEnabled Is static file handler entry enabled?
@@ -885,6 +921,13 @@ func (entry *GrpcEntry) logBasicInfo(operation string, ctx context.Context) (rkq
 		event.AddPayloads(
 			zap.Bool("docsEnabled", true),
 			zap.String("docsPath", entry.DocsEntry.Path))
+	}
+
+	// add pprofEntry info
+	if entry.IsPProfEnabled() {
+		event.AddPayloads(
+			zap.Bool("pprofEnabled", true),
+			zap.String("pprofPath", entry.PProfEntry.Path))
 	}
 
 	// add PromEntry info
@@ -1036,6 +1079,13 @@ func WithSwEntry(sw *rkentry.SWEntry) GrpcEntryOption {
 func WithDocsEntry(docs *rkentry.DocsEntry) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.DocsEntry = docs
+	}
+}
+
+// WithPProfEntry Provide rkentry.PProfEntry.
+func WithPProfEntry(p *rkentry.PProfEntry) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.PProfEntry = p
 	}
 }
 

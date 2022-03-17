@@ -13,6 +13,8 @@ grpc:
       enabled: true                   # Optional, default: false
     prom:
       enabled: true                   # Optional, default: false
+    pprof:
+      enabled: true
     middleware:
       logging:
         enabled: true                 # Optional, default: false

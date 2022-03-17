@@ -38,7 +38,8 @@ All instances could be configured via YAML or Code.
 | Swagger                                                                | Builtin swagger UI handler.                                                                                                    |
 | Docs                                                                   | Builtin [RapiDoc](https://github.com/mrin9/RapiDoc) instance which can be used to replace swagger and RK TV.                   |
 | CommonService                                                          | List of common APIs.                                                                                                           |
-| StaticFileHandler                                                      | A Web UI shows files could be downloaded from server, currently support source of local and pkger.                             |
+| StaticFileHandler                                                      | A Web UI shows files could be downloaded from server, currently support source of local and embed.FS.                          |
+| PProf                                                                  | PProf web UI.                                                                                                                  |
 
 ## Supported middlewares
 All middlewares could be configured via YAML or Code.
