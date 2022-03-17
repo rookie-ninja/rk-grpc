@@ -570,7 +570,7 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "cmdline"), pprof.Cmdline)
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "profile"), pprof.Profile)
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "symbol"), pprof.Symbol)
-		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "trace"), pprof.Cmdline)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "trace"), pprof.Trace)
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "allocs"), pprof.Handler("allocs").ServeHTTP)
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "block"), pprof.Handler("block").ServeHTTP)
 		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "goroutine"), pprof.Handler("goroutine").ServeHTTP)
