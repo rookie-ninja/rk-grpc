@@ -796,6 +796,11 @@ func (entry *GrpcEntry) AddGwSecureOptions(opts ...rkmidsec.Option) {
 	entry.gwSecureOptions = append(entry.gwSecureOptions, opts...)
 }
 
+// AddGwMuxOptions Add mux options at gateway side.
+func (entry *GrpcEntry) AddGwMuxOptions(opts ...gwruntime.ServeMuxOption) {
+	entry.GwMuxOptions = append(entry.GwMuxOptions, opts...)
+}
+
 // AddRegFuncGrpc Add grpc registration func.
 func (entry *GrpcEntry) AddRegFuncGrpc(f ...GrpcRegFunc) {
 	entry.GrpcRegF = append(entry.GrpcRegF, f...)
