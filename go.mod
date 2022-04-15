@@ -7,7 +7,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.8.0
 	github.com/prometheus/client_golang v1.12.1
-	github.com/rookie-ninja/rk-entry/v2 v2.1.4
+	github.com/rookie-ninja/rk-entry/v2 v2.1.5
 	github.com/rookie-ninja/rk-logger v1.2.11
 	github.com/rookie-ninja/rk-query v1.2.14
 	github.com/soheilhy/cmux v0.1.5
