@@ -29,7 +29,7 @@ func UnaryServerInterceptor(opts ...rkmidlimit.Option) grpc.UnaryServerIntercept
 		set.Before(beforeCtx)
 
 		if beforeCtx.Output.ErrResp != nil {
-			return nil, rkgrpcerr.ResourceExhausted("", beforeCtx.Output.ErrResp.Err).Err()
+			return nil, rkgrpcerr.ResourceExhausted(beforeCtx.Output.ErrResp.Err.Message).Err()
 		}
 
 		resp, err := handler(ctx, req)
