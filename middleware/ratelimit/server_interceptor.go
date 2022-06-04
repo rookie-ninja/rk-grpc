@@ -29,7 +29,7 @@ func UnaryServerInterceptor(opts ...rkmidlimit.Option) grpc.UnaryServerIntercept
 		set.Before(beforeCtx)
 
 		if beforeCtx.Output.ErrResp != nil {
-			return nil, rkgrpcerr.ResourceExhausted(beforeCtx.Output.ErrResp.Err.Message).Err()
+			return nil, rkgrpcerr.ResourceExhausted(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		resp, err := handler(ctx, req)
@@ -54,7 +54,7 @@ func StreamServerInterceptor(opts ...rkmidlimit.Option) grpc.StreamServerInterce
 		set.Before(beforeCtx)
 
 		if beforeCtx.Output.ErrResp != nil {
-			return rkgrpcerr.ResourceExhausted("", beforeCtx.Output.ErrResp.Err).Err()
+			return rkgrpcerr.ResourceExhausted(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		return handler(srv, wrappedStream)

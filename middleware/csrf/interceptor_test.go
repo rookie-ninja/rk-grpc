@@ -6,7 +6,6 @@
 package rkgrpccsrf
 
 import (
-	"github.com/rookie-ninja/rk-entry/v2/error"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/csrf"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +26,7 @@ func TestInterceptor(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// assign any of error response
-	beforeCtx.Output.ErrResp = rkerror.NewForbidden("")
+	beforeCtx.Output.ErrResp = rkmid.GetErrorBuilder().New(http.StatusForbidden, "")
 	inter.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusForbidden, w.Code)
 

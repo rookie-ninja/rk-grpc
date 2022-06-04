@@ -21,7 +21,7 @@ func Interceptor(h http.Handler, opts ...rkmidcsrf.Option) http.Handler {
 		set.Before(beforeCtx)
 
 		if beforeCtx.Output.ErrResp != nil {
-			w.WriteHeader(beforeCtx.Output.ErrResp.Err.Code)
+			w.WriteHeader(beforeCtx.Output.ErrResp.Code())
 			bytes, _ := json.Marshal(beforeCtx.Output.ErrResp)
 			w.Write(bytes)
 			return

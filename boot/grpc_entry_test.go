@@ -134,7 +134,8 @@ grpc:
 `
 
 	// Register internal entries
-	rkentry.BootstrapPreloadEntryYAML([]byte(configFile))
+	rkentry.BootstrapBuiltInEntryFromYAML([]byte(configFile))
+	rkentry.BootstrapPluginEntryFromYAML([]byte(configFile))
 
 	// Register entries with config file
 	entries := RegisterGrpcEntryYAML([]byte(configFile))

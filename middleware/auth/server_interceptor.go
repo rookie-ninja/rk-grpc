@@ -44,7 +44,7 @@ func UnaryServerInterceptor(opts ...rkmidauth.Option) grpc.UnaryServerIntercepto
 				rkgrpcctx.AddHeaderToClient(ctx, k, v)
 			}
 
-			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
+			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		// case 2: authorized, call next
@@ -81,7 +81,7 @@ func StreamServerInterceptor(opts ...rkmidauth.Option) grpc.StreamServerIntercep
 				rkgrpcctx.AddHeaderToClient(wrappedStream.WrappedContext, k, v)
 			}
 
-			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
+			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		// case 2: authorized, call next

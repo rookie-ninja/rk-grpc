@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
+	rkerror "github.com/rookie-ninja/rk-entry/v2/error"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/auth"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/cors"
@@ -61,7 +62,7 @@ import (
 // This must be declared in order to register registration function into rk context
 // otherwise, rk-boot won't able to bootstrap grpc entry automatically from boot config file
 func init() {
-	rkentry.RegisterEntryRegFunc(RegisterGrpcEntryYAML)
+	rkentry.RegisterWebFrameRegFunc(RegisterGrpcEntryYAML)
 }
 
 const (
@@ -91,18 +92,19 @@ type BootConfig struct {
 		EnableRkGwOption   bool                          `yaml:"enableRkGwOption" json:"enableRkGwOption"`
 		GwOption           *gwOption                     `yaml:"gwOption" json:"gwOption"`
 		Middleware         struct {
-			Ignore    []string                `yaml:"ignore" json:"ignore"`
-			Logging   rkmidlog.BootConfig     `yaml:"logging" json:"logging"`
-			Prom      rkmidprom.BootConfig    `yaml:"prom" json:"prom"`
-			Auth      rkmidauth.BootConfig    `yaml:"auth" json:"auth"`
-			Cors      rkmidcors.BootConfig    `yaml:"cors" json:"cors"`
-			Secure    rkmidsec.BootConfig     `yaml:"secure" json:"secure"`
-			Meta      rkmidmeta.BootConfig    `yaml:"meta" json:"meta"`
-			Jwt       rkmidjwt.BootConfig     `yaml:"jwt" json:"jwt"`
-			Csrf      rkmidcsrf.BootConfig    `yaml:"csrf" yaml:"csrf"`
-			RateLimit rkmidlimit.BootConfig   `yaml:"rateLimit" json:"rateLimit"`
-			Timeout   rkmidtimeout.BootConfig `yaml:"timeout" json:"timeout"`
-			Trace     rkmidtrace.BootConfig   `yaml:"trace" json:"trace"`
+			Ignore     []string                `yaml:"ignore" json:"ignore"`
+			ErrorModel string                  `yaml:"errorModel" json:"errorModel"`
+			Logging    rkmidlog.BootConfig     `yaml:"logging" json:"logging"`
+			Prom       rkmidprom.BootConfig    `yaml:"prom" json:"prom"`
+			Auth       rkmidauth.BootConfig    `yaml:"auth" json:"auth"`
+			Cors       rkmidcors.BootConfig    `yaml:"cors" json:"cors"`
+			Secure     rkmidsec.BootConfig     `yaml:"secure" json:"secure"`
+			Meta       rkmidmeta.BootConfig    `yaml:"meta" json:"meta"`
+			Jwt        rkmidjwt.BootConfig     `yaml:"jwt" json:"jwt"`
+			Csrf       rkmidcsrf.BootConfig    `yaml:"csrf" yaml:"csrf"`
+			RateLimit  rkmidlimit.BootConfig   `yaml:"rateLimit" json:"rateLimit"`
+			Timeout    rkmidtimeout.BootConfig `yaml:"timeout" json:"timeout"`
+			Trace      rkmidtrace.BootConfig   `yaml:"trace" json:"trace"`
 		} `yaml:"middleware" json:"middleware"`
 	} `yaml:"grpc" json:"grpc"`
 }
@@ -180,13 +182,13 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 		// logger entry
 		loggerEntry := rkentry.GlobalAppCtx.GetLoggerEntry(element.LoggerEntry)
 		if loggerEntry == nil {
-			loggerEntry = rkentry.LoggerEntryStdout
+			loggerEntry = rkentry.GlobalAppCtx.GetLoggerEntryDefault()
 		}
 
 		// event entry
 		eventEntry := rkentry.GlobalAppCtx.GetEventEntry(element.EventEntry)
 		if eventEntry == nil {
-			eventEntry = rkentry.EventEntryStdout
+			eventEntry = rkentry.GlobalAppCtx.GetEventEntryDefault()
 		}
 
 		// cert entry
@@ -297,6 +299,14 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 		// add global path ignorance
 		rkmid.AddPathToIgnoreGlobal(element.Middleware.Ignore...)
 
+		// set error builder based on error builder
+		switch strings.ToLower(element.Middleware.ErrorModel) {
+		case "", "google":
+			rkmid.SetErrorBuilder(rkerror.NewErrorBuilderGoogle())
+		case "amazon":
+			rkmid.SetErrorBuilder(rkerror.NewErrorBuilderAMZN())
+		}
+
 		// logging middleware
 		if element.Middleware.Logging.Enabled {
 			entry.AddUnaryInterceptors(rkgrpclog.UnaryServerInterceptor(
@@ -400,8 +410,8 @@ func RegisterGrpcEntry(opts ...GrpcEntryOption) *GrpcEntry {
 	entry := &GrpcEntry{
 		entryType:        GrpcEntryType,
 		entryDescription: "Internal RK entry which helps to bootstrap with Grpc framework.",
-		LoggerEntry:      rkentry.NewLoggerEntryStdout(),
-		EventEntry:       rkentry.NewEventEntryStdout(),
+		LoggerEntry:      rkentry.GlobalAppCtx.GetLoggerEntryDefault(),
+		EventEntry:       rkentry.GlobalAppCtx.GetEventEntryDefault(),
 		Port:             8080,
 		// gRPC related
 		ServerOpts:         make([]grpc.ServerOption, 0),

@@ -7,11 +7,12 @@ package rkgrpcauth
 
 import (
 	"context"
-	rkerror "github.com/rookie-ninja/rk-entry/v2/error"
+	rkmid "github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/auth"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"net/http"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	inter := UnaryServerInterceptor(rkmidauth.WithMockOptionSet(mock))
 
 	// case 1: with error response
-	beforeCtx.Output.ErrResp = rkerror.NewInternalError("")
+	beforeCtx.Output.ErrResp = rkmid.GetErrorBuilder().New(http.StatusInternalServerError, "")
 	beforeCtx.Output.HeadersToReturn["key"] = "value"
 	_, err := inter(NewUnaryServerInput())
 	assert.NotNil(t, err)
@@ -38,7 +39,7 @@ func TestStreamServerInterceptor(t *testing.T) {
 	inter := StreamServerInterceptor(rkmidauth.WithMockOptionSet(mock))
 
 	// case 1: with error response
-	beforeCtx.Output.ErrResp = rkerror.NewInternalError("")
+	beforeCtx.Output.ErrResp = rkmid.GetErrorBuilder().New(http.StatusInternalServerError, "")
 	beforeCtx.Output.HeadersToReturn["key"] = "value"
 	err := inter(NewStreamServerInput())
 	assert.NotNil(t, err)

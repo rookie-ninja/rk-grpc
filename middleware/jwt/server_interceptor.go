@@ -7,6 +7,7 @@ package rkgrpcjwt
 
 import (
 	"context"
+	"fmt"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/jwt"
 	"github.com/rookie-ninja/rk-grpc/v2/boot/error"
@@ -30,7 +31,10 @@ func UnaryServerInterceptor(opts ...rkmidjwt.Option) grpc.UnaryServerInterceptor
 
 		// case 1: error response
 		if beforeCtx.Output.ErrResp != nil {
-			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
+			fmt.Println(beforeCtx.Output.ErrResp.Error())
+			fmt.Println(beforeCtx.Output.ErrResp.Message())
+
+			return nil, rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		// insert into context
@@ -57,7 +61,7 @@ func StreamServerInterceptor(opts ...rkmidjwt.Option) grpc.StreamServerIntercept
 
 		// case 1: error response
 		if beforeCtx.Output.ErrResp != nil {
-			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Err.Message).Err()
+			return rkgrpcerr.Unauthenticated(beforeCtx.Output.ErrResp.Message()).Err()
 		}
 
 		// insert into context

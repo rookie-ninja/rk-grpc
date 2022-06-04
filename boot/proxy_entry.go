@@ -10,7 +10,6 @@ package rkgrpc
 import (
 	"context"
 	"encoding/json"
-	"github.com/golang/protobuf/proto"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-grpc/v2/middleware"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"math/rand"
 	"net"
