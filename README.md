@@ -766,6 +766,7 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #  - name: my-logger                                       # Required
 #    description: "Description of entry"                   # Optional
 #    domain: "*"                                           # Optional, default: "*"
+#    default: false                                        # Optional, default: false, use as default logger entry
 #    zap:                                                  # Optional
 #      level: info                                         # Optional, default: info
 #      development: true                                   # Optional, default: true
@@ -812,6 +813,7 @@ Middleware for [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway).
 #    description: "Description of entry"                   # Optional
 #    domain: "*"                                           # Optional, default: "*"
 #    encoding: console                                     # Optional, default: console
+#    default: false                                        # Optional, default: false, use as default event entry
 #    outputPaths: ["stdout"]                               # Optional, default: [stdout]
 #    lumberjack:                                           # Optional, default: nil
 #      filename:
@@ -903,6 +905,7 @@ grpc:
 #        certEntry: my-cert                                # Optional, default: "", reference of cert entry declared above
 #    middleware:
 #      ignore: [""]                                        # Optional, default: []
+#      errorModel: google                                  # Optional, defualt: google, [amazon, google] are supported options
 #      logging:
 #        enabled: true                                     # Optional, default: false
 #        ignore: [""]                                      # Optional, default: []
@@ -960,8 +963,7 @@ grpc:
 #        enabled: true                                     # Optional, default: false
 #        ignore: [ "" ]                                    # Optional, default: []
 #        signerEntry: ""                                   # Optional, default: ""
-#        skipValidate: false                               # Optional, default: false
-#        disabledSign: false                               # Optional
+#        skipVerify: false                                 # Optional, default: false
 #        symmetric:                                        # Optional
 #          algorithm: ""                                   # Required, default: ""
 #          token: ""                                       # Optional, default: ""
@@ -1056,7 +1058,7 @@ Run unit-test, golangci-lint, doctoc and gofmt.
 ## Test instruction
 Run unit test with **make test** command.
 
-github workflow will automatically run unit test and golangci-lint for testing and lint validation.
+Github workflow will automatically run unit test and golangci-lint for testing and lint validation.
 
 ## Contributing
 We encourage and support an active, healthy community of contributors;
