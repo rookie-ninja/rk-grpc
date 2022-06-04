@@ -6,7 +6,6 @@
 package rkgrpcerr
 
 import (
-	"fmt"
 	"github.com/rookie-ninja/rk-grpc/v2/boot/error/gen"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,7 +42,7 @@ func BaseErrorWrapper(code codes.Code) ErrorWrapper {
 		st, _ = st.WithDetails(&rk_error.ErrorDetail{
 			Code:    int32(code),
 			Status:  code.String(),
-			Message: fmt.Sprintf("[from-grpc] %s", msg),
+			Message: msg,
 		})
 
 		for i := range errors {

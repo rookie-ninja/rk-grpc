@@ -16,12 +16,17 @@ grpc:
     pprof:
       enabled: true
     middleware:
+      #errorModel: amazon
       logging:
         enabled: true                 # Optional, default: false
-       # ignore: ["/api.v1.Greeter/Greeter"]
       prom:
         enabled: true                 # Optional, default: false
       meta:
         enabled: true                 # Optional, default: false
       secure:
         enabled: true                 # Optional, default: false
+      jwt:
+        enabled: true
+        symmetric:
+          algorithm: HS256
+          token: "my-secret"

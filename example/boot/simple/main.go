@@ -31,7 +31,8 @@ func init() {
 
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.BootstrapPreloadEntryYAML(boot)
+	rkentry.BootstrapBuiltInEntryFromYAML(boot)
+	rkentry.BootstrapPluginEntryFromYAML(boot)
 
 	// Bootstrap grpc entry from boot config
 	res := rkgrpc.RegisterGrpcEntryYAML(boot)
@@ -59,6 +60,6 @@ func main() {
 type GreeterServer struct{}
 
 // Greeter Handle Greeter method.
-func (server *GreeterServer) Greeter(context.Context, *proto.GreeterRequest) (*proto.GreeterResponse, error) {
+func (server *GreeterServer) Greeter(ctx context.Context, req *proto.GreeterRequest) (*proto.GreeterResponse, error) {
 	return &proto.GreeterResponse{}, nil
 }

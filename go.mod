@@ -3,23 +3,22 @@ module github.com/rookie-ninja/rk-grpc/v2
 go 1.17
 
 require (
-	github.com/golang-jwt/jwt/v4 v4.3.0
-	github.com/golang/protobuf v1.5.2
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.8.0
-	github.com/prometheus/client_golang v1.12.1
-	github.com/rookie-ninja/rk-entry/v2 v2.1.6
+	github.com/golang-jwt/jwt/v4 v4.4.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
+	github.com/prometheus/client_golang v1.12.2
+	github.com/rookie-ninja/rk-entry/v2 v2.2.0
 	github.com/rookie-ninja/rk-logger v1.2.11
 	github.com/rookie-ninja/rk-query v1.2.14
 	github.com/soheilhy/cmux v0.1.5
-	github.com/stretchr/testify v1.7.0
-	go.opentelemetry.io/otel v1.5.0
-	go.opentelemetry.io/otel/trace v1.5.0
+	github.com/stretchr/testify v1.7.1
+	go.opentelemetry.io/otel v1.7.0
+	go.opentelemetry.io/otel/trace v1.7.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
-	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a
-	google.golang.org/grpc v1.44.0
-	google.golang.org/protobuf v1.27.1
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd
+	google.golang.org/grpc v1.46.2
+	google.golang.org/protobuf v1.28.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -28,8 +27,9 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-logr/logr v1.2.2 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/kr/text v0.2.0 // indirect

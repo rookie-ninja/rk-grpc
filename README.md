@@ -960,6 +960,8 @@ grpc:
 #        enabled: true                                     # Optional, default: false
 #        ignore: [ "" ]                                    # Optional, default: []
 #        signerEntry: ""                                   # Optional, default: ""
+#        skipValidate: false                               # Optional, default: false
+#        disabledSign: false                               # Optional
 #        symmetric:                                        # Optional
 #          algorithm: ""                                   # Required, default: ""
 #          token: ""                                       # Optional, default: ""

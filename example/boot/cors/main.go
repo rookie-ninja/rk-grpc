@@ -16,7 +16,8 @@ var boot []byte
 
 func main() {
 	// Bootstrap basic entries from boot config.
-	rkentry.BootstrapPreloadEntryYAML(boot)
+	rkentry.BootstrapBuiltInEntryFromYAML(boot)
+	rkentry.BootstrapPluginEntryFromYAML(boot)
 
 	// Bootstrap grpc entry from boot config
 	res := rkgrpc.RegisterGrpcEntryYAML(boot)

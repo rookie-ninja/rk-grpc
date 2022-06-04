@@ -57,8 +57,6 @@ func StreamServerInterceptor(opts ...rkmidpanic.Option) grpc.StreamServerInterce
 		wrappedStream.WrappedContext = rkgrpcmid.WrapContextForServer(wrappedStream.WrappedContext)
 
 		rkgrpcmid.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
-		//rkgrpcmid.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcmid.RpcTypeKey, rkgrpcmid.RpcTypeUnaryServer)
-		//rkgrpcmid.AddToServerContextPayload(wrappedStream.WrappedContext, rkgrpcmid.RpcMethodKey, info.FullMethod)
 
 		defer func() {
 			if recv := recover(); recv != nil {
