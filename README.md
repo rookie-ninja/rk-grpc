@@ -905,7 +905,7 @@ grpc:
 #        certEntry: my-cert                                # Optional, default: "", reference of cert entry declared above
 #    middleware:
 #      ignore: [""]                                        # Optional, default: []
-#      errorModel: google                                  # Optional, defualt: google, [amazon, google] are supported options
+#      errorModel: google                                  # Optional, default: google, [amazon, google] are supported options
 #      logging:
 #        enabled: true                                     # Optional, default: false
 #        ignore: [""]                                      # Optional, default: []
