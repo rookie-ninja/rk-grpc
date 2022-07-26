@@ -342,6 +342,12 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 				rkmidtrace.ToOptions(&element.Middleware.Trace, element.Name, GrpcEntryType)...))
 		}
 
+		// cors middleware
+		if element.Middleware.Cors.Enabled {
+			entry.AddGwCorsOptions(rkmidcors.ToOptions(
+				&element.Middleware.Cors, element.Name, GrpcEntryType)...)
+		}
+
 		// jwt middleware
 		if element.Middleware.Jwt.Enabled {
 			entry.AddUnaryInterceptors(rkgrpcjwt.UnaryServerInterceptor(
@@ -360,12 +366,6 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 		if element.Middleware.Csrf.Enabled {
 			entry.AddGwCsrfOptions(rkmidcsrf.ToOptions(
 				&element.Middleware.Csrf, element.Name, GrpcEntryType)...)
-		}
-
-		// cors middleware
-		if element.Middleware.Cors.Enabled {
-			entry.AddGwCorsOptions(rkmidcors.ToOptions(
-				&element.Middleware.Cors, element.Name, GrpcEntryType)...)
 		}
 
 		// meta middleware
