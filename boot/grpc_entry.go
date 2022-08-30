@@ -635,7 +635,7 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 			grpcL := tcpL.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
 
 			// 3: Not a grpc connection, we will wrap a http listener.
-			httpL := tcpL.Match(cmux.HTTP1Fast())
+			httpL := tcpL.Match(cmux.HTTP1Fast("PATCH"))
 
 			// 4: Start both of grpc and http server
 			go entry.startGrpcServer(grpcL, logger)
