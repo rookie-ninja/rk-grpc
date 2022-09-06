@@ -117,6 +117,13 @@ func GetLogger(ctx context.Context) *zap.Logger {
 	return logger
 }
 
+func GormCtx(ctx context.Context) context.Context {
+	res := context.Background()
+	res = context.WithValue(res, rkmid.LoggerKey.String(), GetLogger(ctx))
+	res = context.WithValue(res, rkmid.EventKey.String(), GetEvent(ctx))
+	return res
+}
+
 // GetRequestId Get request id in outgoing metadata.
 func GetRequestId(ctx context.Context) string {
 	// case 1: called from server side context which wrapped with WrapContextForServer()'

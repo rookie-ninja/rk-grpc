@@ -330,6 +330,10 @@ func TestGetJwtToken(t *testing.T) {
 	assert.Equal(t, token, GetJwtToken(ctx))
 }
 
+func TestGormCtx(t *testing.T) {
+	assert.NotNil(t, GormCtx(context.TODO()))
+}
+
 func assertNotPanic(t *testing.T) {
 	if r := recover(); r != nil {
 		// Expect panic to be called with non nil error
