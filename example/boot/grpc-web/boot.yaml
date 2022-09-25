@@ -1,0 +1,17 @@
+---
+grpc:
+  - name: greeter                         # Required
+    port: 8080                            # Required
+    enabled: true                         # Required
+    middleware:
+      logging:
+        enabled: true                     # Optional, default: false
+    grpcWeb:
+      enabled: true
+#      cors:
+#        allowOrigins: []                 # Optional, default: [*]
+#      websocket:
+#        enabled: true                    # Optional, default: disable websocket
+#        pingIntervalMs: 10               # Optional, default: disable ping
+#        messageReadLimitBytes: 32769     # Optional, default: 32769
+

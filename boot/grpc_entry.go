@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
@@ -85,6 +86,7 @@ type BootConfig struct {
 		Prom               rkentry.BootProm              `yaml:"prom" json:"prom"`
 		Static             rkentry.BootStaticFileHandler `yaml:"static" json:"static"`
 		Proxy              BootConfigProxy               `yaml:"proxy" json:"proxy"`
+		GrpcWeb            BootConfigGrpcWeb             `yaml:"grpcWeb" json:"grpcWeb"`
 		CertEntry          string                        `yaml:"certEntry" json:"certEntry"`
 		LoggerEntry        string                        `yaml:"loggerEntry" json:"loggerEntry"`
 		EventEntry         string                        `yaml:"eventEntry" json:"eventEntry"`
@@ -126,6 +128,8 @@ type GrpcEntry struct {
 	StreamInterceptors []grpc.StreamServerInterceptor `json:"-" yaml:"-"`
 	GrpcRegF           []GrpcRegFunc                  `json:"-" yaml:"-"`
 	EnableReflection   bool                           `json:"-" yaml:"-"`
+	// grpcWeb related
+	GrpcWebOptions []grpcweb.Option `json:"-" yaml:"-"`
 	// Gateway related
 	HttpMux         *http.ServeMux             `json:"-" yaml:"-"`
 	HttpServer      *http.Server               `json:"-" yaml:"-"`
@@ -213,7 +217,7 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 		// Register pprof entry
 		pprofEntry := rkentry.RegisterPProfEntry(&element.PProf, rkentry.WithNamePProfEntry(element.Name))
 
-		// Did we enabled proxy?
+		// Did we enable proxy?
 		var proxy *ProxyEntry
 		if element.Proxy.Enabled {
 			opts := make([]ruleOption, 0)
@@ -269,6 +273,12 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 			}))
 		}
 
+		// Did we enable grpc web?
+		opt := make([]grpcweb.Option, 0)
+		if element.GrpcWeb.Enabled {
+			opt = ToGrpcWebOptions(&element.GrpcWeb)
+		}
+
 		entry := RegisterGrpcEntry(
 			WithName(element.Name),
 			WithDescription(element.Description),
@@ -281,6 +291,7 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 			WithPromEntry(promEntry),
 			WithProxyEntry(proxy),
 			WithGwMuxOptions(gwMuxOpts...),
+			WithGrpcWebOptions(opt...),
 			WithCommonServiceEntry(commonServiceEntry),
 			WithStaticFileHandlerEntry(staticEntry),
 			WithCertEntry(certEntry),
@@ -613,6 +624,20 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		Handler: h2c.NewHandler(httpHandler, &http2.Server{}),
 	}
 
+	if len(entry.GrpcWebOptions) > 0 {
+		grpcWebServer := grpcweb.WrapServer(entry.Server, entry.GrpcWebOptions...)
+		entry.HttpServer.Handler = http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+			if grpcWebServer.IsGrpcWebRequest(req) ||
+				grpcWebServer.IsAcceptableGrpcCorsRequest(req) ||
+				grpcWebServer.IsGrpcWebSocketRequest(req) {
+				grpcWebServer.ServeHTTP(resp, req)
+				return
+			}
+			// Fall back to other servers.
+			httpHandler.ServeHTTP(resp, req)
+		})
+	}
+
 	// 20: Start http server
 	go func(*GrpcEntry) {
 		// Create inner listener
@@ -632,7 +657,8 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 			// 2: If header value of content-type is application/grpc, then it is a grpc request.
 			// Assign a wrapped listener to grpc connection with cmux
-			grpcL := tcpL.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
+			grpcL := tcpL.MatchWithWriters(
+				cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 
 			// 3: Not a grpc connection, we will wrap a http listener.
 			httpL := tcpL.Match(cmux.HTTP1Fast("PATCH"))
@@ -658,10 +684,11 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 
 			// 2: If header value of content-type is application/grpc, then it is a grpc request.
 			// Assign a wrapped listener to grpc connection with cmux
-			grpcL := tlsL.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
+			grpcL := tlsL.MatchWithWriters(
+				cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 
 			// 3: Not a grpc connection, we will wrap a http listener.
-			httpL := tlsL.Match(cmux.HTTP1Fast())
+			httpL := tlsL.Match(cmux.HTTP1Fast("PATCH"))
 
 			// 4: Start both of grpc and http server
 			go entry.startGrpcServer(grpcL, logger)
@@ -869,6 +896,11 @@ func (entry *GrpcEntry) IsSWEnabled() bool {
 	return entry.SWEntry != nil
 }
 
+// IsGrpcWebEnabled Is grpc web enabled?
+func (entry *GrpcEntry) IsGrpcWebEnabled() bool {
+	return len(entry.GrpcWebOptions) > 0
+}
+
 // IsPProfEnabled Is pprof enabled?
 func (entry *GrpcEntry) IsPProfEnabled() bool {
 	return entry.PProfEntry != nil
@@ -912,6 +944,12 @@ func (entry *GrpcEntry) logBasicInfo(operation string, ctx context.Context) (rkq
 	event.AddPayloads(
 		zap.Uint64("grpcPort", entry.Port),
 		zap.Uint64("gwPort", entry.Port))
+
+	if entry.IsGrpcWebEnabled() {
+		event.AddPayloads(
+			zap.Bool("grpcWebEnabled", true),
+			zap.Uint64("grpcWebPort", entry.Port))
+	}
 
 	// add SWEntry info
 	if entry.IsSWEnabled() {
@@ -1138,5 +1176,12 @@ func WithGrpcDialOptions(opts ...grpc.DialOption) GrpcEntryOption {
 func WithGwMuxOptions(opts ...gwruntime.ServeMuxOption) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.GwMuxOptions = append(entry.GwMuxOptions, opts...)
+	}
+}
+
+// WithGrpcWebOptions Provide grpcweb server options.
+func WithGrpcWebOptions(opts ...grpcweb.Option) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GrpcWebOptions = append(entry.GrpcWebOptions, opts...)
 	}
 }
