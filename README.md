@@ -460,6 +460,7 @@ Access [http://localhost:8080/metrics](http://localhost:8080/metrics)
 | CommonService                                                          | List of common APIs.                                                                                                           |
 | StaticFileHandler                                                      | A Web UI shows files could be downloaded from server, currently support source of local and embed.FS.                          |
 | PProf                                                                  | PProf web UI.                                                                                                                  |
+| gRPC Web                                                               | gRPC Web                                                                                                                       |
 
 ## Supported middlewares
 All middlewares could be configured via YAML or Code.
