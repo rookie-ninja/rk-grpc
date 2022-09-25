@@ -22,3 +22,12 @@ plugins:
     out: api/gen
     opt:
       - grpc_api_configuration=api/v1/gw_mapping.yaml
+  # grpc-web needs to be installed, generate grpc-gateway go files based on proto files
+  - remote: buf.build/protocolbuffers/plugins/js:v3.20.1-1
+    out: api/gen
+    opt: import_style=commonjs
+  - remote: buf.build/grpc/plugins/web:v1.3.1-2
+    out: api/gen
+    opt:
+      - import_style=commonjs
+      - mode=grpcwebtext

@@ -23,10 +23,8 @@ grpc:
         enabled: true                 # Optional, default: false
       meta:
         enabled: true                 # Optional, default: false
+      cors:
+        allowOrigins:
+          - "http://localhost:*"
       secure:
         enabled: true                 # Optional, default: false
-      jwt:
-        enabled: true
-        symmetric:
-          algorithm: HS256
-          token: "my-secret"

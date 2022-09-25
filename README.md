@@ -590,6 +590,14 @@ grpc:
 #    description: "greeter server"                         # Optional, default: ""
 #    enableReflection: true                                # Optional, default: false
 #    enableRkGwOption: true                                # Optional, default: false
+#    grpcWeb:
+#      enabled: true
+#      cors:
+#        allowOrigins: []                                  # Optional, default: [*]
+#      websocket:
+#        enabled: true                                     # Optional, default: disable websocket
+#        pingIntervalMs: 10                                # Optional, default: disable ping
+#        messageReadLimitBytes: 32769                      # Optional, default: 32769
 #    gwOption:                                             # Optional, default: nil
 #      marshal:                                            # Optional, default: nil
 #        multiline: false                                  # Optional, default: false
