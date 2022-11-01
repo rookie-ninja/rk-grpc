@@ -27,12 +27,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
-	"os"
-	"path"
 	"strconv"
 	"testing"
 	"time"
@@ -441,10 +438,4 @@ func validateServerIsUp(t *testing.T, port uint64) {
 	if conn != nil {
 		assert.Nil(t, conn.Close())
 	}
-}
-
-func createFileAtTestTempDir(t *testing.T, content string) string {
-	tempDir := path.Join(t.TempDir(), "ut-boot.yaml")
-	assert.Nil(t, ioutil.WriteFile(tempDir, []byte(content), os.ModePerm))
-	return tempDir
 }

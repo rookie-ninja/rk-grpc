@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"net"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -62,11 +62,11 @@ func GetGrpcInfo(fullMethod string) (grpcService, grpcMethod string) {
 	// Parse rpc path info including gateway
 	grpcService, grpcMethod = "", ""
 
-	if v := strings.TrimPrefix(path.Dir(fullMethod), "/"); len(v) > 0 {
+	if v := strings.TrimPrefix(filepath.Dir(fullMethod), "/"); len(v) > 0 {
 		grpcService = v
 	}
 
-	if v := strings.TrimPrefix(path.Base(fullMethod), "/"); len(v) > 0 {
+	if v := strings.TrimPrefix(filepath.Base(fullMethod), "/"); len(v) > 0 {
 		grpcMethod = v
 	}
 
