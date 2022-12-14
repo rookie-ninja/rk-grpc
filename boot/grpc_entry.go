@@ -54,7 +54,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -588,16 +588,16 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	// 15: pprof
 	if entry.IsPProfEnabled() {
 		entry.HttpMux.HandleFunc(entry.PProfEntry.Path, pprof.Index)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "cmdline"), pprof.Cmdline)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "profile"), pprof.Profile)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "symbol"), pprof.Symbol)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "trace"), pprof.Trace)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "allocs"), pprof.Handler("allocs").ServeHTTP)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "block"), pprof.Handler("block").ServeHTTP)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "goroutine"), pprof.Handler("goroutine").ServeHTTP)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "heap"), pprof.Handler("heap").ServeHTTP)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "mutex"), pprof.Handler("mutex").ServeHTTP)
-		entry.HttpMux.HandleFunc(filepath.Join(entry.PProfEntry.Path, "threadcreate"), pprof.Handler("threadcreate").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "cmdline"), pprof.Cmdline)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "profile"), pprof.Profile)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "symbol"), pprof.Symbol)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "trace"), pprof.Trace)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "allocs"), pprof.Handler("allocs").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "block"), pprof.Handler("block").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "goroutine"), pprof.Handler("goroutine").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "heap"), pprof.Handler("heap").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "mutex"), pprof.Handler("mutex").ServeHTTP)
+		entry.HttpMux.HandleFunc(path.Join(entry.PProfEntry.Path, "threadcreate"), pprof.Handler("threadcreate").ServeHTTP)
 	}
 
 	// 16: Create http server
