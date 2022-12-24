@@ -8,7 +8,7 @@ package rkgrpcctx
 
 import (
 	"github.com/golang-jwt/jwt/v4"
-	rkcursor "github.com/rookie-ninja/rk-entry/v2/cursor"
+	"github.com/rookie-ninja/rk-entry/v2/cursor"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-grpc/v2/middleware"
 	"github.com/rookie-ninja/rk-logger"
@@ -26,6 +26,7 @@ import (
 var (
 	noopTracerProvider = trace.NewNoopTracerProvider()
 	noopEvent          = rkquery.NewEventFactory().CreateEventNoop()
+	pointerCreator     rkcursor.PointerCreator
 )
 
 // GrpcMetadataCarrier Grpc metadata carrier which will carries tracing info into grpc metadata to server side.
@@ -76,12 +77,23 @@ func AddHeaderToClient(ctx context.Context, key, value string) {
 	rkgrpcmid.AddToServerContextPayload(ctx, key, value)
 }
 
+// SetPointerCreator override  rkcursor.PointerCreator
+func SetPointerCreator(creator rkcursor.PointerCreator) {
+	pointerCreator = creator
+}
+
 // GetCursor create rkcursor.Cursor instance
 func GetCursor(ctx context.Context) *rkcursor.Cursor {
-	return rkcursor.NewCursor(
+	res := rkcursor.NewCursor(
 		rkcursor.WithLogger(GetLogger(ctx)),
 		rkcursor.WithEvent(GetEvent(ctx)),
 		rkcursor.WithEntryNameAndType(GetEntryName(ctx), "gRPCEntry"))
+
+	if pointerCreator != nil {
+		res.Creator = pointerCreator
+	}
+
+	return res
 }
 
 // GetEvent Extract the call-scoped EventData from context.

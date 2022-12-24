@@ -8,6 +8,7 @@ package rkgrpcctx
 import (
 	"context"
 	"github.com/golang-jwt/jwt/v4"
+	rkcursor "github.com/rookie-ninja/rk-entry/v2/cursor"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-grpc/v2/middleware"
 	"github.com/rookie-ninja/rk-logger"
@@ -332,6 +333,35 @@ func TestGetJwtToken(t *testing.T) {
 
 func TestGormCtx(t *testing.T) {
 	assert.NotNil(t, GormCtx(context.TODO()))
+}
+
+func TestSetPointerCreator(t *testing.T) {
+	assert.Nil(t, pointerCreator)
+
+	SetPointerCreator(createFakePointer)
+
+	assert.NotNil(t, pointerCreator)
+}
+
+func createFakePointer(p *rkcursor.CursorPayload) rkcursor.Pointer {
+	return &fakePointer{}
+}
+
+type fakePointer struct{}
+
+func (f fakePointer) PrintError(err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f fakePointer) ObserveError(err error) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f fakePointer) Release() {
+	//TODO implement me
+	panic("implement me")
 }
 
 func assertNotPanic(t *testing.T) {
