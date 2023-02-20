@@ -60,6 +60,9 @@ func StreamServerInterceptor(opts ...rkmidtimeout.Option) grpc.StreamServerInter
 		rkgrpcmid.AddToServerContextPayload(wrappedStream.WrappedContext, rkmid.EntryNameKey, set.GetEntryName())
 
 		beforeCtx := set.BeforeCtx(nil, rkgrpcctx.GetEvent(wrappedStream.WrappedContext))
+
+		beforeCtx.Input.UrlPath = info.FullMethod
+
 		toCtx := &streamTimeoutCtx{
 			srv:     srv,
 			stream:  stream,
