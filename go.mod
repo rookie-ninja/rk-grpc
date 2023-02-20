@@ -7,7 +7,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.12.0
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/prometheus/client_golang v1.13.0
-	github.com/rookie-ninja/rk-entry/v2 v2.2.16
+	github.com/rookie-ninja/rk-entry/v2 v2.2.18
 	github.com/rookie-ninja/rk-logger v1.2.13
 	github.com/rookie-ninja/rk-query v1.2.14
 	github.com/soheilhy/cmux v0.1.5
