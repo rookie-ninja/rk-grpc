@@ -7,10 +7,11 @@ package rkgrpcmid
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"testing"
 )
 
 type FakeAddr struct{}
@@ -26,14 +27,14 @@ func (f FakeAddr) String() string {
 func TestGetGwInfo(t *testing.T) {
 	md := metadata.New(map[string]string{
 		"x-forwarded-method":     "ut-method",
-		"x-forwarded-path":       "ut-path",
 		"x-forwarded-scheme":     "ut-scheme",
 		"x-forwarded-user-agent": "ut-agent",
+		"x-forwarded-pattern":    "ut-path/{id}",
 	})
 
 	method, path, scheme, agent := GetGwInfo(md)
 	assert.Equal(t, "ut-method", method)
-	assert.Equal(t, "ut-path", path)
+	assert.Equal(t, "ut-path/{id}", path)
 	assert.Equal(t, "ut-scheme", scheme)
 	assert.Equal(t, "ut-agent", agent)
 }

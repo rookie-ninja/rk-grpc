@@ -9,15 +9,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/textproto"
+	"strings"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rkmid "github.com/rookie-ninja/rk-entry/v2/middleware"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
-	"net/http"
-	"net/textproto"
-	"strings"
 )
 
 // Gateway options for marshaller and unmarshaler.
@@ -173,12 +174,17 @@ func NewRkGwServerMuxOptions(mOptIn *protojson.MarshalOptions, uOptIn *protojson
 				scheme = "https"
 			}
 
-			return metadata.Pairs(
+			md := metadata.Pairs(
 				"x-forwarded-method", req.Method,
 				"x-forwarded-path", req.URL.Path,
 				"x-forwarded-scheme", scheme,
 				"x-forwarded-remote-addr", req.RemoteAddr,
 				"x-forwarded-user-agent", req.UserAgent())
+			if pattern, ok := runtime.HTTPPathPattern(c); ok {
+				md["x-forwarded-pattern"] = []string{pattern}
+			}
+
+			return md
 		}),
 
 		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher),

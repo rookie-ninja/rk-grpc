@@ -8,13 +8,14 @@ package rkgrpcmid
 
 import (
 	"context"
-	"github.com/rookie-ninja/rk-entry/v2/middleware"
-	"go.uber.org/zap"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"net"
 	"path"
 	"strings"
+
+	rkmid "github.com/rookie-ninja/rk-entry/v2/middleware"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 )
 
 var (
@@ -42,7 +43,7 @@ func GetGwInfo(md metadata.MD) (gwMethod, gwPath, gwScheme, gwUserAgent string) 
 		gwMethod = tokens[0]
 	}
 
-	if tokens := md["x-forwarded-path"]; len(tokens) > 0 {
+	if tokens := md["x-forwarded-pattern"]; len(tokens) > 0 {
 		gwPath = tokens[0]
 	}
 
