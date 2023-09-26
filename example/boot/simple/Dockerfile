@@ -1,16 +1,16 @@
-FROM 035494162654.dkr.ecr.cn-north-1.amazonaws.com.cn/mof-builder:latest AS builder
-WORKDIR /build/mof
-COPY . /build/mof
+FROM golang:latest AS builder
+WORKDIR /build/rk
+COPY . /build/rk
 
 RUN go env -w CGO_ENABLED="0" && go build main.go
 
 FROM alpine
 
-ENV WD=/usr/src/mof
+ENV WD=/usr/src/rk
 WORKDIR $WD
 
-COPY --from=builder /build/mof/main $WD/main
-COPY --from=builder /build/mof/boot.yaml $WD/boot.yaml
-COPY --from=builder /build/mof/api $WD/api
+COPY --from=builder /build/rk/main $WD/main
+COPY --from=builder /build/rk/boot.yaml $WD/boot.yaml
+COPY --from=builder /build/rk/api $WD/api
 
 CMD $WD/main
