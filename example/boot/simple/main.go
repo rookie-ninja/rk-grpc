@@ -8,9 +8,9 @@ import (
 	"context"
 	"embed"
 	_ "embed"
+	proto "github.com/rookie-ninja/greeter/api/gen/v1"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
 	"github.com/rookie-ninja/rk-grpc/v2/boot"
-	proto "github.com/rookie-ninja/rk-grpc/v2/example/boot/simple/api/gen/v1"
 	"google.golang.org/grpc"
 )
 
