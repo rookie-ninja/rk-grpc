@@ -9,15 +9,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/textproto"
+	"strings"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rkmid "github.com/rookie-ninja/rk-entry/v2/middleware"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
-	"net/http"
-	"net/textproto"
-	"strings"
 )
 
 // Gateway options for marshaller and unmarshaler.
@@ -165,25 +166,32 @@ func NewRkGwServerMuxOptions(mOptIn *protojson.MarshalOptions, uOptIn *protojson
 			MarshalOptions:   *mOpt,
 			UnmarshalOptions: *uOpt,
 		}),
-		runtime.WithMetadata(func(c context.Context, req *http.Request) metadata.MD {
-			// we are unable to get scheme with req.URL.Scheme.
-			// Let's check with TLS.
-			scheme := "http"
-			if req.TLS != nil {
-				scheme = "https"
-			}
-
-			return metadata.Pairs(
-				"x-forwarded-method", req.Method,
-				"x-forwarded-path", req.URL.Path,
-				"x-forwarded-scheme", scheme,
-				"x-forwarded-remote-addr", req.RemoteAddr,
-				"x-forwarded-user-agent", req.UserAgent())
-		}),
+		runtime.WithMetadata(rkGwMetadataBuilder),
 
 		runtime.WithOutgoingHeaderMatcher(OutgoingHeaderMatcher),
 		runtime.WithIncomingHeaderMatcher(IncomingHeaderMatcher),
 	}
+}
+
+func rkGwMetadataBuilder(c context.Context, req *http.Request) metadata.MD {
+	// we are unable to get scheme with req.URL.Scheme.
+	// Let's check with TLS.
+	scheme := "http"
+	if req.TLS != nil {
+		scheme = "https"
+	}
+
+	md := metadata.Pairs(
+		"x-forwarded-method", req.Method,
+		"x-forwarded-path", req.URL.Path,
+		"x-forwarded-scheme", scheme,
+		"x-forwarded-remote-addr", req.RemoteAddr,
+		"x-forwarded-user-agent", req.UserAgent())
+	if pattern, ok := runtime.HTTPPathPattern(c); ok {
+		md["x-forwarded-pattern"] = []string{pattern}
+	}
+
+	return md
 }
 
 // HttpErrorHandler Mainly copies from runtime.DefaultHTTPErrorHandler.

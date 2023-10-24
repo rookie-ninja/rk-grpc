@@ -8,15 +8,17 @@ package rkgrpc
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/assert"
 	testhttp "github.com/stretchr/testify/http"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
-	"io"
-	"net/http"
-	"testing"
 )
 
 type FakeEncoder struct{}
@@ -278,6 +280,21 @@ func TestNewRkGwServerMuxOptions(t *testing.T) {
 	opts = NewRkGwServerMuxOptions(mOptIn, uOptIn)
 	assert.NotNil(t, opts)
 	assert.Len(t, opts, 5)
+}
+
+func TestRkGwMetadataBuilder(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/uc-path", nil)
+	ctxAnnotator := runtime.WithHTTPPathPattern("/uc/path/{id}")
+	ctx := ctxAnnotator(context.Background())
+
+	md := rkGwMetadataBuilder(ctx, req)
+	assert.Equal(t, metadata.Pairs(
+		"x-forwarded-method", req.Method,
+		"x-forwarded-path", req.URL.Path,
+		"x-forwarded-scheme", "http",
+		"x-forwarded-remote-addr", req.RemoteAddr,
+		"x-forwarded-user-agent", req.UserAgent(),
+		"x-forwarded-pattern", "/uc/path/{id}"), md)
 }
 
 // ************ Test utility ************
