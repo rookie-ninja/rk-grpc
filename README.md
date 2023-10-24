@@ -588,6 +588,7 @@ grpc:
   - name: greeter                                          # Required
     enabled: true                                          # Required
     port: 8080                                             # Required
+#    gwPort: 8081                                          # Optional, default: gateway port will be the same as grpc port if not provided 
 #    description: "greeter server"                         # Optional, default: ""
 #    enableReflection: true                                # Optional, default: false
 #    enableRkGwOption: true                                # Optional, default: false
