@@ -2,6 +2,8 @@ module github.com/rookie-ninja/greeter
 
 go 1.19
 
+replace github.com/rookie-ninja/rk-grpc/v2 => ../../../
+
 require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/rookie-ninja/rk-entry/v2 v2.2.18
