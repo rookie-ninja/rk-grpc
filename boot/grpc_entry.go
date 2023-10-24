@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-entry/v2/entry"
-	rkerror "github.com/rookie-ninja/rk-entry/v2/error"
+	"github.com/rookie-ninja/rk-entry/v2/error"
 	"github.com/rookie-ninja/rk-entry/v2/middleware"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/auth"
 	"github.com/rookie-ninja/rk-entry/v2/middleware/cors"
@@ -77,6 +77,7 @@ type BootConfig struct {
 		Name               string                        `yaml:"name" json:"name"`
 		Description        string                        `yaml:"description" json:"description"`
 		Port               uint64                        `yaml:"port" json:"port"`
+		GwPort             uint64                        `yaml:"gwPort" json:"gwPort"`
 		Enabled            bool                          `yaml:"enabled" json:"enabled"`
 		EnableReflection   bool                          `yaml:"enableReflection" json:"enableReflection"`
 		NoRecvMsgSizeLimit bool                          `yaml:"noRecvMsgSizeLimit" json:"noRecvMsgSizeLimit"`
@@ -119,6 +120,7 @@ type GrpcEntry struct {
 	LoggerEntry       *rkentry.LoggerEntry `json:"-" yaml:"-"`
 	EventEntry        *rkentry.EventEntry  `json:"-" yaml:"-"`
 	Port              uint64               `json:"-" yaml:"-"`
+	GwPort            uint64               `json:"-" yaml:"-"`
 	TlsConfig         *tls.Config          `json:"-" yaml:"-"`
 	TlsConfigInsecure *tls.Config          `json:"-" yaml:"-"`
 	// GRPC related
@@ -285,6 +287,7 @@ func RegisterGrpcEntryYAML(raw []byte) map[string]rkentry.Entry {
 			WithLoggerEntry(loggerEntry),
 			WithEventEntry(eventEntry),
 			WithPort(element.Port),
+			WithGwPort(element.GwPort),
 			WithGrpcDialOptions(grpcDialOptions...),
 			WithSwEntry(swEntry),
 			WithDocsEntry(docsEntry),
@@ -619,8 +622,13 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 		httpHandler = rkgrpccsrf.Interceptor(httpHandler, entry.gwCsrfOptions...)
 	}
 
+	// 20: set http port if missing
+	if entry.GwPort < 1 {
+		entry.GwPort = entry.Port
+	}
+
 	entry.HttpServer = &http.Server{
-		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.Port, 10),
+		Addr:    "0.0.0.0:" + strconv.FormatUint(entry.GwPort, 10),
 		Handler: h2c.NewHandler(httpHandler, &http2.Server{}),
 	}
 
@@ -639,73 +647,109 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 	}
 
 	// 20: Start http server
-	go func(*GrpcEntry) {
-		// Create inner listener
-		conn, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.Port, 10))
-		if err != nil {
-			entry.bootstrapLogOnce.Do(func() {
-				entry.EventEntry.FinishWithError(event, err)
-			})
-			rkentry.ShutdownWithError(err)
-		}
+	if entry.Port == entry.GwPort {
+		// same port, using cmux
+		go func(*GrpcEntry) {
+			// Create inner listener
+			conn, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.Port, 10))
+			if err != nil {
+				entry.bootstrapLogOnce.Do(func() {
+					entry.EventEntry.FinishWithError(event, err)
+				})
+				rkentry.ShutdownWithError(err)
+			}
 
-		// We will use cmux to make grpc and grpc gateway on the same port.
-		// With cmux, we can init one listener but routes connection based on some rules.
-		if !entry.IsTlsEnabled() {
-			// 1: Create a TCP listener with cmux
-			tcpL := cmux.New(conn)
+			// We will use cmux to make grpc and grpc gateway on the same port.
+			// With cmux, we can init one listener but routes connection based on some rules.
+			if !entry.IsTlsEnabled() {
+				// 1: Create a TCP listener with cmux
+				tcpL := cmux.New(conn)
 
-			// 2: If header value of content-type is application/grpc, then it is a grpc request.
-			// Assign a wrapped listener to grpc connection with cmux
-			grpcL := tcpL.MatchWithWriters(
-				cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+				// 2: If header value of content-type is application/grpc, then it is a grpc request.
+				// Assign a wrapped listener to grpc connection with cmux
+				grpcL := tcpL.MatchWithWriters(
+					cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 
-			// 3: Not a grpc connection, we will wrap a http listener.
-			httpL := tcpL.Match(cmux.HTTP1Fast("PATCH"))
+				// 3: Not a grpc connection, we will wrap a http listener.
+				httpL := tcpL.Match(cmux.HTTP1Fast("PATCH"))
 
-			// 4: Start both of grpc and http server
-			go entry.startGrpcServer(grpcL, logger)
-			go entry.startHttpServer(httpL, logger)
+				// 4: Start both of grpc and http server
+				go entry.startGrpcServer(grpcL, logger)
+				go entry.startHttpServer(httpL, logger)
 
-			// 5: Start listener
-			if err := tcpL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
-				if err != cmux.ErrListenerClosed {
-					entry.bootstrapLogOnce.Do(func() {
-						entry.EventEntry.FinishWithError(event, err)
-					})
-					logger.Error("Error occurs while serving TCP listener.", zap.Error(err))
-					rkentry.ShutdownWithError(err)
+				// 5: Start listener
+				if err := tcpL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+					if err != cmux.ErrListenerClosed {
+						entry.bootstrapLogOnce.Do(func() {
+							entry.EventEntry.FinishWithError(event, err)
+						})
+						logger.Error("Error occurs while serving TCP listener.", zap.Error(err))
+						rkentry.ShutdownWithError(err)
+					}
+				}
+			} else {
+				// In this case, we will enable tls
+				// 1: Create a tls listener with tls config
+				tlsL := cmux.New(tls.NewListener(conn, entry.TlsConfig))
+
+				// 2: If header value of content-type is application/grpc, then it is a grpc request.
+				// Assign a wrapped listener to grpc connection with cmux
+				grpcL := tlsL.MatchWithWriters(
+					cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+
+				// 3: Not a grpc connection, we will wrap a http listener.
+				httpL := tlsL.Match(cmux.HTTP1Fast("PATCH"))
+
+				// 4: Start both of grpc and http server
+				go entry.startGrpcServer(grpcL, logger)
+				go entry.startHttpServer(httpL, logger)
+
+				// 5: Start listener
+				if err := tlsL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+					if err != cmux.ErrListenerClosed {
+						entry.bootstrapLogOnce.Do(func() {
+							entry.EventEntry.FinishWithError(event, err)
+						})
+						logger.Error("Error occurs while serving TLS listener.", zap.Error(err))
+						rkentry.ShutdownWithError(err)
+					}
 				}
 			}
-		} else {
-			// In this case, we will enable tls
-			// 1: Create a tls listener with tls config
-			tlsL := cmux.New(tls.NewListener(conn, entry.TlsConfig))
-
-			// 2: If header value of content-type is application/grpc, then it is a grpc request.
-			// Assign a wrapped listener to grpc connection with cmux
-			grpcL := tlsL.MatchWithWriters(
-				cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-
-			// 3: Not a grpc connection, we will wrap a http listener.
-			httpL := tlsL.Match(cmux.HTTP1Fast("PATCH"))
-
-			// 4: Start both of grpc and http server
-			go entry.startGrpcServer(grpcL, logger)
-			go entry.startHttpServer(httpL, logger)
-
-			// 5: Start listener
-			if err := tlsL.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
-				if err != cmux.ErrListenerClosed {
-					entry.bootstrapLogOnce.Do(func() {
-						entry.EventEntry.FinishWithError(event, err)
-					})
-					logger.Error("Error occurs while serving TLS listener.", zap.Error(err))
-					rkentry.ShutdownWithError(err)
-				}
+		}(entry)
+	} else {
+		go func(*GrpcEntry) {
+			// Create inner listener
+			grpcLis, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.Port, 10))
+			if err != nil {
+				entry.bootstrapLogOnce.Do(func() {
+					entry.EventEntry.FinishWithError(event, err)
+				})
+				rkentry.ShutdownWithError(err)
 			}
-		}
-	}(entry)
+			gwLis, err := net.Listen("tcp4", ":"+strconv.FormatUint(entry.GwPort, 10))
+			if err != nil {
+				entry.bootstrapLogOnce.Do(func() {
+					entry.EventEntry.FinishWithError(event, err)
+				})
+				rkentry.ShutdownWithError(err)
+			}
+
+			// We will use cmux to make grpc and grpc gateway on the same port.
+			// With cmux, we can init one listener but routes connection based on some rules.
+			if !entry.IsTlsEnabled() {
+				// 4: Start both of grpc and http server
+				go entry.startGrpcServer(grpcLis, logger)
+				go entry.startHttpServer(gwLis, logger)
+			} else {
+				grpcLisTls := tls.NewListener(grpcLis, entry.TlsConfig)
+				gwLisTls := tls.NewListener(gwLis, entry.TlsConfig)
+
+				// 4: Start both of grpc and http server
+				go entry.startGrpcServer(grpcLisTls, logger)
+				go entry.startHttpServer(gwLisTls, logger)
+			}
+		}(entry)
+	}
 
 	entry.bootstrapLogOnce.Do(func() {
 		// Print link and logging message
@@ -714,29 +758,32 @@ func (entry *GrpcEntry) Bootstrap(ctx context.Context) {
 			scheme = "https"
 		}
 
+		entry.LoggerEntry.Info(fmt.Sprintf("gRPC_port:%d", entry.Port))
+		entry.LoggerEntry.Info(fmt.Sprintf("gateway_port:%d", entry.GwPort))
+
 		if entry.IsSWEnabled() {
-			entry.LoggerEntry.Info(fmt.Sprintf("SwaggerEntry: %s://localhost:%d%s", scheme, entry.Port, entry.SWEntry.Path))
+			entry.LoggerEntry.Info(fmt.Sprintf("SwaggerEntry: %s://localhost:%d%s", scheme, entry.GwPort, entry.SWEntry.Path))
 		}
 		if entry.IsDocsEnabled() {
-			entry.LoggerEntry.Info(fmt.Sprintf("DocsEntry: %s://localhost:%d%s", scheme, entry.Port, entry.DocsEntry.Path))
+			entry.LoggerEntry.Info(fmt.Sprintf("DocsEntry: %s://localhost:%d%s", scheme, entry.GwPort, entry.DocsEntry.Path))
 		}
 		if entry.IsPromEnabled() {
-			entry.LoggerEntry.Info(fmt.Sprintf("PromEntry: %s://localhost:%d%s", scheme, entry.Port, entry.PromEntry.Path))
+			entry.LoggerEntry.Info(fmt.Sprintf("PromEntry: %s://localhost:%d%s", scheme, entry.GwPort, entry.PromEntry.Path))
 		}
 		if entry.IsStaticFileHandlerEnabled() {
-			entry.LoggerEntry.Info(fmt.Sprintf("StaticFileHandlerEntry: %s://localhost:%d%s", scheme, entry.Port, entry.StaticFileEntry.Path))
+			entry.LoggerEntry.Info(fmt.Sprintf("StaticFileHandlerEntry: %s://localhost:%d%s", scheme, entry.GwPort, entry.StaticFileEntry.Path))
 		}
 		if entry.IsCommonServiceEnabled() {
 			handlers := []string{
-				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.Port, entry.CommonServiceEntry.ReadyPath),
-				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.Port, entry.CommonServiceEntry.AlivePath),
-				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.Port, entry.CommonServiceEntry.InfoPath),
+				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.GwPort, entry.CommonServiceEntry.ReadyPath),
+				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.GwPort, entry.CommonServiceEntry.AlivePath),
+				fmt.Sprintf("%s://localhost:%d%s", scheme, entry.GwPort, entry.CommonServiceEntry.InfoPath),
 			}
 
 			entry.LoggerEntry.Info(fmt.Sprintf("CommonSreviceEntry: %s", strings.Join(handlers, ", ")))
 		}
 		if entry.IsPProfEnabled() {
-			entry.LoggerEntry.Info(fmt.Sprintf("PProfEntry: %s://localhost:%d%s", scheme, entry.Port, entry.PProfEntry.Path))
+			entry.LoggerEntry.Info(fmt.Sprintf("PProfEntry: %s://localhost:%d%s", scheme, entry.GwPort, entry.PProfEntry.Path))
 		}
 		entry.EventEntry.Finish(event)
 	})
@@ -1065,10 +1112,17 @@ func WithEventEntry(logger *rkentry.EventEntry) GrpcEntryOption {
 	}
 }
 
-// WithPort Provide port.
+// WithPort Provide grpc port, gateway will use same port if not provided
 func WithPort(port uint64) GrpcEntryOption {
 	return func(entry *GrpcEntry) {
 		entry.Port = port
+	}
+}
+
+// WithGwPort Provide gateway port, gateway will use same port if not provided
+func WithGwPort(gwPort uint64) GrpcEntryOption {
+	return func(entry *GrpcEntry) {
+		entry.GwPort = gwPort
 	}
 }
 
